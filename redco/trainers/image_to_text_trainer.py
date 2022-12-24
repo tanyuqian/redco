@@ -41,7 +41,7 @@ def preprocess(example,
                caption_key='caption'):
     model_inputs = {}
 
-    img = Image.open(example[image_path_key])
+    img = Image.open(example[image_path_key]).convert('RGB')
     model_inputs['pixel_values'] = \
         image_processor(img, return_tensors='np').pixel_values[0]
 
