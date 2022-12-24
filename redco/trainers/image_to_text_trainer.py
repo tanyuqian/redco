@@ -55,7 +55,7 @@ def preprocess(example,
         truncation=True)
 
     model_inputs['labels'] = decoder_inputs['input_ids']
-    model_inputs['input_ids'] = \
+    decoder_inputs['input_ids'] = \
         [decoder_start_token_id] + decoder_inputs['input_ids']
 
     for key in decoder_inputs:
