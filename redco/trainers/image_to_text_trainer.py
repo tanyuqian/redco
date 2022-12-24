@@ -12,25 +12,23 @@ from .trainer import Trainer
 class ImageToTextTrainer(Trainer):
     def __init__(self,
                  deployer,
-                 jax_seed,
                  image_processor,
                  tokenizer,
                  decoder_start_token_id,
                  max_tgt_len,
                  image_path_key='image_path',
                  caption_key='caption'):
-        super(ImageToTextTrainer, self).__init__(
-            deployer=deployer, jax_seed=jax_seed)
+        super(ImageToTextTrainer, self).__init__(deployer=deployer)
 
-        self.setup_data_preprocessing(
-            data_preprocess_fn=partial(
-                preprocess,
-                image_processor=image_processor,
-                tokenizer=tokenizer,
-                decoder_start_token_id=decoder_start_token_id,
-                max_tgt_len=max_tgt_len,
-                image_path_key=image_path_key,
-                caption_key=caption_key))
+        self._data_preprocess_fn = partial(
+            preprocess,
+            image_processor=image_processor,
+            tokenizer=tokenizer,
+            decoder_start_token_id=decoder_start_token_id,
+            max_tgt_len=max_tgt_len,
+            image_path_key=image_path_key,
+            caption_key=caption_key)
+
         self.setup_train_step(loss_fn=loss_fn)
 
 

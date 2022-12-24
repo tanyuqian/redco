@@ -10,26 +10,29 @@ class Deployer:
 
         self._workdir = workdir
 
-        self._batch_size = None
-        self._global_batch_size = None
-
-    def set_batch_size(self, per_device_batch_size):
+    def process_batch_size(self, per_device_batch_size):
         assert self._n_model_shards == 1
-        self._batch_size = per_device_batch_size * jax.local_device_count()
-        self._global_batch_size = self._batch_size * jax.process_count()
+        batch_size = per_device_batch_size * jax.local_device_count()
+        global_batch_size = batch_size * jax.process_count()
 
-    def get_host_examples(self, examples, shuffle, shuffle_rng):
+        return batch_size, global_batch_size
+
+    def get_host_examples(self,
+                          examples,
+                          global_batch_size,
+                          shuffle, shuffle_rng):
         return get_host_examples(
             examples=examples,
-            global_batch_size=self._global_batch_size,
+            global_batch_size=global_batch_size,
             shuffle=shuffle,
             shuffle_rng=shuffle_rng,
             mesh=self._mesh)
 
-    def get_data_batches(self, examples, preprocess_fn, desc):
+    @staticmethod
+    def get_data_batches(examples, batch_size, preprocess_fn, desc):
         return get_data_batches(
             examples=examples,
-            batch_size=self._batch_size,
+            batch_size=batch_size,
             preprocess_fn=preprocess_fn,
             desc=desc)
 
