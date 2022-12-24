@@ -1,2 +1,2 @@
-from dataset import Dataset
-from jsonl_dataset import JsonlDataset
+from .dataset import Dataset
+from .jsonl_dataset import JsonlDataset
