@@ -56,7 +56,7 @@ def preprocess(example,
 
     model_inputs['labels'] = decoder_inputs['input_ids']
     decoder_inputs['input_ids'] = \
-        [decoder_start_token_id] + decoder_inputs['input_ids']
+        [decoder_start_token_id] + decoder_inputs['input_ids'][:-1]
 
     for key in decoder_inputs:
         model_inputs[f'decoder_{key}'] = np.array(decoder_inputs[key])
