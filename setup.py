@@ -6,7 +6,11 @@ setup(
     version="0.0.1",
     author="Bowen Tan",
     packages=find_packages(),
-    install_requires=[],
+    install_requires=[
+        'jax',
+        'flax',
+        'transformers',
+        'datasets'],
     include_package_data=True,
     python_requires=">=3.8"
 )
