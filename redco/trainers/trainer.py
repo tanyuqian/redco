@@ -44,7 +44,9 @@ class Trainer:
             examples=examples, shuffle=True, shuffle_rng=shuffle_rng)
 
         data_batches = self._deployer.get_data_batches(
-            examples=examples, desc='Training Epoch')
+            examples=examples,
+            preprocess_fn=self._data_preprocess_fn,
+            desc='Training Epoch')
         for batch in data_batches:
             assert self._deployer.mesh is None
 
