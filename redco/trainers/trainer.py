@@ -39,8 +39,9 @@ class Trainer:
         self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
 
     def train_epoch(self, examples):
+        self._rng, shuffle_rng = jax.random.split(self._rng)
         examples = self._deployer.get_host_examples(
-            examples=examples, shuffle=True)
+            examples=examples, shuffle=True, shuffle_rng=shuffle_rng)
 
         data_batches = self._deployer.get_data_batches(
             examples=examples, desc='Training Epoch')
