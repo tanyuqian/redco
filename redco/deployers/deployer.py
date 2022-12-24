@@ -1,6 +1,7 @@
 import jax
 
 from .data_utils import get_host_examples, get_data_batches
+from .opt_utils import get_multistep_adamw_optimizer
 
 
 class Deployer:
@@ -35,6 +36,25 @@ class Deployer:
             batch_size=batch_size,
             preprocess_fn=preprocess_fn,
             desc=desc)
+
+    def get_adamw_optimizer(self,
+                            train_size,
+                            per_device_batch_size,
+                            n_epochs,
+                            learning_rate,
+                            accumulate_grad_batches,
+                            warmup_rate,
+                            weight_decay):
+        _, global_batch_size = self.process_batch_size(
+            per_device_batch_size=per_device_batch_size)
+        return get_multistep_adamw_optimizer(
+            train_size=train_size,
+            global_batch_size=global_batch_size,
+            n_epochs=n_epochs,
+            learning_rate=learning_rate,
+            accumulate_grad_batches=accumulate_grad_batches,
+            warmup_rate=warmup_rate,
+            weight_decay=weight_decay)
 
     @property
     def mesh(self):
