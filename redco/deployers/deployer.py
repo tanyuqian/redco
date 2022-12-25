@@ -1,4 +1,5 @@
 import jax
+from flax.jax_utils import replicate, unreplicate
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_multistep_adamw_optimizer
@@ -39,6 +40,7 @@ class Deployer:
             examples=examples,
             batch_size=batch_size,
             preprocess_fn=data_preprocess_fn,
+            do_shard=(self.mesh is None),
             desc=desc)
 
     def process_batch_preds(self, batch_preds):
@@ -47,7 +49,19 @@ class Deployer:
                 lambda t: t.reshape((t.shape[0] * t.shape[1],) + t.shape[2:]),
                 batch_preds)
         else:
-            return None
+            return batch_preds
+
+    def process_metrics(self, metrics):
+        if self._mesh is None:
+            return unreplicate(metrics)
+        else:
+            return metrics
+
+    def process_params(self, params):
+        if self._mesh is None:
+            return replicate(params)
+        else:
+            return params
 
     def get_adamw_optimizer(self,
                             train_size,

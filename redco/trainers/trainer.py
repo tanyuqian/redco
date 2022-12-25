@@ -2,9 +2,6 @@ from functools import partial
 
 import jax
 
-from flax.training.common_utils import shard
-from flax.jax_utils import unreplicate
-
 from .utils import TrainStateWithDropoutRNG, default_train_step
 
 
@@ -52,9 +49,9 @@ class Trainer:
         for batch in data_batches:
             assert self._deployer.mesh is None
 
-            self._state, metrics = \
-                self._p_train_step(state=self._state, batch=shard(batch))
-            metrics = unreplicate(metrics)
+            self._state, metrics = self._p_train_step(
+                state=self._state, batch=batch)
+            metrics = self._deployer.process_metrics(metrics=metrics)
 
             data_batches.set_postfix(**metrics)
 

@@ -4,6 +4,7 @@ import tqdm
 import numpy as np
 import jax
 import jax.numpy as jnp
+from flax.training.common_utils import shard
 
 
 def get_batch(examples, preprocess_fn):
@@ -19,17 +20,23 @@ def get_batch(examples, preprocess_fn):
     return model_inputs
 
 
-def get_dataloader(examples, batch_size, preprocess_fn):
+def get_dataloader(examples, batch_size, preprocess_fn, do_shard):
     for i in range(0, len(examples) // batch_size):
         batch = get_batch(
             examples=examples[i * batch_size:(i + 1) * batch_size],
             preprocess_fn=preprocess_fn)
-        yield {key: jnp.array(value) for key, value in batch.items()}
+        yield {
+            key: shard(jnp.array(value)) if do_shard else jnp.array(value)
+            for key, value in batch.items()
+        }
 
 
-def get_data_batches(examples, batch_size, preprocess_fn, desc):
+def get_data_batches(examples, batch_size, preprocess_fn, do_shard, desc):
     data_loader = get_dataloader(
-        examples=examples, batch_size=batch_size, preprocess_fn=preprocess_fn)
+        examples=examples,
+        batch_size=batch_size,
+        preprocess_fn=preprocess_fn,
+        do_shard=do_shard)
     return tqdm.tqdm(
         data_loader, total=len(examples) // batch_size, desc=desc)
 

@@ -1,8 +1,6 @@
 from functools import partial
 
 import jax
-from flax.training.common_utils import shard
-from flax.jax_utils import replicate
 
 
 class Predictor:
@@ -21,6 +19,8 @@ class Predictor:
         self._postprocess_fn = postprocess_fn
 
     def predict(self, params, examples, per_device_batch_size):
+        params = self._deployer.process_params(params=params)
+
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
@@ -32,8 +32,7 @@ class Predictor:
         preds = []
         for batch in data_batches:
             assert self._deployer.mesh is None
-            batch_preds = self._p_pred_step(
-                batch=shard(batch), params=replicate(params))
+            batch_preds = self._p_pred_step(batch=batch, params=params)
             batch_preds = self._deployer.process_batch_preds(
                 batch_preds=batch_preds)
 
