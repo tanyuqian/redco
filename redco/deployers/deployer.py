@@ -18,24 +18,36 @@ class Deployer:
 
         return batch_size, global_batch_size
 
-    def get_host_examples(self,
-                          examples,
-                          global_batch_size,
-                          shuffle, shuffle_rng):
-        return get_host_examples(
+    def get_model_input_batches(self,
+                                examples,
+                                per_device_batch_size,
+                                data_preprocess_fn,
+                                shuffle,
+                                shuffle_rng,
+                                desc):
+        batch_size, global_batch_size = self.process_batch_size(
+            per_device_batch_size=per_device_batch_size)
+
+        examples = get_host_examples(
             examples=examples,
             global_batch_size=global_batch_size,
             shuffle=shuffle,
             shuffle_rng=shuffle_rng,
             mesh=self._mesh)
 
-    @staticmethod
-    def get_data_batches(examples, batch_size, preprocess_fn, desc):
         return get_data_batches(
             examples=examples,
             batch_size=batch_size,
-            preprocess_fn=preprocess_fn,
+            preprocess_fn=data_preprocess_fn,
             desc=desc)
+
+    def process_batch_preds(self, batch_preds):
+        if self._mesh is None:
+            return jax.tree_util.tree_map(
+                lambda t: t.reshape((t.shape[0] * t.shape[1],) + t.shape[2:]),
+                batch_preds)
+        else:
+            return None
 
     def get_adamw_optimizer(self,
                             train_size,

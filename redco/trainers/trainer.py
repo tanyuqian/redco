@@ -35,38 +35,18 @@ class Trainer:
         train_step_fn = partial(default_train_step, loss_fn=loss_fn)
         self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
 
-    def get_model_input_batches(self,
-                                examples,
-                                per_device_batch_size,
-                                data_preprocess_fn,
-                                desc):
-        if data_preprocess_fn is None:
-            data_preprocess_fn = self._data_preprocess_fn
-
-        batch_size, global_batch_size = self._deployer.process_batch_size(
-            per_device_batch_size=per_device_batch_size)
-
-        self._rng, shuffle_rng = jax.random.split(self._rng)
-        examples = self._deployer.get_host_examples(
-            examples=examples,
-            global_batch_size=global_batch_size,
-            shuffle=True, shuffle_rng=shuffle_rng)
-
-        return self._deployer.get_data_batches(
-            examples=examples,
-            batch_size=batch_size,
-            preprocess_fn=data_preprocess_fn,
-            desc=desc)
-
     def train_epoch(self,
                     examples,
                     per_device_batch_size,
                     data_preprocess_fn=None,
                     epoch_idx=0):
-        data_batches = self.get_model_input_batches(
+        self._rng, shuffle_rng = jax.random.split(self._rng)
+        data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
             data_preprocess_fn=data_preprocess_fn,
+            shuffle=True,
+            shuffle_rng=shuffle_rng,
             desc=f'Training epoch {epoch_idx}')
 
         for batch in data_batches:

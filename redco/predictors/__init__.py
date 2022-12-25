@@ -1,1 +1,2 @@
-x = 6
+from .predictor import Predictor
+from .image_to_text_predictor import ImageToTextPredictor

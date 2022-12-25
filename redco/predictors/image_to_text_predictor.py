@@ -1,19 +1,21 @@
 from functools import partial
 
-from .trainer import Trainer
-from ..utils.image_to_text_utils import preprocess, loss_fn
+from .predictor import Predictor
+from ..utils.image_to_text_utils import preprocess, pred_step, postprocess
 
 
-class ImageToTextTrainer(Trainer):
-    def __init__(self,
-                 deployer,
+class ImageToTextPredictor(Predictor):
+    def __init__(self, deployer,
+                 model,
                  image_processor,
                  tokenizer,
                  decoder_start_token_id,
                  max_tgt_len,
+                 gen_kwargs,
                  image_path_key='image_path',
                  caption_key='caption'):
-        super(ImageToTextTrainer, self).__init__(deployer=deployer)
+        super(ImageToTextPredictor, self).__init__(
+            deployer=deployer, model=model)
 
         self._data_preprocess_fn = partial(
             preprocess,
@@ -24,4 +26,6 @@ class ImageToTextTrainer(Trainer):
             image_path_key=image_path_key,
             caption_key=caption_key)
 
-        self.setup_train_step(loss_fn=loss_fn)
+        self.setup_pred_step(
+            pred_step_fn=partial(pred_step, gen_kwargs=gen_kwargs),
+            postprocess_fn=partial(postprocess, tokenizer=tokenizer))
