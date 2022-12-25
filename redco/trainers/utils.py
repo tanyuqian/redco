@@ -32,7 +32,7 @@ def default_train_step(state, batch, loss_fn):
 
     metrics = {
         'loss': loss,
-        'lr': state.opt_state.hyperparameters['learning_rate']
+        'lr': state.opt_state.hyperparams['learning_rate']
     }
     metrics = jax.lax.pmean(metrics, axis_name='batch')
 
