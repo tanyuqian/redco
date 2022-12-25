@@ -30,7 +30,10 @@ def default_train_step(state, batch, loss_fn):
     dropout_rng, new_dropout_rng = jax.random.split(state.dropout_rng)
     new_state = state.apply_gradients(grads=grad, dropout_rng=new_dropout_rng)
 
-    metrics = {'loss': loss}
+    metrics = {
+        'loss': loss,
+        'lr': state.opt_state.hyperparameters['learning_rate']
+    }
     metrics = jax.lax.pmean(metrics, axis_name='batch')
 
     return new_state, metrics
