@@ -1,6 +1,7 @@
 from functools import partial
 
 import jax
+from flax.training.common_utils import shard
 
 
 class Predictor:
@@ -30,7 +31,7 @@ class Predictor:
         preds = []
         for batch in data_batches:
             assert self._deployer.mesh is None
-            batch_preds = self._p_pred_step(batch=batch, params=params)
+            batch_preds = self._p_pred_step(batch=shard(batch), params=params)
             batch_preds = self._deployer.process_batch_preds(
                 batch_preds=batch_preds)
 
