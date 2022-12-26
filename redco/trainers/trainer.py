@@ -34,7 +34,7 @@ class Trainer:
 
         self._state = self._state.replicate()
 
-    def setup_running_step(self, loss_fn):
+    def setup_step_fns(self, loss_fn):
         assert self._deployer.mesh is None
         train_step_fn = partial(default_train_step, loss_fn=loss_fn)
         self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')

@@ -24,4 +24,4 @@ class ImageToTextTrainer(Trainer):
             image_path_key=image_path_key,
             caption_key=caption_key)
 
-        self.setup_train_step(loss_fn=loss_fn)
+        self.setup_step_fns(loss_fn=loss_fn)
