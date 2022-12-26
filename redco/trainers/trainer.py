@@ -43,16 +43,12 @@ class Trainer:
             lr_schedule_fn=self._lr_schedule_fn)
         self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
 
-    def train_epoch(self,
-                    examples,
-                    per_device_batch_size,
-                    data_preprocess_fn=None,
-                    epoch_idx=0):
+    def train_epoch(self, examples, per_device_batch_size, epoch_idx=0):
         self._rng, shuffle_rng = jax.random.split(self._rng)
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
-            data_preprocess_fn=data_preprocess_fn,
+            data_preprocess_fn=self._data_preprocess_fn,
             shuffle=True,
             shuffle_rng=shuffle_rng,
             desc=f'Training epoch {epoch_idx}')
