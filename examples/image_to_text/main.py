@@ -62,7 +62,7 @@ def main(data_dir='mscoco_data/processed',
         decoder_start_token_id=model.config.decoder_start_token_id,
         max_tgt_len=MAX_TGT_LEN)
 
-    optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
+    optimizer = deployer.get_adamw_optimizer(
         train_size=dataset.get_size(split='train'),
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
@@ -74,7 +74,6 @@ def main(data_dir='mscoco_data/processed',
         apply_fn=model.__call__,
         params=model.params,
         optimizer=optimizer,
-        lr_schedule_fn=lr_schedule_fn,
         jax_seed=JAX_SEED)
 
     trainer.fit(

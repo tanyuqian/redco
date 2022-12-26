@@ -57,9 +57,15 @@ class Deployer:
         else:
             return metrics
 
-    def process_params(self, params):
+    def process_params_to_run(self, params):
         if self._mesh is None:
             return replicate(params)
+        else:
+            return params
+
+    def process_params_to_save(self, params):
+        if self._mesh is None:
+            return unreplicate(params)
         else:
             return params
 

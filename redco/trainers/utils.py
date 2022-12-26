@@ -22,7 +22,7 @@ def default_loss_and_grads(state, batch, loss_fn):
     return grad_fn(state.params)
 
 
-def default_train_step(state, batch, loss_fn, lr_schedule_fn):
+def default_train_step(state, batch, loss_fn):
     loss, grad = default_loss_and_grads(
         state=state, batch=batch, loss_fn=loss_fn)
     grad = jax.lax.pmean(grad, 'batch')
@@ -30,11 +30,7 @@ def default_train_step(state, batch, loss_fn, lr_schedule_fn):
     dropout_rng, new_dropout_rng = jax.random.split(state.dropout_rng)
     new_state = state.apply_gradients(grads=grad, dropout_rng=new_dropout_rng)
 
-    metrics = {
-        'loss': loss,
-        'lr': lr_schedule_fn(state.step),
-        'step': state.step
-    }
+    metrics = {'loss': loss, 'step': state.step}
     metrics = jax.lax.pmean(metrics, axis_name='batch')
 
     return new_state, metrics

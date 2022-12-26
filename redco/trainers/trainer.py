@@ -19,12 +19,9 @@ class Trainer:
                            apply_fn,
                            params,
                            optimizer,
-                           lr_schedule_fn,
                            jax_seed):
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._rng, dropout_rng = jax.random.split(self._rng)
-
-        self._lr_schedule_fn = lr_schedule_fn
 
         assert self._deployer.mesh is None
         self._state = TrainStateWithDropoutRNG.create(
