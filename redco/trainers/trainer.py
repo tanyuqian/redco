@@ -65,14 +65,9 @@ class Trainer:
     def eval(self, examples):
         pass
 
-    def fit(self,
-            train_examples,
-            train_per_device_batch_size,
-            n_epochs,
-            data_preprocess_fn=None):
+    def fit(self, train_examples, train_per_device_batch_size, n_epochs):
         for epoch_idx in range(n_epochs):
             self.train_epoch(
                 examples=train_examples,
                 per_device_batch_size=train_per_device_batch_size,
-                data_preprocess_fn=data_preprocess_fn,
                 epoch_idx=epoch_idx)
