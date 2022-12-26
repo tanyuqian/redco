@@ -34,3 +34,12 @@ def default_train_step(state, batch, loss_fn):
     metrics = jax.lax.pmean(metrics, axis_name='batch')
 
     return new_state, metrics
+
+
+def default_eval_step(state, batch, loss_fn):
+    loss = loss_fn(state=state, params=state.params, batch=batch, train=False)
+
+    metrics = {'loss': loss}
+    metrics = jax.lax.pmean(metrics, axis_name='batch')
+
+    return metrics

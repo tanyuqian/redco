@@ -76,10 +76,9 @@ def main(data_dir='mscoco_data/processed',
         optimizer=optimizer,
         jax_seed=JAX_SEED)
 
-    trainer.fit(
-        train_examples=dataset.get_examples(split='train'),
-        train_per_device_batch_size=per_device_batch_size,
-        n_epochs=n_epochs)
+    print('eval_loss:', trainer.eval_loss(
+        examples=dataset.get_examples('dev'),
+        per_device_batch_size=per_device_batch_size))
 
 
 if __name__ == '__main__':
