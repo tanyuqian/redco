@@ -11,12 +11,20 @@ class Trainer:
 
         self._rng = None
         self._state = None
+        self._lr_schedule_fn = None
         self._data_preprocess_fn = None
         self._p_train_step = None
 
-    def create_train_state(self, apply_fn, params, optimizer, jax_seed):
+    def create_train_state(self,
+                           apply_fn,
+                           params,
+                           optimizer,
+                           lr_schedule_fn,
+                           jax_seed):
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._rng, dropout_rng = jax.random.split(self._rng)
+
+        self._lr_schedule_fn = lr_schedule_fn
 
         assert self._deployer.mesh is None
         self._state = TrainStateWithDropoutRNG.create(
@@ -29,7 +37,10 @@ class Trainer:
 
     def setup_train_step(self, loss_fn):
         assert self._deployer.mesh is None
-        train_step_fn = partial(default_train_step, loss_fn=loss_fn)
+        train_step_fn = partial(
+            default_train_step,
+            loss_fn=loss_fn,
+            lr_schedule_fn=self._lr_schedule_fn)
         self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
 
     def train_epoch(self,

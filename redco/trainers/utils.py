@@ -22,7 +22,7 @@ def default_loss_and_grads(state, batch, loss_fn):
     return grad_fn(state.params)
 
 
-def default_train_step(state, batch, loss_fn):
+def default_train_step(state, batch, loss_fn, lr_schedule_fn):
     loss, grad = default_loss_and_grads(
         state=state, batch=batch, loss_fn=loss_fn)
     grad = jax.lax.pmean(grad, 'batch')
@@ -32,7 +32,8 @@ def default_train_step(state, batch, loss_fn):
 
     metrics = {
         'loss': loss,
-        'lr': state.opt_state.hyperparams['learning_rate']
+        'lr': lr_schedule_fn(state.step),
+        'step': state.step
     }
     metrics = jax.lax.pmean(metrics, axis_name='batch')
 
