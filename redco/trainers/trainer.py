@@ -11,7 +11,6 @@ class Trainer:
 
         self._rng = None
         self._state = None
-        self._lr_schedule_fn = None
         self._data_preprocess_fn = None
         self._p_train_step = None
 
@@ -34,10 +33,7 @@ class Trainer:
 
     def setup_train_step(self, loss_fn):
         assert self._deployer.mesh is None
-        train_step_fn = partial(
-            default_train_step,
-            loss_fn=loss_fn,
-            lr_schedule_fn=self._lr_schedule_fn)
+        train_step_fn = partial(default_train_step, loss_fn=loss_fn)
         self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
 
     def train_epoch(self, examples, per_device_batch_size, epoch_idx=0):
