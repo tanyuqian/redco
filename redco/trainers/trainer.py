@@ -80,3 +80,20 @@ class Trainer:
             losses.append(metrics['loss'])
 
         return np.mean(losses)
+
+    def fit(self,
+            train_examples,
+            eval_examples,
+            n_epochs,
+            per_device_batch_size):
+        for epoch_idx in range(n_epochs):
+            self.train_epoch(
+                examples=train_examples,
+                per_device_batch_size=per_device_batch_size,
+                epoch_idx=epoch_idx)
+
+            eval_loss = self.eval_loss(
+                examples=eval_examples,
+                per_device_batch_size=per_device_batch_size)
+
+            print(f'Epoch {epoch_idx}: eval_loss = {eval_loss}')

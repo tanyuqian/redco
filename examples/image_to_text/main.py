@@ -35,26 +35,6 @@ def main(data_dir='mscoco_data/processed',
 
     deployer = Deployer(workdir=workdir)
 
-    # predictor = ImageToTextPredictor(
-    #     deployer=deployer,
-    #     model=model,
-    #     image_processor=image_processor,
-    #     tokenizer=tokenizer,
-    #     decoder_start_token_id=model.config.decoder_start_token_id,
-    #     max_tgt_len=MAX_TGT_LEN,
-    #     gen_kwargs=GEN_KWARGS)
-    #
-    # preds = predictor.predict(
-    #     params=model.params,
-    #     examples=dataset.get_examples(split='test'),
-    #     per_device_batch_size=per_device_batch_size)
-    #
-    # results = [
-    #     {'example': example, 'pred': pred}
-    #     for example, pred in zip(dataset.get_examples(split='test'), preds)]
-    #
-    # json.dump(results, open('results.json', 'w'), indent=4)
-
     trainer = ImageToTextTrainer(
         deployer=deployer,
         image_processor=image_processor,
@@ -76,9 +56,11 @@ def main(data_dir='mscoco_data/processed',
         optimizer=optimizer,
         jax_seed=JAX_SEED)
 
-    print('eval_loss:', trainer.eval_loss(
-        examples=dataset.get_examples('dev'),
-        per_device_batch_size=per_device_batch_size))
+    trainer.fit(
+        train_examples=dataset.get_examples(split='train'),
+        eval_examples=dataset.get_examples(split='dev'),
+        per_device_batch_size=per_device_batch_size,
+        n_epochs=n_epochs)
 
 
 if __name__ == '__main__':
