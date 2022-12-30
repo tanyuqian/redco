@@ -8,11 +8,13 @@ import jax.numpy as jnp
 from flax.training.common_utils import shard
 
 
-def collage_batch(collate_fn, examples):
+def collate_batch(collate_fn, examples):
     pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
 
     processed_examples = pool.map(
         collate_fn, [[example] for example in examples])
+
+    pool.close()
 
     batch = {}
     for key in processed_examples[0].keys():
