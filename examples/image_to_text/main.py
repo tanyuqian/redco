@@ -1,6 +1,7 @@
+from functools import partial
 import json
-
 import fire
+import evaluate
 
 from transformers import \
     AutoImageProcessor, AutoTokenizer, FlaxVisionEncoderDecoderModel
@@ -18,6 +19,20 @@ GEN_KWARGS = {
     'max_length': 16,
     'num_beams': 4
 }
+
+
+def eval_rouge(params, predictor, examples, per_device_batch_size, scorer):
+    preds = predictor.predict(
+        params=params,
+        examples=examples,
+        per_device_batch_size=per_device_batch_size)
+
+    refs = [example['caption'] for example in examples]
+
+    result = rouge_scorer.compute(
+        predictions=preds, references=refs, use_stemmer=True)
+
+    return results
 
 
 def main(data_dir='mscoco_data/processed',
@@ -68,17 +83,20 @@ def main(data_dir='mscoco_data/processed',
         examples=dataset.get_examples(split='test'),
         per_device_batch_size=per_device_batch_size)
 
-    results = [
-        {'example': example, 'pred': pred}
-        for example, pred in zip(dataset.get_examples(split='test'), preds)]
+    scorer = evaluate.load('rouge')
 
-    json.dump(results, open('results.json', 'w'), indent=4)
+    eval_fn = partial(
+        eval_rouge,
+        predictor=predictor,
+        examples=dataset.get_examples('dev'),
+        per_device_batch_size=per_device_batch_size,
+        scorer=scorer)
 
     trainer.fit(
         train_examples=dataset.get_examples(split='train'),
-        eval_examples=dataset.get_examples(split='dev'),
         per_device_batch_size=per_device_batch_size,
-        n_epochs=n_epochs)
+        n_epochs=n_epochs,
+        eval_fn=eval_fn)
 
 
 if __name__ == '__main__':
