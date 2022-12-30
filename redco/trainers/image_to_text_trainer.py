@@ -1,7 +1,7 @@
 from functools import partial
 
 from .trainer import Trainer
-from ..utils.image_to_text_utils import preprocess, loss_fn
+from ..utils.image_to_text_utils import collate_fn, loss_fn
 
 
 class ImageToTextTrainer(Trainer):
@@ -15,8 +15,8 @@ class ImageToTextTrainer(Trainer):
                  caption_key='caption'):
         super(ImageToTextTrainer, self).__init__(deployer=deployer)
 
-        self._data_preprocess_fn = partial(
-            preprocess,
+        self._collate_fn = partial(
+            collate_fn,
             image_processor=image_processor,
             tokenizer=tokenizer,
             decoder_start_token_id=decoder_start_token_id,
@@ -24,4 +24,4 @@ class ImageToTextTrainer(Trainer):
             image_path_key=image_path_key,
             caption_key=caption_key)
 
-        self.setup_step_fns(loss_fn=loss_fn)
+        self.setup_loss_fn(loss_fn=loss_fn)

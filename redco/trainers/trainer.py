@@ -11,45 +11,39 @@ class Trainer:
     def __init__(self, deployer):
         self._deployer = deployer
 
-        self._rng = None
         self._state = None
-        self._data_preprocess_fn = None
+        self._collate_fn = None
         self._p_train_step = None
         self._p_eval_step = None
 
-    def create_train_state(self,
-                           apply_fn,
-                           params,
-                           optimizer,
-                           jax_seed):
-        self._rng = jax.random.PRNGKey(seed=jax_seed)
-        self._rng, dropout_rng = jax.random.split(self._rng)
-
+    def create_train_state(self, apply_fn, params, optimizer):
         assert self._deployer.mesh is None
         self._state = TrainStateWithDropoutRNG.create(
             apply_fn=apply_fn,
             params=params,
             tx=optimizer,
-            dropout_rng=dropout_rng)
+            dropout_rng=self._deployer.gen_rng())
 
         self._state = self._state.replicate()
 
-    def setup_step_fns(self, loss_fn):
+    def setup_collate_fn(self, collate_fn):
+        self._collate_fn = collate_fn
+
+    def setup_loss_fn(self, loss_fn):
         assert self._deployer.mesh is None
         train_step_fn = partial(default_train_step, loss_fn=loss_fn)
         self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
         eval_step_fn = partial(default_eval_step, loss_fn=loss_fn)
         self._p_eval_step = jax.pmap(eval_step_fn, axis_name='batch')
 
-    def train_epoch(self, examples, per_device_batch_size, epoch_idx):
-        self._rng, shuffle_rng = jax.random.split(self._rng)
+    def train(self, examples, per_device_batch_size, desc):
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
-            data_preprocess_fn=self._data_preprocess_fn,
+            collate_fn=self._collate_fn,
             shuffle=True,
-            shuffle_rng=shuffle_rng,
-            desc=f'Training epoch {epoch_idx}')
+            shuffle_rng=self._deployer.gen_rng(),
+            desc=f'Training ({desc})')
 
         for batch in data_batches:
             assert self._deployer.mesh is None
@@ -64,7 +58,7 @@ class Trainer:
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
-            data_preprocess_fn=self._data_preprocess_fn,
+            collate_fn=self._collate_fn,
             shuffle=False,
             shuffle_rng=None,
             desc=f'Evaluating')
@@ -79,21 +73,41 @@ class Trainer:
 
             losses.append(metrics['loss'])
 
-        return np.mean(losses)
+        return {'loss': np.mean(losses)}
+
+    def setup(self, apply_fn, params, optimizer, collate_fn=None, loss_fn=None):
+        if loss_fn is not None:
+            self.setup_loss_fn(loss_fn=loss_fn)
+        assert self._p_train_step is not None
+
+        if collate_fn is not None:
+            self.setup_collate_fn(collate_fn=collate_fn)
+        assert self._collate_fn is not None
+
+        self.create_train_state(
+            apply_fn=apply_fn, params=params, optimizer=optimizer)
 
     def fit(self,
             train_examples,
-            eval_examples,
+            per_device_batch_size,
             n_epochs,
-            per_device_batch_size):
+            eval_examples=None,
+            eval_fn=None):
         for epoch_idx in range(n_epochs):
-            self.train_epoch(
+            self.train(
                 examples=train_examples,
                 per_device_batch_size=per_device_batch_size,
-                epoch_idx=epoch_idx)
+                desc=f'epoch {epoch_idx}')
 
-            eval_loss = self.eval_loss(
-                examples=eval_examples,
-                per_device_batch_size=per_device_batch_size)
+            if eval_fn is None:
+                eval_result = self.eval_loss(
+                    examples=eval_examples,
+                    per_device_batch_size=per_device_batch_size_eval)
+            else:
+                eval_result = eval_fn(params=self.params)
 
-            print(f'Epoch {epoch_idx}: eval_loss = {eval_loss}')
+            print(f'Epoch {epoch_idx}, eval result = {eval_result}')
+
+    @property
+    def params(self):
+        return self._deployer.process_params_to_save(self._state.params)

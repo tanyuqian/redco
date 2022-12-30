@@ -6,11 +6,11 @@ from .opt_utils import get_multistep_adamw_optimizer
 
 
 class Deployer:
-    def __init__(self, workdir):
+    def __init__(self, jax_seed):
         self._n_model_shards = 1
         self._mesh = None
 
-        self._workdir = workdir
+        self._rng = jax.random.PRNGKey(seed=jax_seed)
 
     def process_batch_size(self, per_device_batch_size):
         assert self._n_model_shards == 1
@@ -22,7 +22,7 @@ class Deployer:
     def get_model_input_batches(self,
                                 examples,
                                 per_device_batch_size,
-                                data_preprocess_fn,
+                                collate_fn,
                                 shuffle,
                                 shuffle_rng,
                                 desc):
@@ -39,7 +39,7 @@ class Deployer:
         return get_data_batches(
             examples=examples,
             batch_size=batch_size,
-            preprocess_fn=data_preprocess_fn,
+            collate_fn=collate_fn,
             do_shard=(self.mesh is None),
             desc=desc)
 
@@ -87,6 +87,10 @@ class Deployer:
             accumulate_grad_batches=accumulate_grad_batches,
             warmup_rate=warmup_rate,
             weight_decay=weight_decay)
+
+    def gen_rng(self):
+        self._rng, new_rng = jax.random.split(self._rng)
+        return new_rng
 
     @property
     def mesh(self):

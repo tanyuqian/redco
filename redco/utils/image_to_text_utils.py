@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import optax
 
 
-def preprocess(example,
+def collate_fn(examples,
                image_processor,
                tokenizer,
                decoder_start_token_id,
@@ -14,20 +14,32 @@ def preprocess(example,
                caption_key='caption'):
     model_inputs = {}
 
-    img = Image.open(example[image_path_key]).convert('RGB')
+    images = [
+        Image.open(example[image_path_key]).convert('RGB')
+        for example in examples]
     model_inputs['pixel_values'] = \
-        image_processor(img, return_tensors='np').pixel_values[0]
+        image_processor(images, return_tensors='np').pixel_values
 
     decoder_inputs = tokenizer(
-        example[caption_key],
-        add_special_tokens=False,
+        [example[caption_key] for example in examples],
         max_length=max_tgt_len,
         padding='max_length',
-        truncation=True)
+        truncation=True,
+        return_tensors='np')
 
-    model_inputs['labels'] = decoder_inputs['input_ids']
-    decoder_inputs['input_ids'] = \
-        [decoder_start_token_id] + decoder_inputs['input_ids'][:-1]
+    if tokenizer.bos_token_id is not None:
+        labels = np.zeros_like(decoder_inputs['input_ids'])
+        labels[:, :-1] = decoder_inputs['input_ids'][:, 1:]
+        decoder_input_ids = decoder_inputs['input_ids']
+        decoder_input_ids[:, 0] = decoder_start_token_id
+    else:
+        labels = decoder_inputs['input_ids']
+        decoder_input_ids = np.zeros_like(decoder_inputs['input_ids'])
+        decoder_input_ids[:, 1:] = decoder_inputs['input_ids'][:, :-1]
+        decoder_input_ids[:, 0] = decoder_start_token_id
+
+    model_inputs['labels'] = labels
+    decoder_inputs['input_ids'] = decoder_input_ids
 
     for key in decoder_inputs:
         model_inputs[f'decoder_{key}'] = np.array(decoder_inputs[key])
@@ -48,11 +60,11 @@ def loss_fn(state, params, batch, train):
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def pred_step(batch, params, model, gen_kwargs):
+def pred_fn(batch, params, model, gen_kwargs):
     output_ids = model.generate(
         batch["pixel_values"], params=params, **gen_kwargs)
     return output_ids.sequences
 
 
-def postprocess(batch_preds, tokenizer):
+def output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)

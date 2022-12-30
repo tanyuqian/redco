@@ -33,14 +33,7 @@ def main(data_dir='mscoco_data/processed',
     model = FlaxVisionEncoderDecoderModel.from_pretrained(
         model_name_or_path, from_pt=True)
 
-    deployer = Deployer(workdir=workdir)
-
-    trainer = ImageToTextTrainer(
-        deployer=deployer,
-        image_processor=image_processor,
-        tokenizer=tokenizer,
-        decoder_start_token_id=model.config.decoder_start_token_id,
-        max_tgt_len=MAX_TGT_LEN)
+    deployer = Deployer(jax_seed=jax_seed)
 
     optimizer = deployer.get_adamw_optimizer(
         train_size=dataset.get_size(split='train'),
@@ -50,11 +43,16 @@ def main(data_dir='mscoco_data/processed',
         accumulate_grad_batches=accumulate_grad_batches,
         warmup_rate=WARMUP_RATE,
         weight_decay=WEIGHT_DECAY)
-    trainer.create_train_state(
-        apply_fn=model.__call__,
-        params=model.params,
-        optimizer=optimizer,
-        jax_seed=JAX_SEED)
+
+    trainer = ImageToTextTrainer(
+        deployer=deployer,
+        image_processor=image_processor,
+        tokenizer=tokenizer,
+        decoder_start_token_id=model.config.decoder_start_token_id,
+        max_tgt_len=MAX_TGT_LEN)
+
+    trainer.setup(
+        apply_fn=model.__call__, params=model.params, optimizer=optimizer)
 
     trainer.fit(
         train_examples=dataset.get_examples(split='train'),
