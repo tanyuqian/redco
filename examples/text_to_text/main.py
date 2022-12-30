@@ -1,27 +1,34 @@
 from functools import partial
-import json
 import fire
+import datasets
 import evaluate
 
-from transformers import \
-    AutoImageProcessor, AutoTokenizer, FlaxVisionEncoderDecoderModel
+from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 
-from redco import \
-    JsonlDataset, Deployer, ImageToTextTrainer, ImageToTextPredictor
+from redco import Deployer, TextToTextTrainer, TextToTextPredictor
 
 
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 5e-5
 WARMUP_RATE = 0.1
 WEIGHT_DECAY = 0.
 JAX_SEED = 42
-MAX_TGT_LEN = 16
+MAX_SRC_LEN = 512
+MAX_TGT_LEN = 64
 GEN_KWARGS = {
-    'max_length': 16,
+    'max_length': 64,
     'num_beams': 4
 }
 
 
-def eval_rouge(params, predictor, examples, per_device_batch_size, scorer):
+def eval_rouge(params,
+               trainer,
+               predictor,
+               examples,
+               per_device_batch_size,
+               rouge_scorer):
+    loss = trainer.eval_loss(
+        examples=examples, per_device_batch_size=per_device_batch_size)['loss']
+
     preds = predictor.predict(
         params=params,
         examples=examples,
@@ -29,28 +36,32 @@ def eval_rouge(params, predictor, examples, per_device_batch_size, scorer):
 
     refs = [example['caption'] for example in examples]
 
-    result = scorer.compute(
+    result = rouge_scorer.compute(
         predictions=preds, references=refs, use_stemmer=True)
+
+    result.update({'loss': loss})
 
     return result
 
 
-def main(data_dir='mscoco_data/processed',
-         model_name_or_path='nlpconnect/vit-gpt2-image-captioning',
+def main(dataset_name='xsum',
+         src_key='document',
+         tgt_key='summary',
+         model_name_or_path='facebook/bart-base',
          n_epochs=2,
-         per_device_batch_size=2,
+         per_device_batch_size=16,
          accumulate_grad_batches=2):
-    dataset = JsonlDataset(data_dir=data_dir)
+    dataset = datasets.load_dataset(dataset_name)
+    dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
-    image_processor = AutoImageProcessor.from_pretrained(model_name_or_path)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-    model = FlaxVisionEncoderDecoderModel.from_pretrained(
+    model = FlaxAutoModelForSeq2SeqLM.from_pretrained(
         model_name_or_path, from_pt=True)
 
     deployer = Deployer(jax_seed=JAX_SEED)
 
     optimizer = deployer.get_adamw_optimizer(
-        train_size=dataset.get_size(split='train'),
+        train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
         learning_rate=LEARNING_RATE,
@@ -58,34 +69,38 @@ def main(data_dir='mscoco_data/processed',
         warmup_rate=WARMUP_RATE,
         weight_decay=WEIGHT_DECAY)
 
-    trainer = ImageToTextTrainer(
+    trainer = TextToTextTrainer(
         apply_fn=model.__call__,
         params=model.params,
         optimizer=optimizer,
         deployer=deployer,
-        image_processor=image_processor,
         tokenizer=tokenizer,
         decoder_start_token_id=model.config.decoder_start_token_id,
-        max_tgt_len=MAX_TGT_LEN)
+        max_src_len=MAX_SRC_LEN,
+        max_tgt_len=MAX_TGT_LEN,
+        src_key=src_key,
+        tgt_key=tgt_key)
 
-    predictor = ImageToTextPredictor(
+    predictor = TextToTextPredictor(
         model=model,
         deployer=deployer,
-        image_processor=image_processor,
         tokenizer=tokenizer,
         decoder_start_token_id=model.config.decoder_start_token_id,
+        max_src_len=MAX_SRC_LEN,
         max_tgt_len=MAX_TGT_LEN,
-        gen_kwargs=GEN_KWARGS)
+        gen_kwargs=GEN_KWARGS,
+        src_key=src_key,
+        tgt_key=tgt_key)
 
     eval_fn = partial(
         eval_rouge,
         predictor=predictor,
-        examples=dataset.get_examples('dev'),
+        examples=dataset['test'],
         per_device_batch_size=per_device_batch_size,
         scorer=evaluate.load('rouge'))
 
     trainer.fit(
-        train_examples=dataset.get_examples(split='train'),
+        train_examples=dataset['train'],
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
         eval_fn=eval_fn)

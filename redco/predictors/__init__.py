@@ -1,2 +1,3 @@
 from .predictor import Predictor
 from .image_to_text_predictor import ImageToTextPredictor
+from .text_to_text_predictor import TextToTextPredictor

@@ -1,5 +1,5 @@
 from functools import partial
-
+import json
 import numpy as np
 import jax
 
@@ -102,11 +102,12 @@ class Trainer:
             if eval_fn is None:
                 eval_result = self.eval_loss(
                     examples=eval_examples,
-                    per_device_batch_size=per_device_batch_size_eval)
+                    per_device_batch_size=per_device_batch_size)
             else:
                 eval_result = eval_fn(params=self.params)
 
-            print(f'Epoch {epoch_idx}, eval result = {eval_result}')
+            print(f'Epoch {epoch_idx}, Eval Result:')
+            print(json.dumps(eval_result, indent=4))
 
     @property
     def params(self):
