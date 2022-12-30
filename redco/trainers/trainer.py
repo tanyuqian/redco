@@ -92,6 +92,7 @@ class Trainer:
             per_device_batch_size,
             n_epochs,
             eval_examples=None,
+            eval_per_device_batch_size=None,
             eval_loss=True,
             eval_predictor=None,
             eval_metric_fn=None):
@@ -106,17 +107,20 @@ class Trainer:
             else:
                 eval_metrics = {}
 
+                if eval_per_device_batch_size is None:
+                    eval_per_device_batch_size = per_device_batch_size
+
                 if eval_loss:
                     loss = self.eval_loss(
                         examples=eval_examples,
-                        per_device_batch_size=per_device_batch_size)
+                        per_device_batch_size=eval_per_device_batch_size)
                     eval_metrics['loss'] = loss
 
                 if eval_predictor is not None:
                     preds = eval_predictor.predict(
                         examples=eval_examples,
                         params=self.params,
-                        per_device_batch_size=per_device_batch_size)
+                        per_device_batch_size=eval_per_device_batch_size)
 
                     eval_results = [
                         {'example': example, 'pred': pred}

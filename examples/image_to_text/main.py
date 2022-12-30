@@ -1,5 +1,4 @@
 from functools import partial
-import json
 import fire
 import evaluate
 
@@ -21,25 +20,24 @@ GEN_KWARGS = {
 }
 
 
-def eval_rouge(params, predictor, examples, per_device_batch_size, scorer):
-    preds = predictor.predict(
-        params=params,
-        examples=examples,
-        per_device_batch_size=per_device_batch_size)
+def eval_rouge(eval_results, caption_key):
+    rouge_scorer = evaluate.load('rouge')
 
-    refs = [example['caption'] for example in examples]
-
-    result = scorer.compute(
-        predictions=preds, references=refs, use_stemmer=True)
-
-    return result
+    return rouge_scorer.compute(
+        predictions=[result['pred'] for result in eval_results],
+        references=[result['example'][caption_key] for result in eval_results],
+        rouge_types=['rouge1', 'rouge2', 'rougeL'],
+        use_stemmer=True)
 
 
 def main(data_dir='mscoco_data/processed',
          model_name_or_path='nlpconnect/vit-gpt2-image-captioning',
          n_epochs=2,
          per_device_batch_size=2,
-         accumulate_grad_batches=2):
+         accumulate_grad_batches=2,
+         eval_per_device_batch_size=4,
+         image_path_key='image_path',
+         caption_key='caption'):
     dataset = JsonlDataset(data_dir=data_dir)
 
     image_processor = AutoImageProcessor.from_pretrained(model_name_or_path)
@@ -66,7 +64,9 @@ def main(data_dir='mscoco_data/processed',
         image_processor=image_processor,
         tokenizer=tokenizer,
         decoder_start_token_id=model.config.decoder_start_token_id,
-        max_tgt_len=MAX_TGT_LEN)
+        max_tgt_len=MAX_TGT_LEN,
+        image_path_key=image_path_key,
+        caption_key=caption_key)
 
     predictor = ImageToTextPredictor(
         model=model,
@@ -75,20 +75,19 @@ def main(data_dir='mscoco_data/processed',
         tokenizer=tokenizer,
         decoder_start_token_id=model.config.decoder_start_token_id,
         max_tgt_len=MAX_TGT_LEN,
-        gen_kwargs=GEN_KWARGS)
-
-    eval_fn = partial(
-        eval_rouge,
-        predictor=predictor,
-        examples=dataset.get_examples('dev'),
-        per_device_batch_size=per_device_batch_size,
-        scorer=evaluate.load('rouge'))
+        gen_kwargs=GEN_KWARGS,
+        image_path_key=image_path_key,
+        caption_key=caption_key)
 
     trainer.fit(
-        train_examples=dataset.get_examples(split='train'),
+        train_examples=dataset.get_examples('train'),
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
-        eval_fn=eval_fn)
+        eval_examples=dataset.get_examples('dev'),
+        eval_per_device_batch_size=eval_per_device_batch_size,
+        eval_loss=True,
+        eval_predictor=predictor,
+        eval_metric_fn=partial(eval_rouge, caption_key=caption_key))
 
 
 if __name__ == '__main__':
