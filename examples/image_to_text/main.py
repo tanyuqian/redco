@@ -51,6 +51,27 @@ def main(data_dir='mscoco_data/processed',
         decoder_start_token_id=model.config.decoder_start_token_id,
         max_tgt_len=MAX_TGT_LEN)
 
+    predictor = ImageToTextPredictor(
+        deployer=deployer,
+        image_processor=image_processor,
+        tokenizer=tokenizer,
+        decoder_start_token_id=model.config.decoder_start_token_id,
+        max_tgt_len=MAX_TGT_LEN,
+        gen_kwargs=GEN_KWARGS)
+
+    predictor.setup(model=model)
+
+    preds = predictor.predict(
+        params=model.params,
+        examples=dataset.get_examples(split='test'),
+        per_device_batch_size=per_device_batch_size)
+
+    results = [
+        {'example': example, 'pred': pred}
+        for example, pred in zip(dataset.get_examples(split='test'), preds)]
+
+    json.dump(results, open('results.json', 'w'), indent=4)
+
     trainer.setup(
         apply_fn=model.__call__, params=model.params, optimizer=optimizer)
 
