@@ -19,7 +19,7 @@ def collate_batch(collate_fn, examples):
     batch = {}
     for key in processed_examples[0].keys():
         elements = [example[key] for example in processed_examples]
-        batch[key] = np.concatenate(elements, dim=0)
+        batch[key] = np.concatenate(elements, axis=0)
 
     return batch
 
