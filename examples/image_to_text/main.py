@@ -78,11 +78,6 @@ def main(data_dir='mscoco_data/processed',
         max_tgt_len=MAX_TGT_LEN,
         gen_kwargs=GEN_KWARGS)
 
-    preds = predictor.predict(
-        params=model.params,
-        examples=dataset.get_examples(split='test'),
-        per_device_batch_size=per_device_batch_size)
-
     scorer = evaluate.load('rouge')
 
     eval_fn = partial(
