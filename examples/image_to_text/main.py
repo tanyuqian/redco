@@ -33,7 +33,7 @@ def main(data_dir='mscoco_data/processed',
     model = FlaxVisionEncoderDecoderModel.from_pretrained(
         model_name_or_path, from_pt=True)
 
-    deployer = Deployer(jax_seed=jax_seed)
+    deployer = Deployer(jax_seed=JAX_SEED)
 
     optimizer = deployer.get_adamw_optimizer(
         train_size=dataset.get_size(split='train'),
