@@ -1,5 +1,4 @@
 from functools import partial
-import json
 import numpy as np
 import jax
 
@@ -53,7 +52,7 @@ class Trainer:
 
             self._state, metrics = self._p_train_step(
                 state=self._state, batch=batch)
-            metrics = self._deployer.process_metrics(metrics=metrics)
+            metrics = self._deployer.process_to_deliver(metrics)
 
             data_batches.set_postfix(**metrics)
 
@@ -71,7 +70,7 @@ class Trainer:
             assert self._deployer.mesh is None
 
             metrics = self._p_eval_step(state=self._state, batch=batch)
-            metrics = self._deployer.process_metrics(metrics=metrics)
+            metrics = self._deployer.process_to_deliver(metrics)
             data_batches.set_postfix(**metrics)
 
             losses.append(metrics['loss'])
