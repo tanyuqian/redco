@@ -81,7 +81,7 @@ def main(dataset_name='xsum',
         train_examples=dataset['train'],
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
-        eval_examples=dataset['valid'],
+        eval_examples=dataset['validation'],
         eval_loss=True,
         eval_predictor=predictor,
         eval_metric_fn=partial(eval_rouge, tgt_key=tgt_key))
