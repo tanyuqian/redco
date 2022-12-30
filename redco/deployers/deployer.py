@@ -17,6 +17,10 @@ class Deployer:
         batch_size = per_device_batch_size * jax.local_device_count()
         global_batch_size = batch_size * jax.process_count()
 
+        print(f'batch_size (per device): {per_device_batch_size}')
+        print(f'batch_size (local host): {batch_size}')
+        print(f'batch_size (global): {global_batch_size}')
+
         return batch_size, global_batch_size
 
     def get_model_input_batches(self,
