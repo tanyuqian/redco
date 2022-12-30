@@ -8,24 +8,13 @@ from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 from redco import Deployer, TextToTextTrainer, TextToTextPredictor
 
 
-LEARNING_RATE = 5e-5
-WARMUP_RATE = 0.1
-WEIGHT_DECAY = 0.
-JAX_SEED = 42
-MAX_SRC_LEN = 512
-MAX_TGT_LEN = 64
-GEN_KWARGS = {
-    'max_length': 64,
-    'num_beams': 4
-}
-
-
 def eval_rouge(eval_results, tgt_key):
     rouge_scorer = evaluate.load('rouge')
 
     return rouge_scorer.compute(
         predictions=[result['pred'] for result in eval_results],
         references=[result['example'][tgt_key] for result in eval_results],
+        rouge_types=['rouge1', 'rouge2', 'rougeL'],
         use_stemmer=True)
 
 
@@ -35,24 +24,30 @@ def main(dataset_name='xsum',
          model_name_or_path='facebook/bart-base',
          n_epochs=2,
          per_device_batch_size=8,
-         accumulate_grad_batches=2):
+         accumulate_grad_batches=2,
+         max_src_len=512,
+         max_tgt_len=64,
+         num_beams=4,
+         learning_rate=4e-5,
+         warmup_rate=0.1,
+         weight_decay=0.,
+         jax_seed=42):
     dataset = datasets.load_dataset(dataset_name)
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-    model = FlaxAutoModelForSeq2SeqLM.from_pretrained(
-        model_name_or_path, from_pt=True)
+    model = FlaxAutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
 
-    deployer = Deployer(jax_seed=JAX_SEED)
+    deployer = Deployer(jax_seed=jax_seed)
 
     optimizer = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
-        learning_rate=LEARNING_RATE,
+        learning_rate=learning_rate,
         accumulate_grad_batches=accumulate_grad_batches,
-        warmup_rate=WARMUP_RATE,
-        weight_decay=WEIGHT_DECAY)
+        warmup_rate=warmup_rate,
+        weight_decay=weight_decay)
 
     trainer = TextToTextTrainer(
         apply_fn=model.__call__,
@@ -61,8 +56,8 @@ def main(dataset_name='xsum',
         deployer=deployer,
         tokenizer=tokenizer,
         decoder_start_token_id=model.config.decoder_start_token_id,
-        max_src_len=MAX_SRC_LEN,
-        max_tgt_len=MAX_TGT_LEN,
+        max_src_len=max_src_len,
+        max_tgt_len=max_tgt_len,
         src_key=src_key,
         tgt_key=tgt_key)
 
@@ -71,9 +66,9 @@ def main(dataset_name='xsum',
         deployer=deployer,
         tokenizer=tokenizer,
         decoder_start_token_id=model.config.decoder_start_token_id,
-        max_src_len=MAX_SRC_LEN,
-        max_tgt_len=MAX_TGT_LEN,
-        gen_kwargs=GEN_KWARGS,
+        max_src_len=max_src_len,
+        max_tgt_len=max_tgt_len,
+        gen_kwargs={'max_length': max_tgt_len, 'num_beams': num_beams},
         src_key=src_key,
         tgt_key=tgt_key)
 
