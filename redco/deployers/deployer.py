@@ -51,23 +51,17 @@ class Deployer:
         else:
             return batch_preds
 
-    def process_metrics(self, metrics):
+    def process_to_run_model(self, x):
         if self._mesh is None:
-            return unreplicate(metrics)
+            return replicate(x)
         else:
-            return metrics
+            return x
 
-    def process_params_to_run(self, params):
+    def process_to_deliver(self, x):
         if self._mesh is None:
-            return replicate(params)
+            return unreplicate(x)
         else:
-            return params
-
-    def process_params_to_save(self, params):
-        if self._mesh is None:
-            return unreplicate(params)
-        else:
-            return params
+            return x
 
     def get_adamw_optimizer(self,
                             train_size,

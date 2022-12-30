@@ -1,5 +1,4 @@
 import numpy as np
-from PIL import Image
 
 import jax.numpy as jnp
 import optax

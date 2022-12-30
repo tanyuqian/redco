@@ -76,7 +76,7 @@ class Trainer:
 
             losses.append(metrics['loss'])
 
-        return {'loss': np.mean(losses)}
+        return {'loss': np.mean(losses).item()}
 
     def setup(self, collate_fn=None, loss_fn=None):
         if collate_fn is not None:
@@ -111,4 +111,8 @@ class Trainer:
 
     @property
     def params(self):
-        return self._deployer.process_params_to_save(self._state.params)
+        return self._deployer.process_to_deliver(self._state.params)
+
+    @property
+    def step(self):
+        return self._deployer.process_to_deliver(self._state.step)

@@ -1,3 +1,4 @@
+import json
 from functools import partial
 import fire
 import datasets
@@ -20,28 +21,32 @@ GEN_KWARGS = {
 }
 
 
-def eval_rouge(params,
-               trainer,
+def eval_rouge(trainer,
                predictor,
                examples,
+               tgt_key,
                per_device_batch_size,
                rouge_scorer):
     loss = trainer.eval_loss(
         examples=examples, per_device_batch_size=per_device_batch_size)['loss']
 
     preds = predictor.predict(
-        params=params,
+        params=trainer.params,
         examples=examples,
         per_device_batch_size=per_device_batch_size)
 
-    refs = [example['caption'] for example in examples]
+    results = [
+        {'example': example, 'pred': pred}
+        for example, pred in zip(examples, preds)]
+    json.dump(results, open(f'outputs_step{trainer.step}.json'), indent=4)
 
-    result = rouge_scorer.compute(
+    refs = [example[tgt_key] for example in examples]
+
+    scores = rouge_scorer.compute(
         predictions=preds, references=refs, use_stemmer=True)
+    scores.update({'loss': loss})
 
-    result.update({'loss': loss})
-
-    return result
+    print(json.dumps(scores, indent=4))
 
 
 def main(dataset_name='xsum',
@@ -94,6 +99,8 @@ def main(dataset_name='xsum',
 
     eval_fn = partial(
         eval_rouge,
+        trainer=trainer,
+        tgt_key=tgt_key,
         predictor=predictor,
         examples=dataset['test'],
         per_device_batch_size=per_device_batch_size,
