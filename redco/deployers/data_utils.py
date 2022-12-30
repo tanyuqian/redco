@@ -1,6 +1,5 @@
 import copy
 import tqdm
-import multiprocessing
 
 import numpy as np
 import jax
@@ -8,27 +7,9 @@ import jax.numpy as jnp
 from flax.training.common_utils import shard
 
 
-def collate_batch(collate_fn, examples):
-    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
-
-    processed_examples = pool.map(
-        collate_fn, [[example] for example in examples])
-
-    pool.close()
-
-    batch = {}
-    for key in processed_examples[0].keys():
-        elements = [example[key] for example in processed_examples]
-        batch[key] = np.concatenate(elements, axis=0)
-
-    return batch
-
-
 def get_dataloader(examples, batch_size, collate_fn, do_shard):
     for i in range(0, len(examples) // batch_size):
-        batch=collate_batch(
-            collate_fn=collate_fn,
-            examples=examples[i * batch_size:(i + 1) * batch_size])
+        batch=collate_fn(examples=examples[i * batch_size:(i + 1) * batch_size])
         yield {
             key: shard(jnp.array(value)) if do_shard else jnp.array(value)
             for key, value in batch.items()
