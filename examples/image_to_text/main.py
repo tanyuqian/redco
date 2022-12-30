@@ -29,7 +29,7 @@ def eval_rouge(params, predictor, examples, per_device_batch_size, scorer):
 
     refs = [example['caption'] for example in examples]
 
-    result = rouge_scorer.compute(
+    result = scorer.compute(
         predictions=preds, references=refs, use_stemmer=True)
 
     return results
@@ -78,14 +78,12 @@ def main(data_dir='mscoco_data/processed',
         max_tgt_len=MAX_TGT_LEN,
         gen_kwargs=GEN_KWARGS)
 
-    scorer = evaluate.load('rouge')
-
     eval_fn = partial(
         eval_rouge,
         predictor=predictor,
         examples=dataset.get_examples('dev'),
         per_device_batch_size=per_device_batch_size,
-        scorer=scorer)
+        scorer=evaluate.load('rouge'))
 
     trainer.fit(
         train_examples=dataset.get_examples(split='train'),
