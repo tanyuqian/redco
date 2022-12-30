@@ -36,7 +36,7 @@ class Predictor:
             per_device_batch_size=per_device_batch_size)
         examples = examples + examples[:global_batch_size - 1]
 
-        params = self._deployer.process_to_run_model(params=params)
+        params = self._deployer.process_to_run_model(params)
 
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
