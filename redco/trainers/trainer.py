@@ -1,4 +1,5 @@
 from functools import partial
+import json
 import numpy as np
 import jax
 
@@ -75,7 +76,7 @@ class Trainer:
 
             losses.append(metrics['loss'])
 
-        return {'loss': np.mean(losses).item()}
+        return np.mean(losses).item()
 
     def setup(self, collate_fn=None, loss_fn=None):
         if collate_fn is not None:
@@ -91,20 +92,46 @@ class Trainer:
             per_device_batch_size,
             n_epochs,
             eval_examples=None,
-            eval_fn=None):
+            eval_loss=True,
+            eval_predictor=None,
+            eval_metric_fn=None):
         for epoch_idx in range(n_epochs):
             self.train(
                 examples=train_examples,
                 per_device_batch_size=per_device_batch_size,
                 desc=f'epoch {epoch_idx}')
 
-            if eval_fn is None:
-                loss = self.eval_loss(
-                    examples=eval_examples,
-                    per_device_batch_size=per_device_batch_size)
-                print(f'Epoch {epoch_idx}, evaluation loss = {loss}')
+            if eval_examples is None:
+                print('No evaluation cuz \'eval_examples\' is None.')
             else:
-                eval_fn()
+                eval_metrics = {}
+
+                if eval_loss:
+                    loss = self.eval_loss(
+                        examples=eval_examples,
+                        per_device_batch_size=per_device_batch_size)
+                    eval_metrics['loss'] = loss
+
+                if eval_predictor is not None:
+                    preds = eval_predictor.predict(
+                        examples=eval_examples,
+                        params=self.params,
+                        per_device_batch_size=per_device_batch_size)
+
+                    eval_results = [
+                        {'example': example, 'pred': pred}
+                        for example, pred in zip(eval_examples, preds)]
+
+                    json.dump(
+                        eval_results,
+                        open(f'outputs_epoch{epoch_idx}.json', 'w'),
+                        indent=4)
+
+                    if eval_metric_fn is not None:
+                        eval_metrics.update(eval_metric_fn(eval_results))
+
+                print(f'Epoch {epoch_idx}, evaluation results:')
+                print(json.dumps(eval_metrics, indent=4))
 
     @property
     def params(self):

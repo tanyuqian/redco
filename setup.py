@@ -10,7 +10,10 @@ setup(
         'jax',
         'flax',
         'transformers',
-        'datasets'],
+        'datasets',
+        'fire',
+        'evaluate'
+    ],
     include_package_data=True,
     python_requires=">=3.8"
 )

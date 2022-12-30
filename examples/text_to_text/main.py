@@ -1,4 +1,3 @@
-import json
 from functools import partial
 import fire
 import datasets
@@ -21,32 +20,13 @@ GEN_KWARGS = {
 }
 
 
-def eval_rouge(trainer,
-               predictor,
-               examples,
-               tgt_key,
-               per_device_batch_size,
-               rouge_scorer):
-    loss = trainer.eval_loss(
-        examples=examples, per_device_batch_size=per_device_batch_size)['loss']
+def eval_rouge(eval_results, tgt_key):
+    rouge_scorer = evaluate.load('rouge')
 
-    preds = predictor.predict(
-        params=trainer.params,
-        examples=examples,
-        per_device_batch_size=per_device_batch_size)
-
-    results = [
-        {'example': example, 'pred': pred}
-        for example, pred in zip(examples, preds)]
-    json.dump(results, open(f'outputs_step{trainer.step}.json'), indent=4)
-
-    refs = [example[tgt_key] for example in examples]
-
-    scores = rouge_scorer.compute(
-        predictions=preds, references=refs, use_stemmer=True)
-    scores.update({'loss': loss})
-
-    print(json.dumps(scores, indent=4))
+    return rouge_scorer.compute(
+        predictions=[result['pred'] for result in eval_results],
+        references=[result['example'][tgt_key] for result in eval_results],
+        use_stemmer=True)
 
 
 def main(dataset_name='xsum',
@@ -97,20 +77,14 @@ def main(dataset_name='xsum',
         src_key=src_key,
         tgt_key=tgt_key)
 
-    eval_fn = partial(
-        eval_rouge,
-        trainer=trainer,
-        tgt_key=tgt_key,
-        predictor=predictor,
-        examples=dataset['test'],
-        per_device_batch_size=per_device_batch_size,
-        scorer=evaluate.load('rouge'))
-
     trainer.fit(
         train_examples=dataset['train'],
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
-        eval_fn=eval_fn)
+        eval_examples=dataset['valid'],
+        eval_loss=True,
+        eval_predictor=predictor,
+        eval_metric_fn=partial(eval_rouge, tgt_key=tgt_key))
 
 
 if __name__ == '__main__':
