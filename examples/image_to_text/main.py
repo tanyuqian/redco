@@ -45,6 +45,9 @@ def main(data_dir='mscoco_data/processed',
         weight_decay=WEIGHT_DECAY)
 
     trainer = ImageToTextTrainer(
+        apply_fn=model.__call__,
+        params=model.params,
+        optimizer=optimizer,
         deployer=deployer,
         image_processor=image_processor,
         tokenizer=tokenizer,
@@ -52,14 +55,13 @@ def main(data_dir='mscoco_data/processed',
         max_tgt_len=MAX_TGT_LEN)
 
     predictor = ImageToTextPredictor(
+        model=model,
         deployer=deployer,
         image_processor=image_processor,
         tokenizer=tokenizer,
         decoder_start_token_id=model.config.decoder_start_token_id,
         max_tgt_len=MAX_TGT_LEN,
         gen_kwargs=GEN_KWARGS)
-
-    predictor.setup(model=model)
 
     preds = predictor.predict(
         params=model.params,
@@ -71,9 +73,6 @@ def main(data_dir='mscoco_data/processed',
         for example, pred in zip(dataset.get_examples(split='test'), preds)]
 
     json.dump(results, open('results.json', 'w'), indent=4)
-
-    trainer.setup(
-        apply_fn=model.__call__, params=model.params, optimizer=optimizer)
 
     trainer.fit(
         train_examples=dataset.get_examples(split='train'),

@@ -8,10 +8,13 @@ from .utils import \
 
 
 class Trainer:
-    def __init__(self, deployer):
+    def __init__(self, apply_fn, params, optimizer, deployer):
         self._deployer = deployer
 
         self._state = None
+        self.create_train_state(
+            apply_fn=apply_fn, params=params, optimizer=optimizer)
+
         self._collate_fn = None
         self._p_train_step = None
         self._p_eval_step = None
@@ -75,17 +78,14 @@ class Trainer:
 
         return {'loss': np.mean(losses)}
 
-    def setup(self, apply_fn, params, optimizer, collate_fn=None, loss_fn=None):
-        if loss_fn is not None:
-            self.setup_loss_fn(loss_fn=loss_fn)
-        assert self._p_train_step is not None
-
+    def setup(self, collate_fn=None, loss_fn=None):
         if collate_fn is not None:
             self.setup_collate_fn(collate_fn=collate_fn)
         assert self._collate_fn is not None
 
-        self.create_train_state(
-            apply_fn=apply_fn, params=params, optimizer=optimizer)
+        if loss_fn is not None:
+            self.setup_loss_fn(loss_fn=loss_fn)
+        assert self._p_train_step is not None
 
     def fit(self,
             train_examples,

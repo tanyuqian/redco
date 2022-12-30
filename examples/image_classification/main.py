@@ -80,21 +80,18 @@ def main(data_dir='./data/'):
     params = model.init(deployer.gen_rng(), np.ones([1, 28, 28, 1]))['params']
     optimizer = optax.adam(learning_rate=1e-3)
 
-    trainer = Trainer(deployer=deployer)
-    predictor = Predictor(deployer=deployer)
-
-    predictor.setup(
-        model=model,
-        collate_fn=collate_fn,
-        pred_fn=pred_fn,
-        output_fn=lambda x: x.tolist())
-
-    trainer.setup(
+    trainer = Trainer(
         apply_fn=model.apply,
         params=params,
         optimizer=optimizer,
-        loss_fn=loss_fn,
-        collate_fn=collate_fn)
+        deployer=deployer)
+
+    trainer.setup(loss_fn=loss_fn, collate_fn=collate_fn)
+
+    predictor = Predictor(model=model, deployer=deployer)
+
+    predictor.setup(
+        collate_fn=collate_fn, pred_fn=pred_fn, output_fn=lambda x: x.tolist())
 
     eval_fn = partial(
         costum_eval_fn,

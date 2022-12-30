@@ -4,10 +4,10 @@ import jax
 
 
 class Predictor:
-    def __init__(self, deployer):
+    def __init__(self, model, deployer):
         self._deployer = deployer
+        self._model = model
 
-        self._model = None
         self._collate_fn = None
         self._p_pred_step = None
         self._output_fn = None
@@ -21,9 +21,7 @@ class Predictor:
             pred_fn, model=self._model), axis_name='batch')
         self._output_fn = output_fn
 
-    def setup(self, model, collate_fn=None, pred_fn=None, output_fn=None):
-        self._model = model
-
+    def setup(self, collate_fn=None, pred_fn=None, output_fn=None):
         if collate_fn is not None:
             self.setup_collate_fn(collate_fn=collate_fn)
         assert self._collate_fn is not None

@@ -6,6 +6,9 @@ from ..utils.image_to_text_utils import collate_fn, loss_fn
 
 class ImageToTextTrainer(Trainer):
     def __init__(self,
+                 apply_fn,
+                 params,
+                 optimizer,
                  deployer,
                  image_processor,
                  tokenizer,
@@ -13,7 +16,11 @@ class ImageToTextTrainer(Trainer):
                  max_tgt_len,
                  image_path_key='image_path',
                  caption_key='caption'):
-        super(ImageToTextTrainer, self).__init__(deployer=deployer)
+        super(ImageToTextTrainer, self).__init__(
+            apply_fn=apply_fn,
+            params=params,
+            optimizer=optimizer,
+            deployer=deployer)
 
         self._collate_fn = partial(
             collate_fn,
