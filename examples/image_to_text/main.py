@@ -1,12 +1,13 @@
+import os
 from functools import partial
 import fire
-import evaluate
 
 from transformers import \
     AutoImageProcessor, AutoTokenizer, FlaxVisionEncoderDecoderModel
+import datasets
+import evaluate
 
-from redco import \
-    JsonlDataset, Deployer, ImageToTextTrainer, ImageToTextPredictor
+from redco import Deployer, ImageToTextTrainer, ImageToTextPredictor
 
 
 LEARNING_RATE = 1e-5
@@ -30,7 +31,7 @@ def eval_rouge(eval_results, caption_key):
         use_stemmer=True)
 
 
-def main(data_dir='mscoco_data/processed',
+def main(data_dir='./mscoco_data',
          model_name_or_path='nlpconnect/vit-gpt2-image-captioning',
          n_epochs=2,
          per_device_batch_size=2,
@@ -38,7 +39,11 @@ def main(data_dir='mscoco_data/processed',
          eval_per_device_batch_size=4,
          image_path_key='image_path',
          caption_key='caption'):
-    dataset = JsonlDataset(data_dir=data_dir)
+    dataset = datasets.load_dataset(
+        "ydshieh/coco_dataset_script", "2017",
+        data_dir=os.path.abspath(f'{data_dir}/raw'),
+        cache_dir=f'{data_dir}/cache')
+    dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
     image_processor = AutoImageProcessor.from_pretrained(model_name_or_path)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
@@ -48,7 +53,7 @@ def main(data_dir='mscoco_data/processed',
     deployer = Deployer(jax_seed=JAX_SEED)
 
     optimizer = deployer.get_adamw_optimizer(
-        train_size=dataset.get_size(split='train'),
+        train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
         learning_rate=LEARNING_RATE,
@@ -80,10 +85,10 @@ def main(data_dir='mscoco_data/processed',
         caption_key=caption_key)
 
     trainer.fit(
-        train_examples=dataset.get_examples('train'),
+        train_examples=dataset['train'],
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
-        eval_examples=dataset.get_examples('dev'),
+        eval_examples=dataset['validation'],
         eval_per_device_batch_size=eval_per_device_batch_size,
         eval_loss=True,
         eval_predictor=predictor,
