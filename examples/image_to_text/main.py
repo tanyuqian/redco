@@ -10,17 +10,6 @@ import evaluate
 from redco import Deployer, ImageToTextTrainer, ImageToTextPredictor
 
 
-LEARNING_RATE = 1e-5
-WARMUP_RATE = 0.1
-WEIGHT_DECAY = 0.
-JAX_SEED = 42
-MAX_TGT_LEN = 16
-GEN_KWARGS = {
-    'max_length': 16,
-    'num_beams': 4
-}
-
-
 def eval_rouge(eval_results, caption_key):
     rouge_scorer = evaluate.load('rouge')
 
@@ -34,9 +23,15 @@ def eval_rouge(eval_results, caption_key):
 def main(data_dir='./mscoco_data',
          model_name_or_path='nlpconnect/vit-gpt2-image-captioning',
          n_epochs=2,
-         per_device_batch_size=2,
+         per_device_batch_size=8,
          accumulate_grad_batches=2,
-         eval_per_device_batch_size=4,
+         eval_per_device_batch_size=16,
+         learning_rate=1e-5,
+         warmup_rate=0.1,
+         weight_decay=0.,
+         jax_seed=42,
+         max_tgt_len=16,
+         num_beams=4,
          image_path_key='image_path',
          caption_key='caption'):
     dataset = datasets.load_dataset(
@@ -50,16 +45,16 @@ def main(data_dir='./mscoco_data',
     model = FlaxVisionEncoderDecoderModel.from_pretrained(
         model_name_or_path, from_pt=True)
 
-    deployer = Deployer(jax_seed=JAX_SEED)
+    deployer = Deployer(jax_seed=jax_seed)
 
     optimizer = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
-        learning_rate=LEARNING_RATE,
+        learning_rate=learning_rate,
         accumulate_grad_batches=accumulate_grad_batches,
-        warmup_rate=WARMUP_RATE,
-        weight_decay=WEIGHT_DECAY)
+        warmup_rate=warmup_rate,
+        weight_decay=weight_decay)
 
     trainer = ImageToTextTrainer(
         apply_fn=model.__call__,
@@ -69,7 +64,7 @@ def main(data_dir='./mscoco_data',
         image_processor=image_processor,
         tokenizer=tokenizer,
         decoder_start_token_id=model.config.decoder_start_token_id,
-        max_tgt_len=MAX_TGT_LEN,
+        max_tgt_len=max_tgt_len,
         image_path_key=image_path_key,
         caption_key=caption_key)
 
@@ -79,8 +74,8 @@ def main(data_dir='./mscoco_data',
         image_processor=image_processor,
         tokenizer=tokenizer,
         decoder_start_token_id=model.config.decoder_start_token_id,
-        max_tgt_len=MAX_TGT_LEN,
-        gen_kwargs=GEN_KWARGS,
+        max_tgt_len=max_tgt_len,
+        gen_kwargs={'max_length': max_tgt_len, 'num_beams': num_beams},
         image_path_key=image_path_key,
         caption_key=caption_key)
 
