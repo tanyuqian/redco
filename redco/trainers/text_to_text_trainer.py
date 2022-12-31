@@ -9,6 +9,7 @@ class TextToTextTrainer(Trainer):
                  apply_fn,
                  params,
                  optimizer,
+                 lr_schedule_fn,
                  deployer,
                  tokenizer,
                  decoder_start_token_id,
@@ -20,7 +21,8 @@ class TextToTextTrainer(Trainer):
             apply_fn=apply_fn,
             params=params,
             optimizer=optimizer,
-            deployer=deployer)
+            deployer=deployer,
+            lr_schedule_fn=lr_schedule_fn)
 
         self._collate_fn = partial(
             collate_fn,

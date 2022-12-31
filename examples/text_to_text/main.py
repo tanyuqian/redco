@@ -41,7 +41,7 @@ def main(dataset_name='xsum',
 
     deployer = Deployer(jax_seed=jax_seed)
 
-    optimizer = deployer.get_adamw_optimizer(
+    optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,

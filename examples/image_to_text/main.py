@@ -21,6 +21,8 @@ def eval_rouge(eval_results, caption_key):
 
 
 def main(data_dir='./mscoco_data',
+         image_path_key='image_path',
+         caption_key='caption',
          model_name_or_path='nlpconnect/vit-gpt2-image-captioning',
          n_epochs=2,
          per_device_batch_size=8,
@@ -31,9 +33,7 @@ def main(data_dir='./mscoco_data',
          weight_decay=0.,
          jax_seed=42,
          max_tgt_len=16,
-         num_beams=4,
-         image_path_key='image_path',
-         caption_key='caption'):
+         num_beams=4):
     dataset = datasets.load_dataset(
         "ydshieh/coco_dataset_script", "2017",
         data_dir=os.path.abspath(f'{data_dir}/raw'),

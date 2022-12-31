@@ -3,29 +3,32 @@ import json
 import numpy as np
 import jax
 
-from .utils import \
-    TrainStateWithDropoutRNG, default_train_step, default_eval_step
+from .utils import TrainState, default_train_step, default_eval_step
 
 
 class Trainer:
-    def __init__(self, apply_fn, params, optimizer, deployer):
+    def __init__(self, apply_fn, params, optimizer, lr_schedule_fn, deployer):
         self._deployer = deployer
 
         self._state = None
         self.create_train_state(
-            apply_fn=apply_fn, params=params, optimizer=optimizer)
+            apply_fn=apply_fn,
+            params=params,
+            optimizer=optimizer,
+            lr_schedule_fn=lr_schedule_fn)
 
         self._collate_fn = None
         self._p_train_step = None
         self._p_eval_step = None
 
-    def create_train_state(self, apply_fn, params, optimizer):
+    def create_train_state(self, apply_fn, params, optimizer, lr_schedule_fn):
         assert self._deployer.mesh is None
-        self._state = TrainStateWithDropoutRNG.create(
+        self._state = TrainState.create(
             apply_fn=apply_fn,
             params=params,
             tx=optimizer,
-            dropout_rng=self._deployer.gen_rng())
+            dropout_rng=self._deployer.gen_rng(),
+            lr_schedule_fn=lr_schedule_fn)
 
         self._state = self._state.replicate()
 
