@@ -4,18 +4,26 @@ from flax.jax_utils import replicate, unreplicate
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_multistep_adamw_optimizer
 
+from .model_parallel_utils.mesh_utils import \
+    get_mesh, get_host_batch_size, shard_params_and_opt_state
+
+from .model_parallel_utils.partition_rules import get_shard_rules
+
 
 class Deployer:
-    def __init__(self, jax_seed):
-        self._n_model_shards = 1
-        self._mesh = None
-
+    def __init__(self, jax_seed, n_model_shards=1):
         self._rng = jax.random.PRNGKey(seed=jax_seed)
+        self._mesh = get_mesh(n_model_shards=n_model_shards)
 
     def process_batch_size(self, per_device_batch_size):
-        assert self._n_model_shards == 1
-        batch_size = per_device_batch_size * jax.local_device_count()
-        global_batch_size = batch_size * jax.process_count()
+        if self._mesh is None:
+            batch_size = per_device_batch_size * jax.local_device_count()
+            global_batch_size = batch_size * jax.process_count()
+        else:
+            global_batch_size = \
+                per_device_batch_size * self._mesh.devices.shape[0]
+            batch_size = get_host_batch_size(
+                global_batch_size=global_batch_size, mesh=self._mesh)
 
         return batch_size, global_batch_size
 
@@ -29,10 +37,7 @@ class Deployer:
         batch_size, global_batch_size = self.process_batch_size(
             per_device_batch_size=per_device_batch_size)
 
-        print('Getting model inputs...')
-        print(f'batch_size (per device): {per_device_batch_size}')
-        print(f'batch_size (local host): {batch_size}')
-        print(f'batch_size (global): {global_batch_size}')
+        print(f'batch_size: local = {batch_size}, global = {global_batch_size}')
 
         examples = get_host_examples(
             examples=examples,
@@ -86,6 +91,13 @@ class Deployer:
             accumulate_grad_batches=accumulate_grad_batches,
             warmup_rate=warmup_rate,
             weight_decay=weight_decay)
+
+    def shard_params_and_opt_state(self, params, optimizer):
+        return shard_params_and_opt_state(
+            params=params,
+            shard_rules=get_shard_rules(),
+            mesh=self._mesh,
+            optimizer=optimizer)
 
     def gen_rng(self):
         self._rng, new_rng = jax.random.split(self._rng)

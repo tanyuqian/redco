@@ -9,6 +9,8 @@ setup(
     install_requires=[
         'jax',
         'flax',
+        'optax',
+        'numpy',
         'transformers',
         'datasets',
         'fire',
