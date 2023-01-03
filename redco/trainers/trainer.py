@@ -10,8 +10,16 @@ from .utils import TrainState, default_train_step, default_eval_step
 
 
 class Trainer:
-    def __init__(self, apply_fn, params, optimizer, lr_schedule_fn, deployer):
+    def __init__(self,
+                 deployer,
+                 collate_fn,
+                 apply_fn,
+                 loss_fn,
+                 params,
+                 optimizer,
+                 lr_schedule_fn):
         self._deployer = deployer
+        self._collate_fn = collate_fn
 
         self._state = None
         self._state_spec = None
@@ -21,9 +29,9 @@ class Trainer:
             optimizer=optimizer,
             lr_schedule_fn=lr_schedule_fn)
 
-        self._collate_fn = None
         self._p_train_step = None
         self._p_eval_step = None
+        self.setup_loss_fn(loss_fn=loss_fn)
 
     def create_train_state(self, apply_fn, params, optimizer, lr_schedule_fn):
         if self._deployer.mesh is None:
@@ -57,9 +65,6 @@ class Trainer:
                 dropout_rng=None,
                 lr_schedule_fn=lr_schedule_fn,
                 step=None)
-
-    def setup_collate_fn(self, collate_fn):
-        self._collate_fn = collate_fn
 
     def setup_loss_fn(self, loss_fn):
         if self._deployer.mesh is None:
@@ -134,15 +139,6 @@ class Trainer:
             losses.append(metrics['loss'])
 
         return np.mean(losses).item()
-
-    def setup(self, collate_fn=None, loss_fn=None):
-        if collate_fn is not None:
-            self.setup_collate_fn(collate_fn=collate_fn)
-        assert self._collate_fn is not None
-
-        if loss_fn is not None:
-            self.setup_loss_fn(loss_fn=loss_fn)
-        assert self._p_train_step is not None
 
     def fit(self,
             train_examples,

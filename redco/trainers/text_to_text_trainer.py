@@ -1,7 +1,8 @@
 from functools import partial
 
 from .trainer import Trainer
-from ..utils.text_to_text_utils import collate_fn, loss_fn
+from ..utils.text_to_text_utils import \
+    text_to_text_default_collate_fn, text_to_text_default_loss_fn
 
 
 class TextToTextTrainer(Trainer):
@@ -17,15 +18,8 @@ class TextToTextTrainer(Trainer):
                  max_tgt_len,
                  src_key='src',
                  tgt_key='tgt'):
-        super(TextToTextTrainer, self).__init__(
-            apply_fn=apply_fn,
-            params=params,
-            optimizer=optimizer,
-            deployer=deployer,
-            lr_schedule_fn=lr_schedule_fn)
-
-        self._collate_fn = partial(
-            collate_fn,
+        collate_fn = partial(
+            text_to_text_default_collate_fn,
             tokenizer=tokenizer,
             decoder_start_token_id=decoder_start_token_id,
             max_src_len=max_src_len,
@@ -33,4 +27,11 @@ class TextToTextTrainer(Trainer):
             src_key=src_key,
             tgt_key=tgt_key)
 
-        self.setup_loss_fn(loss_fn=loss_fn)
+        super(TextToTextTrainer, self).__init__(
+            collate_fn=collate_fn,
+            apply_fn=apply_fn,
+            loss_fn=text_to_text_default_loss_fn,
+            params=params,
+            optimizer=optimizer,
+            deployer=deployer,
+            lr_schedule_fn=lr_schedule_fn)

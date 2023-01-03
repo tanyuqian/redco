@@ -4,13 +4,13 @@ import jax.numpy as jnp
 import optax
 
 
-def collate_fn(examples,
-               tokenizer,
-               decoder_start_token_id,
-               max_src_len,
-               max_tgt_len,
-               src_key='src',
-               tgt_key='tgt'):
+def text_to_text_default_collate_fn(examples,
+                                    tokenizer,
+                                    decoder_start_token_id,
+                                    max_src_len,
+                                    max_tgt_len,
+                                    src_key='src',
+                                    tgt_key='tgt'):
     model_inputs = tokenizer(
         [example[src_key] for example in examples],
         max_length=max_src_len,
@@ -45,7 +45,7 @@ def collate_fn(examples,
     return model_inputs
 
 
-def loss_fn(state, params, batch, train):
+def text_to_text_default_loss_fn(state, params, batch, train):
     labels = batch.pop("labels")
     label_weights = batch['decoder_attention_mask']
 
@@ -58,7 +58,7 @@ def loss_fn(state, params, batch, train):
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def pred_fn(batch, params, model, gen_kwargs):
+def text_to_text_default_pred_fn(batch, params, model, gen_kwargs):
     output_ids = model.generate(
         input_ids=batch['input_ids'],
         attention_mask=batch['attention_mask'],
@@ -67,5 +67,5 @@ def pred_fn(batch, params, model, gen_kwargs):
     return output_ids.sequences
 
 
-def output_fn(batch_preds, tokenizer):
+def text_to_text_default_output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
