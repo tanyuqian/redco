@@ -105,7 +105,7 @@ class Trainer:
             else:
                 with self._deployer.mesh:
                     self._state, metrics = self._p_train_step(
-                        state=self._state, batch=batch)
+                        self._state, batch)
 
             metrics = self._deployer.process_to_deliver(metrics)
 
@@ -126,7 +126,7 @@ class Trainer:
                 metrics = self._p_eval_step(state=self._state, batch=batch)
             else:
                 with self._deployer.mesh:
-                    metrics = self._p_eval_step(state=self._state, batch=batch)
+                    metrics = self._p_eval_step(self._state, batch)
 
             metrics = self._deployer.process_to_deliver(metrics)
             data_batches.set_postfix(**metrics)
