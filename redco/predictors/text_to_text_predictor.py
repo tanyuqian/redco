@@ -19,6 +19,7 @@ class TextToTextPredictor(Predictor):
                  dummy_example,
                  src_key='src',
                  tgt_key='tgt',
+                 params=None,
                  params_shard_rules=None):
         collate_fn = partial(
             text_to_text_default_collate_fn,
@@ -38,5 +39,6 @@ class TextToTextPredictor(Predictor):
             collate_fn=collate_fn,
             pred_fn=pred_fn,
             output_fn=output_fn,
+            params=params,
             params_shard_rules=params_shard_rules,
             dummy_example=dummy_example)

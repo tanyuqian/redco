@@ -71,8 +71,9 @@ def main(dataset_name='xsum',
         params_shard_rules=get_shard_rules(model.config.architectures[0]))
 
     predictor = TextToTextPredictor(
-        model=model,
         deployer=deployer,
+        model=model,
+        params=freeze(model.params),
         tokenizer=tokenizer,
         decoder_start_token_id=model.config.decoder_start_token_id,
         max_src_len=max_src_len,
