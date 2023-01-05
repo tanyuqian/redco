@@ -110,7 +110,7 @@ class Deployer:
 
     def run_model_step(self, step_fn, input_args):
         if self._mesh is None:
-            return unreplicate(step_fn(*input_args))
+            return step_fn(*input_args)
         else:
             with self._mesh:
                 return step_fn(*input_args)
