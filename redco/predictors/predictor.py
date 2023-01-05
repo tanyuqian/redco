@@ -35,7 +35,7 @@ class Predictor:
                 pred_fn, model=self._model), axis_name='batch')
         else:
             data_spec = {
-                key: P(('dp', ) + (None, ) * (len(value.shape) - 1))
+                key: P(*(('dp',) + (None,) * (len(value.shape) - 1)))
                 for key, value in dummy_batch.items()
             }
 
