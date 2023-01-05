@@ -42,8 +42,8 @@ def get_param_spec(params, shard_rules):
 def shard_params(params, params_spec, mesh):
     param_init_fn = pjit(
         lambda x: x,
-        in_axis_resources=params_spec,
-        out_axis_resources=params_spec)
+        in_axis_resources=(params_spec, ),
+        out_axis_resources=(params_spec, ))
 
     with mesh:
         params = param_init_fn(params)
