@@ -41,7 +41,8 @@ def main(dataset_name='xsum',
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-    model = FlaxAutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+    model = FlaxAutoModelForSeq2SeqLM.from_pretrained(
+        model_name_or_path, from_pt=True)
 
     deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=mesh_model_shards)
 
