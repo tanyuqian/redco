@@ -113,16 +113,10 @@ class Trainer:
             desc=f'Training ({desc})')
 
         for batch in data_batches:
-            if self._deployer.mesh is None:
-                self._state, metrics = self._p_train_step(
-                    state=self._state, batch=batch)
-            else:
-                with self._deployer.mesh:
-                    self._state, metrics = self._p_train_step(
-                        self._state, batch)
+            self._state, metrics = self._deployer.run_model_step(
+                step_fn=self._p_train_step, input_args=(self._state, batch))
 
             metrics = self._deployer.process_to_deliver(metrics)
-
             data_batches.set_postfix(**metrics)
 
     def eval_loss(self, examples, per_device_batch_size):
@@ -136,11 +130,8 @@ class Trainer:
 
         losses = []
         for batch in data_batches:
-            if self._deployer.mesh is None:
-                metrics = self._p_eval_step(state=self._state, batch=batch)
-            else:
-                with self._deployer.mesh:
-                    metrics = self._p_eval_step(self._state, batch)
+            metrics = self._deployer.run_model_step(
+                step_fn=self._p_eval_step, input_args=(self._state, batch))
 
             metrics = self._deployer.process_to_deliver(metrics)
             data_batches.set_postfix(**metrics)

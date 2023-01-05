@@ -68,15 +68,11 @@ class Predictor:
 
         preds = []
         for batch in data_batches:
-            if self._deployer.mesh is None:
-                batch_preds = self._p_pred_step(batch, params)
-            else:
-                with self._deployer.mesh:
-                    batch_preds = self._p_pred_step(batch, params)
+            batch_preds = self._deployer.run_model_step(
+                step_fn=self._p_pred_step, input_args=(batch, params))
 
             batch_preds = self._deployer.process_batch_preds(
                 batch_preds=batch_preds)
-
             batch_preds = self._output_fn(batch_preds)
             preds.extend(batch_preds)
 
