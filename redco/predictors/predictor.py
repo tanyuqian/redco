@@ -42,9 +42,6 @@ class Predictor:
             params_spec = self._deployer.get_params_spec(
                 params=self._params, shard_rules=params_shard_rules)
 
-            self._params = self._deployer.shard_params(
-                params=self._params, params_spec=params_spec)
-
             self._p_pred_step = pjit(
                 partial(pred_fn, model=self._model),
                 in_axis_resources=(data_spec, params_spec),
