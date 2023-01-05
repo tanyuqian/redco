@@ -5,7 +5,8 @@ import evaluate
 
 from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 
-from redco import Deployer, TextToTextTrainer, TextToTextPredictor
+from redco import \
+    Deployer, TextToTextTrainer, TextToTextPredictor, get_shard_rules
 
 
 def eval_rouge(eval_results, tgt_key):
@@ -22,6 +23,7 @@ def main(dataset_name='xsum',
          src_key='document',
          tgt_key='summary',
          model_name_or_path='facebook/bart-base',
+         mesh_model_shards=1,
          n_epochs=2,
          per_device_batch_size=8,
          eval_per_device_batch_size=16,
@@ -39,7 +41,7 @@ def main(dataset_name='xsum',
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = FlaxAutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
 
-    deployer = Deployer(jax_seed=jax_seed)
+    deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=mesh_model_shards)
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),
@@ -61,7 +63,9 @@ def main(dataset_name='xsum',
         max_src_len=max_src_len,
         max_tgt_len=max_tgt_len,
         src_key=src_key,
-        tgt_key=tgt_key)
+        tgt_key=tgt_key,
+        dummy_example=dataset['train'][0],
+        params_shard_rules=get_shard_rules(model.config.architectures[0]))
 
     predictor = TextToTextPredictor(
         model=model,
@@ -72,7 +76,9 @@ def main(dataset_name='xsum',
         max_tgt_len=max_tgt_len,
         gen_kwargs={'max_length': max_tgt_len, 'num_beams': num_beams},
         src_key=src_key,
-        tgt_key=tgt_key)
+        tgt_key=tgt_key,
+        dummy_example=dataset['validation'][0],
+        params_shard_rules=get_shard_rules(model.config.architectures[0]))
 
     trainer.fit(
         train_examples=dataset['train'],

@@ -4,16 +4,18 @@ from flax.jax_utils import replicate, unreplicate
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_multistep_adamw_optimizer
 
-from .model_parallel_utils.mesh_utils import \
-    get_mesh, get_host_batch_size, shard_params_and_opt_state
-
-from .model_parallel_utils.partition_rules import get_shard_rules
+from .model_parallel_utils.mesh_utils import (
+    get_mesh,
+    get_host_batch_size,
+    shard_params_and_opt_state,
+    shard_params,
+    get_param_spec)
 
 
 class Deployer:
-    def __init__(self, jax_seed, n_model_shards=1):
+    def __init__(self, jax_seed, mesh_model_shards=1):
         self._rng = jax.random.PRNGKey(seed=jax_seed)
-        self._mesh = get_mesh(n_model_shards=n_model_shards)
+        self._mesh = get_mesh(mesh_model_shards=mesh_model_shards)
 
     def process_batch_size(self, per_device_batch_size):
         if self._mesh is None:
@@ -92,10 +94,17 @@ class Deployer:
             warmup_rate=warmup_rate,
             weight_decay=weight_decay)
 
-    def shard_params_and_opt_state(self, params, optimizer):
+    def get_params_spec(self, params, shard_rules):
+        return get_param_spec(params=params, shard_rules=shard_rules)
+
+    def shard_params(self, params, params_spec):
+        return shard_params(
+            params=params, params_spec=params_spec, mesh=self._mesh)
+
+    def shard_params_and_opt_state(self, params, params_spec, optimizer):
         return shard_params_and_opt_state(
             params=params,
-            shard_rules=get_shard_rules(),
+            params_spec=params_spec,
             mesh=self._mesh,
             optimizer=optimizer)
 

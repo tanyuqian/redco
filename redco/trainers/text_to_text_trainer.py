@@ -16,8 +16,10 @@ class TextToTextTrainer(Trainer):
                  decoder_start_token_id,
                  max_src_len,
                  max_tgt_len,
+                 dummy_example,
                  src_key='src',
-                 tgt_key='tgt'):
+                 tgt_key='tgt',
+                 params_shard_rules=None):
         collate_fn = partial(
             text_to_text_default_collate_fn,
             tokenizer=tokenizer,
@@ -34,4 +36,6 @@ class TextToTextTrainer(Trainer):
             params=params,
             optimizer=optimizer,
             deployer=deployer,
-            lr_schedule_fn=lr_schedule_fn)
+            lr_schedule_fn=lr_schedule_fn,
+            dummy_example=dummy_example,
+            params_shard_rules=params_shard_rules)

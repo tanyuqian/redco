@@ -16,8 +16,10 @@ class TextToTextPredictor(Predictor):
                  max_src_len,
                  max_tgt_len,
                  gen_kwargs,
+                 dummy_example,
                  src_key='src',
-                 tgt_key='tgt'):
+                 tgt_key='tgt',
+                 params_shard_rules=None):
         collate_fn = partial(
             text_to_text_default_collate_fn,
             tokenizer=tokenizer,
@@ -35,4 +37,6 @@ class TextToTextPredictor(Predictor):
             model=model,
             collate_fn=collate_fn,
             pred_fn=pred_fn,
-            output_fn=output_fn)
+            output_fn=output_fn,
+            params_shard_rules=params_shard_rules,
+            dummy_example=dummy_example)

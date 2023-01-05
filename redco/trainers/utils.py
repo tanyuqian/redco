@@ -2,6 +2,7 @@ from typing import Callable
 
 import jax
 import jax.numpy as jnp
+from jax.experimental.pjit import PartitionSpec as P
 
 from flax import struct
 from flax.training import train_state

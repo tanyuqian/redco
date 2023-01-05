@@ -17,7 +17,9 @@ class Trainer:
                  loss_fn,
                  params,
                  optimizer,
-                 lr_schedule_fn):
+                 lr_schedule_fn,
+                 dummy_example,
+                 params_shard_rules=None):
         self._deployer = deployer
         self._collate_fn = collate_fn
 
@@ -26,14 +28,21 @@ class Trainer:
         self.create_train_state(
             apply_fn=apply_fn,
             params=params,
+            params_shard_rules=params_shard_rules,
             optimizer=optimizer,
             lr_schedule_fn=lr_schedule_fn)
 
         self._p_train_step = None
         self._p_eval_step = None
-        self.setup_loss_fn(loss_fn=loss_fn)
+        self.setup_running_step(
+            loss_fn=loss_fn, dummy_batch=collate_fn([dummy_example]))
 
-    def create_train_state(self, apply_fn, params, optimizer, lr_schedule_fn):
+    def create_train_state(self,
+                           apply_fn,
+                           params,
+                           params_shard_rules,
+                           optimizer,
+                           lr_schedule_fn):
         if self._deployer.mesh is None:
             self._state = TrainState.create(
                 apply_fn=apply_fn,
@@ -44,9 +53,12 @@ class Trainer:
 
             self._state = self._state.replicate()
         else:
-            (params, param_spec), (opt_state, opt_state_spec) = \
+            params_spec = self._deployer.get_params_spec(
+                params=params, shard_rules=params_shard_rules)
+
+            params, opt_state, opt_state_spec = \
                 self._deployer.shard_params_and_opt_state(
-                    params=params, optimizer=optimizer)
+                    params=params, params_spec=params_spec, optimizer=optimizer)
 
             self._state = TrainState(
                 apply_fn=apply_fn,
@@ -59,14 +71,14 @@ class Trainer:
 
             self._state_spec = TrainState(
                 apply_fn=apply_fn,
-                params=param_spec,
+                params=params_spec,
                 tx=optimizer,
                 opt_state=opt_state_spec,
                 dropout_rng=None,
                 lr_schedule_fn=lr_schedule_fn,
                 step=None)
 
-    def setup_loss_fn(self, loss_fn):
+    def setup_running_step(self, loss_fn, dummy_batch):
         if self._deployer.mesh is None:
             self._p_train_step = jax.pmap(partial(
                 default_train_step, loss_fn=loss_fn, under_pmap=True),
@@ -76,12 +88,9 @@ class Trainer:
                 axis_name='batch')
         else:
             data_spec = {
-                key: P('dp', None) for key in [
-                    'input_ids',
-                    'attention_mask',
-                    'decoder_input_ids',
-                    'decoder_attention_mask',
-                    'labels']}
+                key: P(('dp',) + (None,) * (len(value.shape) - 1))
+                for key, value in dummy_batch.items()
+            }
 
             self._p_train_step = pjit(
                 partial(default_train_step, loss_fn=loss_fn, under_pmap=False),
@@ -178,6 +187,8 @@ class Trainer:
                     eval_results = [
                         {'example': example, 'pred': pred}
                         for example, pred in zip(eval_examples, preds)]
+                    eval_results = jax.tree_util.tree_map(
+                        lambda x: str(x), eval_results)
 
                     json.dump(
                         eval_results,

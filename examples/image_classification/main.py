@@ -1,7 +1,4 @@
-from functools import partial
-
 import fire
-import jax.random
 import numpy as np
 
 import jax.numpy as jnp
@@ -52,60 +49,56 @@ def pred_fn(batch, params, model):
     return model.apply({'params': params}, batch['images']).argmax(axis=-1)
 
 
-def costum_eval_fn(params, examples, trainer, predictor, per_device_batch_size):
-    preds = predictor.predict(
-        params=params,
-        examples=examples,
-        per_device_batch_size=per_device_batch_size)
-
-    labels = [example[1] for example in examples]
-
-    loss = trainer.eval_loss(
-        examples=examples, per_device_batch_size=per_device_batch_size)['loss']
-
-    assert len(preds) == len(labels)
-
-    return {'loss': loss, 'acc': np.mean(np.array(preds) == np.array(labels))}
+def eval_metric_fn(eval_results):
+    preds = np.array([result['pred'] for result in eval_results])
+    labels = np.array([result['example'][1] for result in eval_results])
+    return {'acc': np.mean(preds == labels).item()}
 
 
-def main(data_dir='./data/'):
+def main(data_dir='./data/',
+         per_device_batch_size=64,
+         n_epochs=2,
+         learning_rate=1e-3,
+         jax_seed=42):
     dataset = {
         'train': list(MNIST(data_dir, train=True, download=True)),
         'test': list(MNIST(data_dir, train=False, download=True))
     }
 
-    deployer = Deployer(jax_seed=42)
+    deployer = Deployer(jax_seed=jax_seed)
 
     model = CNN()
-    params = model.init(deployer.gen_rng(), np.ones([1, 28, 28, 1]))['params']
-    optimizer = optax.adam(learning_rate=1e-3)
+    dummy_batch = collate_fn([dataset['train'][0]])
+    params = model.init(deployer.gen_rng(), dummy_batch['images'])['params']
+    optimizer = optax.adam(learning_rate=learning_rate)
 
     trainer = Trainer(
+        deployer=deployer,
+        collate_fn=collate_fn,
         apply_fn=model.apply,
+        loss_fn=loss_fn,
         params=params,
         optimizer=optimizer,
-        deployer=deployer)
+        lr_schedule_fn=lambda t: learning_rate,
+        dummy_example=dataset['train'][0])
 
-    trainer.setup(loss_fn=loss_fn, collate_fn=collate_fn)
-
-    predictor = Predictor(model=model, deployer=deployer)
-
-    predictor.setup(
-        collate_fn=collate_fn, pred_fn=pred_fn, output_fn=lambda x: x.tolist())
-
-    eval_fn = partial(
-        costum_eval_fn,
-        examples=dataset['test'],
-        trainer=trainer,
-        predictor=predictor,
-        per_device_batch_size=64)
+    predictor = Predictor(
+        deployer=deployer,
+        model=model,
+        collate_fn=collate_fn,
+        pred_fn=pred_fn,
+        output_fn=lambda x: x.tolist(),
+        dummy_example=dataset['test'][0])
 
     trainer.fit(
         train_examples=dataset['train'],
+        per_device_batch_size=per_device_batch_size,
+        n_epochs=n_epochs,
         eval_examples=dataset['test'],
-        n_epochs=2,
-        per_device_batch_size=32,
-        eval_fn=eval_fn)
+        eval_per_device_batch_size=per_device_batch_size,
+        eval_loss=True,
+        eval_predictor=predictor,
+        eval_metric_fn=eval_metric_fn)
 
 
 if __name__ == '__main__':

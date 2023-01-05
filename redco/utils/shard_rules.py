@@ -1,8 +1,11 @@
 from jax.experimental.pjit import PartitionSpec as P
 
 
-def get_shard_rules():
-    return _get_partition_rules_t5_v1_1()
+def get_shard_rules(arch_name):
+    if 't5' in arch_name.lower():
+        return _get_partition_rules_t5_v1_1()
+    else:
+        return None
 
 
 def _get_partition_rules_t5_v1_1():
