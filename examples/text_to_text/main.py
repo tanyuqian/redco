@@ -3,6 +3,8 @@ import fire
 import datasets
 import evaluate
 
+from flax.core.frozen_dict import freeze
+
 from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 
 from redco import \
@@ -54,7 +56,7 @@ def main(dataset_name='xsum',
 
     trainer = TextToTextTrainer(
         apply_fn=model.__call__,
-        params=model.params,
+        params=freeze(model.params),
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
         deployer=deployer,
