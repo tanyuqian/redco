@@ -30,12 +30,12 @@ class TextToTextPredictor(Predictor):
             src_key=src_key,
             tgt_key=tgt_key)
 
-        pred_fn = partial(text_to_text_default_pred_fn, gen_kwargs=gen_kwargs)
+        pred_fn = partial(
+            text_to_text_default_pred_fn, model=model, gen_kwargs=gen_kwargs)
         output_fn = partial(text_to_text_default_output_fn, tokenizer=tokenizer)
 
         super(TextToTextPredictor, self).__init__(
             deployer=deployer,
-            model=model,
             collate_fn=collate_fn,
             pred_fn=pred_fn,
             output_fn=output_fn,

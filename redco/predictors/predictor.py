@@ -1,5 +1,3 @@
-from functools import partial
-
 import jax
 from jax.experimental.pjit import pjit
 from jax.experimental.pjit import PartitionSpec as P
@@ -8,7 +6,6 @@ from jax.experimental.pjit import PartitionSpec as P
 class Predictor:
     def __init__(self,
                  deployer,
-                 model,
                  collate_fn,
                  pred_fn,
                  output_fn,
@@ -16,7 +13,6 @@ class Predictor:
                  params=None,
                  params_shard_rules=None):
         self._deployer = deployer
-        self._model = model
         self._collate_fn = collate_fn
 
         self._params = params
@@ -31,8 +27,7 @@ class Predictor:
 
     def setup_running_step(self, pred_fn, dummy_batch, params_shard_rules):
         if self._deployer.mesh is None:
-            self._p_pred_step = jax.pmap(partial(
-                pred_fn, model=self._model), axis_name='batch')
+            self._p_pred_step = jax.pmap(pred_fn, axis_name='batch')
         else:
             data_spec = {
                 key: P(*(('dp',) + (None,) * (len(value.shape) - 1)))
@@ -43,7 +38,7 @@ class Predictor:
                 params=self._params, shard_rules=params_shard_rules)
 
             self._p_pred_step = pjit(
-                partial(pred_fn, model=self._model),
+                pred_fn,
                 in_axis_resources=(data_spec, params_spec),
                 out_axis_resources=None)
 

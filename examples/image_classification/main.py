@@ -1,3 +1,4 @@
+from functools import partial
 import fire
 import numpy as np
 
@@ -84,9 +85,8 @@ def main(data_dir='./data/',
 
     predictor = Predictor(
         deployer=deployer,
-        model=model,
         collate_fn=collate_fn,
-        pred_fn=pred_fn,
+        pred_fn=partial(pred_fn, model=model),
         output_fn=lambda x: x.tolist(),
         dummy_example=dataset['test'][0])
 
