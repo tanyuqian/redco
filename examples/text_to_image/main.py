@@ -48,7 +48,7 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
         pipeline_params=pipeline_params,
         dummy_example=dataset['train'][0],
         image_key=image_key,
-        caption_key=caption_key,
+        text_key=text_key,
         params_shard_rules=None)
 
     trainer.fit(
