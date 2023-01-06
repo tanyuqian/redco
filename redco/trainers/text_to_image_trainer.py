@@ -14,6 +14,7 @@ class TextToImageTrainer(Trainer):
                  optimizer,
                  lr_schedule_fn,
                  pipeline,
+                 pipeline_params,
                  dummy_example,
                  image_key='image',
                  caption_key='caption',
@@ -24,7 +25,10 @@ class TextToImageTrainer(Trainer):
             image_key=image_key,
             caption_key=caption_key)
 
-        loss_fn = partial(text_to_image_default_loss_fn, vae=vae, )
+        loss_fn = partial(
+            text_to_image_default_loss_fn,
+            pipeline=pipeline,
+            pipeline_params=pipeline_params)
 
         super(TextToImageTrainer, self).__init__(
             collate_fn=collate_fn,
