@@ -6,15 +6,15 @@ import PIL.Image
 
 
 def preprocess(image, resolution, dtype):
-    image = image.resize((resolution, resolution), resample=PIL.Image.BILINEAR)
-    image = jnp.array(image).astype(dtype) / 255.0
-    image = image[None].transpose(0, 3, 1, 2)
+    image = image.resize((resolution, resolution))
+    image = np.array(image) / 255.0
+    image = image.transpose(2, 0, 1)
     return image
-    # return 2.0 * image - 1.0
 
 
 def text_to_image_default_collate_fn(examples,
                                      pipeline,
+                                     resolution,
                                      image_key='image',
                                      text_key='text'):
     batch = pipeline.tokenizer(
@@ -24,9 +24,11 @@ def text_to_image_default_collate_fn(examples,
         truncation=True,
         return_tensors='np')
 
-    batch['pixel_values'] = np.stack([
-        preprocess(image=example['image'], dtype=np.float32)
-        for example in examples])
+    images = [
+        preprocess(
+            image=example['image'], resolution=resolution, dtype=np.float32)
+        for example in examples]
+    batch['pixel_values'] = np.stack()
 
     return batch
 
