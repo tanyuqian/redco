@@ -33,7 +33,7 @@ class TextToImageTrainer(Trainer):
         super(TextToImageTrainer, self).__init__(
             collate_fn=collate_fn,
             apply_fn=apply_fn,
-            loss_fn=text_to_text_default_loss_fn,
+            loss_fn=loss_fn,
             params=params,
             optimizer=optimizer,
             deployer=deployer,
