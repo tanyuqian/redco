@@ -38,7 +38,7 @@ def text_to_image_default_loss_fn(
         {"params": pipeline_params['vae']},
         batch["pixel_values"],
         deterministic=True,
-        method=vae.encode)
+        method=pipeline.vae.encode)
     latents = vae_outputs.latent_dist.sample(sample_rng)
 
     # (NHWC) -> (NCHW)
