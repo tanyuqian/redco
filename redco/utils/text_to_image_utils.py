@@ -33,6 +33,8 @@ def text_to_image_default_collate_fn(examples,
 
 def text_to_image_default_loss_fn(
         state, params, batch, train, pipeline, pipeline_params):
+    sample_rng, noise_rng, timestep_rng = jax.random.split(state.dropout_rng, 3)
+
     # Convert images to latent space
     vae_outputs = pipeline.vae.apply(
         {"params": pipeline_params['vae']},
@@ -40,25 +42,16 @@ def text_to_image_default_loss_fn(
         deterministic=True,
         method=pipeline.vae.encode)
     latents = vae_outputs.latent_dist.sample(sample_rng)
-
-    # (NHWC) -> (NCHW)
     latents = jnp.transpose(latents, (0, 3, 1, 2))
     latents = latents * 0.18215
 
-    # Sample noise that we'll add to the latents
-    noise_rng, timestep_rng = jax.random.split(state.dropout_rng)
+    # Add noise to the latents according to the noise magnitude at each timestep
     noise = jax.random.normal(noise_rng, latents.shape)
-
-    # Sample a random timestep for each image
-    bsz = latents.shape[0]
     timesteps = jax.random.randint(
         key=timestep_rng,
-        shape=(bsz,),
+        shape=(latents.shape[0], ),
         minval=0,
         maxval=noise_scheduler.config.num_train_timesteps)
-
-    # Add noise to the latents according to the noise magnitude at each timestep
-    # (this is the forward diffusion process)
     noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
     # Get the text embedding for conditioning
