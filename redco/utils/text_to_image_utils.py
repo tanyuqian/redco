@@ -56,7 +56,7 @@ def text_to_image_default_loss_fn(
         original_samples=latents, noise=noise, timesteps=timesteps)
 
     # Get the text embedding for conditioning
-    encoder_hidden_states = text_encoder(
+    encoder_hidden_states = pipeline.text_encoder(
         batch["input_ids"],
         params=pipeline_params['text_encoder'],
         train=False)[0]
