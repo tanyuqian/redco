@@ -12,7 +12,7 @@ from redco import Deployer, TextToImageTrainer
 
 def main(dataset_name='lambdalabs/pokemon-blip-captions',
          image_key='image',
-         caption_key='caption',
+         text_key='text',
          model_name_or_path='flax/stable-diffusion-2-1',
          n_epochs=2,
          per_device_batch_size=8,

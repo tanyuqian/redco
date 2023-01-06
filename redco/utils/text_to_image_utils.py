@@ -15,9 +15,9 @@ def preprocess(image, dtype):
 def text_to_image_default_collate_fn(examples,
                                      pipeline,
                                      image_key='image',
-                                     caption_key='caption'):
+                                     text_key='text'):
     batch = pipeline.tokenizer(
-        [example[caption_key] for example in examples],
+        [example[text_key] for example in examples],
         max_length=max_src_len,
         padding='max_length',
         truncation=True,

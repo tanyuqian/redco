@@ -17,13 +17,13 @@ class TextToImageTrainer(Trainer):
                  pipeline_params,
                  dummy_example,
                  image_key='image',
-                 caption_key='caption',
+                 text_key='text',
                  params_shard_rules=None):
         collate_fn = partial(
             text_to_image_default_collate_fn,
             pipeline=pipeline,
             image_key=image_key,
-            caption_key=caption_key)
+            text_key=text_key)
 
         loss_fn = partial(
             text_to_image_default_loss_fn,
