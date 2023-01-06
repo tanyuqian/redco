@@ -18,7 +18,7 @@ def text_to_image_default_collate_fn(examples,
                                      text_key='text'):
     batch = pipeline.tokenizer(
         [example[text_key] for example in examples],
-        max_length=max_src_len,
+        max_length=pipeline.tokenizer.model_max_length,
         padding='max_length',
         truncation=True,
         return_tensors='np')
