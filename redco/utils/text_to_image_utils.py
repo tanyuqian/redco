@@ -5,13 +5,12 @@ import jax.numpy as jnp
 import PIL.Image
 
 
-def preprocess(image, dtype):
-    w, h = image.size
-    w, h = map(lambda x: x - x % 32, (w, h))  # resize to integer multiple of 32
-    image = image.resize((w, h), resample=PIL.Image.LANCZOS)
+def preprocess(image, resolution, dtype):
+    image = image.resize((resolution, resolution), resample=PIL.Image.BILINEAR)
     image = jnp.array(image).astype(dtype) / 255.0
     image = image[None].transpose(0, 3, 1, 2)
-    return 2.0 * image - 1.0
+    return image
+    # return 2.0 * image - 1.0
 
 
 def text_to_image_default_collate_fn(examples,
@@ -26,7 +25,7 @@ def text_to_image_default_collate_fn(examples,
         return_tensors='np')
 
     batch['pixel_values'] = np.stack([
-        preprocess(image=example['image'], dtype=jnp.float32)
+        preprocess(image=example['image'], dtype=np.float32)
         for example in examples])
 
     return batch
