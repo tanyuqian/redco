@@ -52,7 +52,8 @@ def text_to_image_default_loss_fn(
         shape=(latents.shape[0], ),
         minval=0,
         maxval=noise_scheduler.config.num_train_timesteps)
-    noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+    noisy_latents = pipeline.noise_scheduler.add_noise(
+        original_samples=latents, noise=noise, timesteps=timesteps)
 
     # Get the text embedding for conditioning
     encoder_hidden_states = text_encoder(
@@ -63,7 +64,9 @@ def text_to_image_default_loss_fn(
     # Predict the noise residual and compute loss
     unet_outputs = state.apply_fn(
         {"params": params},
-        noisy_latents, timesteps, encoder_hidden_states,
+        sample=noisy_latents,
+        timesteps=timesteps,
+        encoder_hidden_states=encoder_hidden_states,
         train=True)
     noise_pred = unet_outputs.sample
     loss = (noise - noise_pred) ** 2
