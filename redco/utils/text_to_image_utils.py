@@ -6,7 +6,7 @@ import PIL.Image
 
 
 def preprocess(image, resolution, dtype):
-    image = image.resize((resolution, resolution))
+    image = image.convert('RGB').resize((resolution, resolution))
     image = np.array(image) / 255.0
     image = image.transpose(2, 0, 1)
     return image
