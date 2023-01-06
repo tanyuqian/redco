@@ -16,12 +16,14 @@ class TextToImageTrainer(Trainer):
                  pipeline,
                  pipeline_params,
                  dummy_example,
+                 resolution,
                  image_key='image',
                  text_key='text',
                  params_shard_rules=None):
         collate_fn = partial(
             text_to_image_default_collate_fn,
             pipeline=pipeline,
+            resolution=resolution,
             image_key=image_key,
             text_key=text_key)
 
