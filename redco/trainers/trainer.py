@@ -1,5 +1,7 @@
+import os
 from functools import partial
 import json
+import pickle
 import numpy as np
 
 import jax
@@ -178,13 +180,15 @@ class Trainer:
                     eval_results = [
                         {'example': example, 'pred': pred}
                         for example, pred in zip(eval_examples, preds)]
-                    eval_results = jax.tree_util.tree_map(
-                        lambda x: str(x), eval_results)
 
-                    json.dump(
-                        eval_results,
-                        open(f'outputs_epoch{epoch_idx}.json', 'w'),
-                        indent=4)
+                    try:
+                        json.dump(
+                            eval_results,
+                            open(f'outputs_epoch{epoch_idx}.json', 'w'),
+                            indent=4)
+                    except:
+                        pickle.dump(eval_results, open(
+                            f'outputs_epoch{epoch_idx}.pkl', 'wb'))
 
                     if eval_metric_fn is not None:
                         eval_metrics.update(eval_metric_fn(eval_results))

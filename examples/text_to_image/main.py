@@ -7,7 +7,7 @@ import optax
 
 from diffusers import FlaxStableDiffusionPipeline
 
-from redco import Deployer, TextToImageTrainer
+from redco import Deployer, TextToImageTrainer, TextToImagePredictor
 
 
 def main(dataset_name='lambdalabs/pokemon-blip-captions',
@@ -15,9 +15,10 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
          text_key='text',
          model_name_or_path='flax/stable-diffusion-2-1',
          resolution=512,
+         n_infer_steps=50,
          n_epochs=2,
-         per_device_batch_size=8,
-         eval_per_device_batch_size=16,
+         per_device_batch_size=2,
+         eval_per_device_batch_size=4,
          accumulate_grad_batches=2,
          learning_rate=4e-5,
          warmup_rate=0.1,
@@ -53,10 +54,24 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
         text_key=text_key,
         params_shard_rules=None)
 
+    predictor = TextToImagePredictor(
+        deployer=deployer,
+        pipeline=pipeline,
+        pipeline_params=pipeline_params,
+        resolution=resolution,
+        n_infer_steps=n_infer_steps,
+        dummy_example=dataset['validation'][0],
+        image_key=image_key,
+        text_key=text_key)
+
     trainer.fit(
         train_examples=dataset['train'],
         per_device_batch_size=per_device_batch_size,
-        n_epochs=n_epochs)
+        n_epochs=n_epochs,
+        eval_examples=dataset['validation'],
+        eval_predictor=predictor,
+        eval_loss=True,
+        eval_per_device_batch_size=eval_per_device_batch_size)
 
 
 if __name__ == '__main__':

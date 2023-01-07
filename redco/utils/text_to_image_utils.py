@@ -73,3 +73,19 @@ def text_to_image_default_loss_fn(
     loss = loss.mean()
 
     return loss
+
+
+def text_to_image_default_pred_fn(
+        batch, params, pipeline, pipeline_params, n_infer_steps, resolution):
+    pipeline_params['unet'] = params
+    return self._generate(
+        prompt_ids=batch['input_ids'],
+        params=pipeline_params,
+        prng_seed=jax.random.PRNGKey(0),
+        num_inference_steps=n_infer_steps,
+        height=resolution,
+        width=resolution)
+
+
+def text_to_image_default_output_fn(batch_preds, numpy_to_pil_fn):
+    return numpy_to_pil_fn(np.asarray(images))
