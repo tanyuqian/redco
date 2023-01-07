@@ -12,6 +12,7 @@ setup(
         'optax',
         'numpy',
         'transformers',
+        'diffusers',
         'datasets',
         'fire',
         'evaluate'

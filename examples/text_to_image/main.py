@@ -1,8 +1,5 @@
-from functools import partial
 import fire
 import datasets
-import evaluate
-import jax
 import optax
 
 from diffusers import FlaxStableDiffusionPipeline
@@ -21,7 +18,6 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
          eval_per_device_batch_size=4,
          accumulate_grad_batches=2,
          learning_rate=4e-5,
-         warmup_rate=0.1,
          weight_decay=1e-2,
          jax_seed=42):
     dataset = {
@@ -35,8 +31,9 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
         FlaxStableDiffusionPipeline.from_pretrained(model_name_or_path)
 
     lr_schedule_fn = optax.constant_schedule(value=learning_rate)
-    optimizer = optax.adamw(
-        learning_rate=lr_schedule_fn, weight_decay=weight_decay)
+    optimizer = optax.MultiSteps(
+        optax.adamw(learning_rate=lr_schedule_fn, weight_decay=weight_decay),
+        every_k_schedule=accumulate_grad_batches)
 
     deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=1)
 
@@ -64,20 +61,14 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
         image_key=image_key,
         text_key=text_key)
 
-    preds = predictor.predict(
-        dataset['validation'], per_device_batch_size=eval_per_device_batch_size)
-    for i, pred in preds:
-        print(i)
-        pred.save(f'outputs/{i}.jpg')
-
-    # trainer.fit(
-    #     train_examples=dataset['train'],
-    #     per_device_batch_size=per_device_batch_size,
-    #     n_epochs=n_epochs,
-    #     eval_examples=dataset['validation'],
-    #     eval_predictor=predictor,
-    #     eval_loss=True,
-    #     eval_per_device_batch_size=eval_per_device_batch_size)
+    trainer.fit(
+        train_examples=dataset['train'],
+        per_device_batch_size=per_device_batch_size,
+        n_epochs=n_epochs,
+        eval_examples=dataset['validation'],
+        eval_predictor=predictor,
+        eval_loss=True,
+        eval_per_device_batch_size=eval_per_device_batch_size)
 
 
 if __name__ == '__main__':
