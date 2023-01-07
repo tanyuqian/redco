@@ -64,7 +64,8 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
         image_key=image_key,
         text_key=text_key)
 
-    preds = predictor.predict(dataset['validation'])
+    preds = predictor.predict(
+        dataset['validation'], per_device_batch_size=eval_per_device_batch_size)
     for i, pred in preds:
         print(i)
         pred.save(f'outputs/{i}.jpg')
