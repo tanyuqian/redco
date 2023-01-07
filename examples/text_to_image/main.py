@@ -64,14 +64,19 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
         image_key=image_key,
         text_key=text_key)
 
-    trainer.fit(
-        train_examples=dataset['train'],
-        per_device_batch_size=per_device_batch_size,
-        n_epochs=n_epochs,
-        eval_examples=dataset['validation'],
-        eval_predictor=predictor,
-        eval_loss=True,
-        eval_per_device_batch_size=eval_per_device_batch_size)
+    preds = predictor.predict(dataset['validation'])
+    for i, pred in preds:
+        print(i)
+        pred.save(f'outputs/{i}.jpg')
+
+    # trainer.fit(
+    #     train_examples=dataset['train'],
+    #     per_device_batch_size=per_device_batch_size,
+    #     n_epochs=n_epochs,
+    #     eval_examples=dataset['validation'],
+    #     eval_predictor=predictor,
+    #     eval_loss=True,
+    #     eval_per_device_batch_size=eval_per_device_batch_size)
 
 
 if __name__ == '__main__':
