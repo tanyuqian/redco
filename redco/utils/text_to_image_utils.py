@@ -88,4 +88,4 @@ def text_to_image_default_pred_fn(
 
 
 def text_to_image_default_output_fn(batch_preds, numpy_to_pil_fn):
-    return numpy_to_pil_fn(np.asarray(images))
+    return numpy_to_pil_fn(np.asarray(batch_preds))
