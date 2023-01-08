@@ -7,7 +7,7 @@ import numpy as np
 
 from redco import Deployer, Trainer, Predictor
 
-from utils import ConvNet, get_torchmeta_dataset, sample_tasks
+from utils import CNN, get_torchmeta_dataset, sample_tasks
 
 
 def collate_fn(examples):
@@ -100,7 +100,7 @@ def main(dataset_name='omniglot',
 
     deployer = Deployer(jax_seed=jax_seed)
 
-    model = ConvNet(classes=n_ways)
+    model = CNN(n_classes=n_ways)
     dummy_example = sample_tasks(tm_dataset=tm_dataset['train'], n_tasks=1)[0]
     dummy_batch = collate_fn([dummy_example])
     params = model.init(

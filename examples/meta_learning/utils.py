@@ -5,47 +5,26 @@ from torchmeta.datasets import helpers
 from torchmeta.utils.data import CombinationRandomSampler
 
 import numpy as np
-import jax.numpy as jnp
 import flax.linen as nn
 
 
-class ConvBlock(nn.Module):
-    features: int
-    kernel_width: int
-    pooling_width: int
+class CNN(nn.Module):
+    """A simple CNN model."""
+    n_classes: int = 1
 
     @nn.compact
     def __call__(self, x):
-        return nn.Sequential([
-            nn.Conv(
-                features=self.features,
-                kernel_size=(self.kernel_width, self.kernel_width)),
-            nn.LayerNorm(),
-            nn.activation.relu,
-            partial(
-                nn.max_pool,
-                window_shape=(self.pooling_width, self.pooling_width),
-                strides=(self.pooling_width, self.pooling_width))
-        ])(x)
-
-
-class ConvNet(nn.Module):
-    conv_layers: int = 4
-    features: int = 64
-    kernel_width: int = 3
-    pooling_width: int = 2
-    classes: int = 1
-
-    @nn.compact
-    def __call__(self, x):
-        for _ in range(self.conv_layers):
-            x = ConvBlock(
-                features=self.features,
-                kernel_width=self.kernel_width,
-                pooling_width=self.pooling_width
-            )(x)
-
-        return nn.Dense(features=self.classes)(x.reshape((x.shape[0], -1)))
+        x = nn.Conv(features=32, kernel_size=(3, 3))(x)
+        x = nn.relu(x)
+        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
+        x = nn.Conv(features=64, kernel_size=(3, 3))(x)
+        x = nn.relu(x)
+        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
+        x = x.reshape((x.shape[0], -1))  # flatten
+        x = nn.Dense(features=256)(x)
+        x = nn.relu(x)
+        x = nn.Dense(features=self.n_classes)(x)
+        return x
 
 
 def get_torchmeta_dataset(dataset_name, n_ways, n_shots, n_test_shots):
