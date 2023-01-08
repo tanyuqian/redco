@@ -8,10 +8,13 @@ from flax.training.common_utils import shard
 
 
 def get_dataloader(examples, batch_size, collate_fn, do_shard):
+    def make_jnp(value):
+        return jax.tree_util.tree_map(jnp.asarray, value)
+
     for i in range(0, len(examples) // batch_size):
         batch=collate_fn(examples=examples[i * batch_size:(i + 1) * batch_size])
         yield {
-            key: shard(jnp.array(value)) if do_shard else jnp.array(value)
+            key: shard(make_jnp(value)) if do_shard else make_jnp(value)
             for key, value in batch.items()
         }
 

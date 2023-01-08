@@ -4,7 +4,6 @@ from .trainer import Trainer
 from ..utils.text_to_image_utils import \
     text_to_image_default_collate_fn, text_to_image_default_loss_fn
 
-from diffusers import FlaxStableDiffusionPipeline
 
 class TextToImageTrainer(Trainer):
     def __init__(self,

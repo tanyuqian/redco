@@ -2,12 +2,10 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
-import PIL.Image
-
 
 def preprocess(image, resolution, dtype):
     image = image.convert('RGB').resize((resolution, resolution))
-    image = np.array(image) / 255.0
+    image = np.array(image, dtype=dtype) / 255.0
     image = image.transpose(2, 0, 1)
     return image
 
@@ -25,7 +23,7 @@ def text_to_image_default_collate_fn(examples,
         return_tensors='np')
 
     batch['pixel_values'] = np.stack([
-        preprocess(example['image'], resolution=resolution, dtype=np.float32)
+        preprocess(example[image_key], resolution=resolution, dtype=np.float32)
         for example in examples])
 
     return batch
@@ -67,7 +65,7 @@ def text_to_image_default_loss_fn(
         sample=noisy_latents,
         timesteps=timesteps,
         encoder_hidden_states=encoder_hidden_states,
-        train=True)
+        train=train)
     noise_pred = unet_outputs.sample
     loss = (noise - noise_pred) ** 2
     loss = loss.mean()
