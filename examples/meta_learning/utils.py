@@ -9,22 +9,43 @@ import jax.numpy as jnp
 import flax.linen as nn
 
 
-class CNN(nn.Module):
+class ConvBlock(nn.Module):
+    features: int
+    kernel_width: int
+    pooling_width: int
+
     @nn.compact
     def __call__(self, x):
-        x = jnp.transpose(x, (0, 2, 3, 1))
+        return nn.Sequential([
+            nn.Conv(
+                features=self.features,
+                kernel_size=(self.kernel_width, self.kernel_width)),
+            nn.LayerNorm(),
+            nn.activation.relu,
+            partial(
+                nn.max_pool,
+                window_shape=(self.pooling_width, self.pooling_width),
+                strides=(self.pooling_width, self.pooling_width))
+        ])(x)
 
-        x = nn.Conv(features=32, kernel_size=(3, 3))(x)
-        x = nn.relu(x)
-        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
-        x = nn.Conv(features=64, kernel_size=(3, 3))(x)
-        x = nn.relu(x)
-        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
-        x = x.reshape((x.shape[0], -1))  # flatten
-        x = nn.Dense(features=256)(x)
-        x = nn.relu(x)
-        x = nn.Dense(features=5)(x)
-        return x
+
+class ConvNet(nn.Module):
+    conv_layers: int = 4
+    features: int = 64
+    kernel_width: int = 3
+    pooling_width: int = 2
+    classes: int = 1
+
+    @nn.compact
+    def __call__(self, x):
+        for _ in range(self.conv_layers):
+            x = ConvBlock(
+                features=self.features,
+                kernel_width=self.kernel_width,
+                pooling_width=self.pooling_width
+            )(x)
+
+        return nn.Dense(features=self.classes)(x.reshape((x.shape[0], -1)))
 
 
 def get_torchmeta_dataset(dataset_name, n_ways, n_shots, n_test_shots):
@@ -46,7 +67,8 @@ def sample_task(combination, tm_dataset):
     return {
         split: {
             'inputs': np.stack([np.asarray(
-                inner_example[0]) for inner_example in task[split]]),
+                inner_example[0]) for inner_example in task[split]]
+            ).transpose((0, 2, 3, 1)),
             'labels': np.stack([np.asarray(
                 inner_example[1]) for inner_example in task[split]]),
         } for split in task.keys()
