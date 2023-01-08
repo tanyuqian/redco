@@ -31,7 +31,7 @@ def inner_step(apply_fn, params, task_split_batch, train):
     grads = jax.grad(task_loss_fn, argnums=1)(
         apply_fn, params, task_split_batch, train)
 
-    inner_optimizer = optax.sgd(learning_rate=0.01)
+    inner_optimizer = optax.sgd(learning_rate=0.1)
     inner_opt_state = inner_optimizer.init(params)
 
     updates, inner_opt_state = \
@@ -78,7 +78,8 @@ def pred_fn(batch, params, model):
 
 def eval_metric_fn(eval_results):
     preds = np.array([result['pred'] for result in eval_results])
-    labels = np.array([result['example']['test']['labels'] for result in eval_results])
+    labels = np.array(
+        [result['example']['test']['labels'] for result in eval_results])
     return {'acc': np.mean(preds == labels).item()}
 
 
@@ -101,7 +102,8 @@ def main(dataset_name='omniglot',
     model = CNN()
     dummy_example = sample_tasks(tm_dataset=tm_dataset['train'], n_tasks=1)[0]
     dummy_batch = collate_fn([dummy_example])
-    params = model.init(deployer.gen_rng(), dummy_batch['train']['inputs'][0])['params']
+    params = model.init(
+        deployer.gen_rng(), dummy_batch['train']['inputs'][0])['params']
     optimizer = optax.adam(learning_rate=learning_rate)
 
     trainer = Trainer(

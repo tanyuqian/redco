@@ -10,9 +10,6 @@ import jax
 import jax.numpy as jnp
 import flax.linen as nn
 
-import torch.multiprocessing
-torch.multiprocessing.set_sharing_strategy('file_system')
-
 
 class CNN(nn.Module):
     @nn.compact
@@ -46,21 +43,22 @@ def get_torchmeta_dataset(dataset_name, n_ways, n_shots, n_test_shots):
     return dataset
 
 
-def sample_tasks(tm_dataset, n_tasks, epoch_idx=None):
-    task_loader = BatchMetaDataLoader(
-        tm_dataset, batch_size=1, num_workers=os.cpu_count())
+def sample_tasks(tm_dataset, n_tasks, epoch_idx=None, sample_batch_size=1000):
+    task_loader = BatchMetaDataLoader(tm_dataset, batch_size=sample_batch_size)
 
     tasks = []
-    for task in tqdm.tqdm(task_loader, total=n_tasks, desc=f'Sampling tasks'):
-        task = jax.tree_util.tree_map(lambda x: np.asarray(x)[0], task)
-        tasks.append({
-            split: {'inputs': task[split][0], 'labels': task[split][1]}
-            for split in task.keys()
-        })
+    for task_batch in tqdm.tqdm(
+            task_loader, total=n_tasks, desc=f'Sampling {n_tasks} tasks'):
+        for i in range(sample_batch_size):
+            task = jax.tree_util.tree_map(
+                lambda x: np.asarray(x)[i], task_batch)
+            tasks.append({
+                split: {'inputs': task[split][0], 'labels': task[split][1]}
+                for split in task.keys()
+            })
 
-        if len(tasks) == n_tasks:
+        if len(tasks) >= n_tasks:
+            tasks = tasks[:n_tasks]
             break
 
     return tasks
-
-
