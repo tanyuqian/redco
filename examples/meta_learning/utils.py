@@ -1,12 +1,10 @@
-import os
-
-import tqdm
+from functools import partial
+import multiprocessing
 
 from torchmeta.datasets import helpers
-from torchmeta.utils.data import BatchMetaDataLoader
+from torchmeta.utils.data import CombinationRandomSampler
 
 import numpy as np
-import jax
 import jax.numpy as jnp
 import flax.linen as nn
 
@@ -43,24 +41,29 @@ def get_torchmeta_dataset(dataset_name, n_ways, n_shots, n_test_shots):
     return dataset
 
 
-def sample_tasks(tm_dataset, n_tasks, epoch_idx=None, sample_batch_size=1000):
-    task_loader = BatchMetaDataLoader(tm_dataset, batch_size=sample_batch_size)
+def sample_task(combination, tm_dataset):
+    task = tm_dataset[combination]
+    return {
+        split: {
+            'inputs': np.stack([np.asarray(
+                inner_example[0]) for inner_example in task[split]]),
+            'labels': np.stack([np.asarray(
+                inner_example[1]) for inner_example in task[split]]),
+        } for split in task.keys()
+    }
 
-    tasks = []
-    for task_batch in tqdm.tqdm(
-            task_loader,
-            total=n_tasks // sample_batch_size,
-            desc=f'Sampling {n_tasks} tasks'):
-        for i in range(sample_batch_size):
-            task = jax.tree_util.tree_map(
-                lambda x: np.asarray(x[i]), task_batch)
-            tasks.append({
-                split: {'inputs': task[split][0], 'labels': task[split][1]}
-                for split in task.keys()
-            })
 
-        if len(tasks) >= n_tasks:
-            tasks = tasks[:n_tasks]
+def sample_tasks(tm_dataset, n_tasks, epoch_idx=None):
+    sampler = CombinationRandomSampler(tm_dataset)
+    label_combos = []
+    for label_combo in sampler:
+        label_combos.append(label_combo)
+        if len(label_combos) == n_tasks:
             break
+
+    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+        print(f'Sampling {n_tasks} tasks...')
+        tasks = pool.map(
+            partial(sample_task, tm_dataset=tm_dataset), label_combos)
 
     return tasks
