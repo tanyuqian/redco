@@ -7,7 +7,7 @@ import numpy as np
 
 from redco import Deployer, Trainer, Predictor
 
-from utils import CNN, get_few_shot_dataset
+from utils import CNN, get_torchmeta_dataset, sample_tasks
 
 
 def collate_fn(examples):
@@ -86,23 +86,21 @@ def main(dataset_name='omniglot',
          n_ways=5,
          n_shots=5,
          n_test_shots=15,
-         n_meta_tasks=10000,
+         n_tasks_per_epoch=10000,
          learning_rate=1e-3,
+         per_device_batch_size=16,
          jax_seed=42):
-    dataset = get_few_shot_dataset(
-        dataset_name='omniglot',
-        n_ways=5,
-        n_shots=5,
-        n_test_shots=15,
-        n_meta_tasks=n_meta_tasks)
-
-    print(collate_fn(dataset['train'][:2]))
-    print(jax.tree_util.tree_map(lambda x: x.shape, collate_fn(dataset['train'][:2])))
+    tm_dataset = get_torchmeta_dataset(
+        dataset_name=dataset_name,
+        n_ways=n_ways,
+        n_shots=n_shots,
+        n_test_shots=n_test_shots)
 
     deployer = Deployer(jax_seed=jax_seed)
 
     model = CNN()
-    dummy_batch = collate_fn([dataset['train'][0]])
+    dummy_example = sample_tasks(tm_dataset=tm_dataset['train'], n_tasks=1)[0]
+    dummy_batch = collate_fn([dummy_example])
     params = model.init(deployer.gen_rng(), dummy_batch['train']['inputs'][0])['params']
     optimizer = optax.adam(learning_rate=learning_rate)
 
@@ -114,20 +112,24 @@ def main(dataset_name='omniglot',
         params=params,
         optimizer=optimizer,
         lr_schedule_fn=lambda x: learning_rate,
-        dummy_example=dataset['train'][0])
+        dummy_example=dummy_example)
 
     predictor = Predictor(
         deployer=deployer,
         collate_fn=collate_fn,
         pred_fn=partial(pred_fn, model=model),
         output_fn=lambda x: x.tolist(),
-        dummy_example=dataset['val'][0])
+        dummy_example=dummy_example)
 
+    eval_examples = sample_tasks(
+        tm_dataset=tm_dataset['val'], n_tasks=n_tasks_per_epoch)
+    train_examples_fn = partial(
+        sample_tasks, tm_dataset=tm_dataset['train'], n_tasks=n_tasks_per_epoch)
     trainer.fit(
-        train_examples=dataset['train'],
-        per_device_batch_size=16,
+        train_examples=train_examples_fn,
+        per_device_batch_size=per_device_batch_size,
         n_epochs=1,
-        eval_examples=dataset['val'],
+        eval_examples=eval_examples,
         eval_loss=True,
         eval_predictor=predictor,
         eval_metric_fn=eval_metric_fn)

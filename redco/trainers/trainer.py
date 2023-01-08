@@ -152,8 +152,13 @@ class Trainer:
             eval_predictor=None,
             eval_metric_fn=None):
         for epoch_idx in range(n_epochs):
+            if isinstance(train_examples, list):
+                epoch_train_examples = train_examples
+            else:
+                epoch_train_examples = train_examples(epoch_idx=epoch_idx)
+
             self.train(
-                examples=train_examples,
+                examples=epoch_train_examples,
                 per_device_batch_size=per_device_batch_size,
                 desc=f'epoch {epoch_idx}')
 
