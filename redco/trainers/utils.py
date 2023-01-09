@@ -2,7 +2,6 @@ from typing import Callable
 
 import jax
 import jax.numpy as jnp
-from jax.experimental.pjit import PartitionSpec as P
 
 from flax import struct
 from flax.training import train_state
@@ -11,12 +10,11 @@ from flax.training.common_utils import shard_prng_key
 
 
 class TrainState(train_state.TrainState):
-    dropout_rng: jnp.ndarray
+    train_rng: jnp.ndarray
     lr_schedule_fn: Callable = struct.field(pytree_node=False)
 
     def replicate(self):
-        return replicate(self).replace(
-            dropout_rng=shard_prng_key(self.dropout_rng))
+        return replicate(self).replace(train_rng=shard_prng_key(self.train_rng))
 
 
 def default_loss_and_grads(state, batch, loss_fn):
@@ -33,8 +31,8 @@ def default_train_step(state, batch, loss_fn, under_pmap):
     if under_pmap:
         grad = jax.lax.pmean(grad, 'batch')
 
-    dropout_rng, new_dropout_rng = jax.random.split(state.dropout_rng)
-    new_state = state.apply_gradients(grads=grad, dropout_rng=new_dropout_rng)
+    _, new_train_rng = jax.random.split(state.train_rng)
+    new_state = state.apply_gradients(grads=grad, train_rng=new_train_rng)
 
     metrics = {
         'loss': loss,

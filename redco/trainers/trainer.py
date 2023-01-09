@@ -49,7 +49,7 @@ class Trainer:
                 apply_fn=apply_fn,
                 params=params,
                 tx=optimizer,
-                dropout_rng=self._deployer.gen_rng(),
+                train_rng=self._deployer.gen_rng(),
                 lr_schedule_fn=lr_schedule_fn)
 
             self._state = self._state.replicate()
@@ -66,7 +66,7 @@ class Trainer:
                 params=params,
                 tx=optimizer,
                 opt_state=opt_state,
-                dropout_rng=self._deployer.gen_rng(),
+                train_rng=self._deployer.gen_rng(),
                 lr_schedule_fn=lr_schedule_fn,
                 step=0)
 
@@ -75,7 +75,7 @@ class Trainer:
                 params=params_spec,
                 tx=optimizer,
                 opt_state=opt_state_spec,
-                dropout_rng=None,
+                train_rng=None,
                 lr_schedule_fn=lr_schedule_fn,
                 step=None)
 
