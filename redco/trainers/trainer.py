@@ -80,9 +80,9 @@ class Trainer:
                 step=None)
 
     def setup_running_step(self, loss_fn, dummy_batch):
-        print('Dummy Batch:')
+        print('Dummy batch shapes')
         print(json.dumps(jax.tree_util.tree_map(
-            lambda x: x.shape, dummy_batch), indent=4))
+            lambda x: tuple(x.shape), dummy_batch)))
 
         if self._deployer.mesh is None:
             self._p_train_step = jax.pmap(partial(
