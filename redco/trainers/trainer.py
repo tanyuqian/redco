@@ -80,6 +80,10 @@ class Trainer:
                 step=None)
 
     def setup_running_step(self, loss_fn, dummy_batch):
+        print('Dummy Batch:')
+        for key, value in dummy_batch:
+            print(f'{key}: {value}')
+
         if self._deployer.mesh is None:
             self._p_train_step = jax.pmap(partial(
                 default_train_step, loss_fn=loss_fn, under_pmap=True),
