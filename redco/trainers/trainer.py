@@ -80,7 +80,7 @@ class Trainer:
                 step=None)
 
     def setup_running_step(self, loss_fn, dummy_batch):
-        print('Batch shapes (\"-1\" refers to your batch_size):')
+        print('Batch shapes (\"-1\" -> batch_size):')
         print(json.dumps(jax.tree_util.tree_map(
             lambda x: (-1, ) + tuple(x.shape[1:]), dummy_batch)))
 
