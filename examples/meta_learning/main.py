@@ -51,7 +51,7 @@ def main(dataset_name='omniglot',
     dummy_example = sample_tasks(tm_dataset=tm_dataset['train'], n_tasks=1)[0]
     params = model.init(deployer.gen_rng(), np.array(
         dummy_example['train']['inputs']))['params']
-    optimizer = deployer.get_adamw_optimizer(
+    optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=n_tasks_per_epoch,
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
@@ -65,7 +65,7 @@ def main(dataset_name='omniglot',
         apply_fn=model.apply,
         params=params,
         optimizer=optimizer,
-        lr_schedule_fn=lambda t: learning_rate,
+        lr_schedule_fn=lr_schedule_fn,
         inner_loss_fn=partial(inner_loss_fn, model=model),
         inner_learning_rate=inner_learning_rate,
         inner_n_steps=inner_n_steps,
