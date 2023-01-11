@@ -80,9 +80,9 @@ class Trainer:
                 step=None)
 
     def setup_running_step(self, loss_fn, dummy_batch):
-        print('Batch shapes (\"-1\" -> batch_size):')
-        print(json.dumps(jax.tree_util.tree_map(
-            lambda x: (-1, ) + tuple(x.shape[1:]), dummy_batch)))
+        # print('Batch shapes (\"-1\" -> batch_size):')
+        # print(json.dumps(jax.tree_util.tree_map(
+        #     lambda x: (-1, ) + tuple(x.shape[1:]), dummy_batch)))
 
         if self._deployer.mesh is None:
             self._p_train_step = jax.pmap(partial(
@@ -108,7 +108,7 @@ class Trainer:
                 in_axis_resources=(self._state_spec, data_spec),
                 out_axis_resources=None)
 
-    def train(self, examples, per_device_batch_size, desc):
+    def train(self, examples, per_device_batch_size, desc=''):
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
@@ -166,7 +166,8 @@ class Trainer:
                 desc=f'epoch {epoch_idx}')
 
             if eval_examples is None:
-                print('No evaluation cuz \'eval_examples\' is None.')
+                pass
+                # print('No evaluation cuz \'eval_examples\' is None.')
             else:
                 eval_metrics = {}
 

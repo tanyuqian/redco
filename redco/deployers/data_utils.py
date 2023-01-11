@@ -19,14 +19,21 @@ def get_dataloader(examples, batch_size, collate_fn, do_shard):
         }
 
 
-def get_data_batches(examples, batch_size, collate_fn, do_shard, desc):
+def get_data_batches(examples,
+                     batch_size,
+                     collate_fn,
+                     do_shard,
+                     desc):
     data_loader = get_dataloader(
         examples=examples,
         batch_size=batch_size,
         collate_fn=collate_fn,
         do_shard=do_shard)
     return tqdm.tqdm(
-        data_loader, total=len(examples) // batch_size, desc=desc)
+        data_loader,
+        total=len(examples) // batch_size,
+        desc=desc,
+        disable=True)
 
 
 def shuffle_examples(examples, shuffle_rng):

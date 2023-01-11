@@ -39,7 +39,7 @@ class Deployer:
         batch_size, global_batch_size = self.process_batch_size(
             per_device_batch_size=per_device_batch_size)
 
-        print(f'batch_size: local = {batch_size}, global = {global_batch_size}')
+        # print(f'batch_size: local = {batch_size}, global = {global_batch_size}')
 
         examples = get_host_examples(
             examples=examples,

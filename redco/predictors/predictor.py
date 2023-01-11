@@ -49,7 +49,7 @@ class Predictor:
         raw_n_inputs = len(examples)
         _, global_batch_size = self._deployer.process_batch_size(
             per_device_batch_size=per_device_batch_size)
-        examples = examples + examples[:global_batch_size - 1]
+        examples = examples + [examples[0]] * (global_batch_size - 1)
 
         params = self._deployer.process_to_run_model(params)
 
