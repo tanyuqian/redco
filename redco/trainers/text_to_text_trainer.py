@@ -44,6 +44,7 @@ class TextToTextTrainer(Trainer):
 
         self._default_predictor_fn = partial(
             TextToTextPredictor,
+            deployer=deployer,
             hf_model=hf_model,
             tokenizer=tokenizer,
             decoder_start_token_id=decoder_start_token_id,
