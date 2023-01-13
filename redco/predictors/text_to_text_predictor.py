@@ -12,7 +12,6 @@ class TextToTextPredictor(Predictor):
                  deployer,
                  hf_model,
                  tokenizer,
-                 decoder_start_token_id,
                  max_src_len,
                  max_tgt_len,
                  gen_kwargs,
@@ -24,7 +23,7 @@ class TextToTextPredictor(Predictor):
         collate_fn = partial(
             text_to_text_default_collate_fn,
             tokenizer=tokenizer,
-            decoder_start_token_id=decoder_start_token_id,
+            decoder_start_token_id=hf_model.config.decoder_start_token_id,
             max_src_len=max_src_len,
             max_tgt_len=max_tgt_len,
             src_key=src_key,
