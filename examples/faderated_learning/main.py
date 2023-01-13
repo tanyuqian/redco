@@ -15,11 +15,29 @@ from redco import Deployer, Trainer, Predictor
 
 
 class FedAvgServer:
-    def __init__(self, deployer, model, params, n_clients):
+    def __init__(self, deployer, model, params, n_clients, dummy_example):
         self._deployer = deployer
         self._model = model
         self._params = params
         self._n_clients = n_clients
+
+        self._trainer = Trainer(
+            deployer=self._deployer,
+            collate_fn=collate_fn,
+            apply_fn=self._model.apply,
+            loss_fn=loss_fn,
+            params=params,
+            optimizer=optax.adam(learning_rate=0.),
+            lr_schedule_fn=lambda t: 0.,
+            dummy_example=dummy_example)
+
+        self._predictor = Predictor(
+            deployer=self._deployer,
+            collate_fn=collate_fn,
+            pred_fn=partial(pred_fn, model=self._model),
+            output_fn=lambda x: x.tolist(),
+            params=self._params,
+            dummy_example=dummy_example)
 
     def train_client(self,
                      examples,
@@ -27,34 +45,25 @@ class FedAvgServer:
                      learning_rate,
                      per_device_batch_size,
                      n_epochs):
-        trainer = Trainer(
-            deployer=self._deployer,
-            collate_fn=collate_fn,
+        self._trainer.create_train_state(
             apply_fn=self._model.apply,
-            loss_fn=loss_fn,
-            params=params,
+            params=self._params,
+            params_shard_rules=None,
             optimizer=optax.adam(learning_rate=learning_rate),
-            lr_schedule_fn=lambda t: learning_rate,
-            dummy_example=examples[0])
+            lr_schedule_fn=lambda t: learning_rate)
 
-        trainer.fit(
+        self._trainer.fit(
             train_examples=examples,
             per_device_batch_size=per_device_batch_size,
             n_epochs=n_epochs)
 
-        return trainer.params
+        return self._trainer.params
 
     def test(self, examples, per_device_batch_size):
-        predictor = Predictor(
-            deployer=self._deployer,
-            collate_fn=collate_fn,
-            pred_fn=partial(pred_fn, model=self._model),
-            output_fn=lambda x: x.tolist(),
-            params=self._params,
-            dummy_example=examples[0])
-
-        preds = predictor.predict(
-            examples=examples, per_device_batch_size=per_device_batch_size)
+        preds = self._predictor.predict(
+            examples=examples,
+            per_device_batch_size=per_device_batch_size,
+            params=self._params)
         labels = [example[1] for example in examples]
 
         acc = np.mean(np.array(preds) == np.array(labels))
@@ -124,7 +133,11 @@ def main(data_dir='./data',
     params = model.init(deployer.gen_rng(), dummy_batch['images'])['params']
 
     server = FedAvgServer(
-        deployer=deployer, model=model, params=params, n_clients=n_clients)
+        deployer=deployer,
+        model=model,
+        params=params,
+        n_clients=n_clients,
+        dummy_example=eval_dataset[0])
 
     server.run(
         n_rounds=n_rounds,
