@@ -23,11 +23,13 @@ class CNN(nn.Module):
 def collate_fn(examples):
     images, labels = [], []
     for image, label in examples:
-        images.append(np.expand_dims(np.array(image), axis=(0, -1)))
+        if len(np.array(image).shape) == 2:
+            image = np.expand_dims(image, axis=-1)
+        images.append(np.array(image))
         labels.append(label)
 
     return {
-        'images': np.concatenate(images, axis=0),
+        'images': np.stack(images),
         'labels': np.array(labels)
     }
 

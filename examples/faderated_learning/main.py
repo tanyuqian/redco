@@ -103,6 +103,7 @@ class FedAvgServer:
 def main(data_dir='./data',
          dataset_name='MNIST',
          n_clients=100,
+         n_data_shards=200,
          n_rounds=100,
          n_clients_per_round=10,
          n_client_epochs_per_round=5,
@@ -111,7 +112,10 @@ def main(data_dir='./data',
          learning_rate=0.001,
          jax_seed=42):
     client_train_datasets, eval_dataset = get_dataset(
-        data_dir=data_dir, dataset_name=dataset_name, n_clients=n_clients)
+        data_dir=data_dir,
+        dataset_name=dataset_name,
+        n_clients=n_clients,
+        n_data_shards=n_data_shards)
 
     deployer = Deployer(jax_seed=jax_seed)
 

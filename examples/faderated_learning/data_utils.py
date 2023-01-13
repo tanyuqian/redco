@@ -3,12 +3,7 @@ import numpy as np
 from torchvision import datasets
 
 
-TOTAL_SHARDS = 200
-SHARD_SIZE = 300
-N_SHARDS_PER_CLIENT = 2
-
-
-def get_dataset(data_dir, dataset_name, n_clients):
+def get_dataset(data_dir, dataset_name, n_clients, n_data_shards):
     dataset = {
         'train': list(getattr(datasets, dataset_name)(
             data_dir, train=True, download=True)),
@@ -20,9 +15,9 @@ def get_dataset(data_dir, dataset_name, n_clients):
     client_data_idxes = non_iid_partition(
         dataset=data_class(data_dir, train=True, download=True),
         clients=n_clients,
-        total_shards=TOTAL_SHARDS,
-        shards_size=SHARD_SIZE,
-        num_shards_per_client=N_SHARDS_PER_CLIENT)
+        total_shards=n_data_shards,
+        shards_size=len(dataset['train']) // n_data_shards,
+        num_shards_per_client=n_data_shards // n_clients)
 
     client_train_datasets = {
         key: [dataset['train'][idx] for idx in client_data_idxes[key]]
@@ -81,7 +76,7 @@ def non_iid_partition(dataset, clients, total_shards, shards_size,
     shard_idxs = [i for i in range(total_shards)]
     client_dict = {i: np.array([], dtype='int64') for i in range(clients)}
     idxs = np.arange(len(dataset))
-    data_labels = dataset.targets.numpy()
+    data_labels = np.asarray(dataset.targets)
 
     # sort the labels
     label_idxs = np.vstack((idxs, data_labels))
