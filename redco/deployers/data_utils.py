@@ -23,7 +23,8 @@ def get_data_batches(examples,
                      batch_size,
                      collate_fn,
                      do_shard,
-                     desc):
+                     desc,
+                     verbose):
     data_loader = get_dataloader(
         examples=examples,
         batch_size=batch_size,
@@ -33,7 +34,7 @@ def get_data_batches(examples,
         data_loader,
         total=len(examples) // batch_size,
         desc=desc,
-        disable=True)
+        disable=(not verbose))
 
 
 def shuffle_examples(examples, shuffle_rng):

@@ -13,8 +13,9 @@ from .model_parallel_utils.mesh_utils import (
 
 
 class Deployer:
-    def __init__(self, jax_seed, mesh_model_shards=1):
+    def __init__(self, jax_seed, mesh_model_shards=1, verbose=True):
         self._rng = jax.random.PRNGKey(seed=jax_seed)
+        self._verbose = verbose
         self._mesh = get_mesh(mesh_model_shards=mesh_model_shards)
 
     def process_batch_size(self, per_device_batch_size):
@@ -39,8 +40,6 @@ class Deployer:
         batch_size, global_batch_size = self.process_batch_size(
             per_device_batch_size=per_device_batch_size)
 
-        # print(f'batch_size: local = {batch_size}, global = {global_batch_size}')
-
         examples = get_host_examples(
             examples=examples,
             global_batch_size=global_batch_size,
@@ -53,7 +52,8 @@ class Deployer:
             batch_size=batch_size,
             collate_fn=collate_fn,
             do_shard=(self.mesh is None),
-            desc=desc)
+            desc=desc,
+            verbose=self._verbose)
 
     def process_batch_preds(self, batch_preds):
         if self._mesh is None:

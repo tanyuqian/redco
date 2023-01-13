@@ -21,7 +21,7 @@ class PPOAgent:
                  lambda_td,
                  epsilon,
                  jax_seed=42):
-        self._deployer = Deployer(jax_seed=jax_seed)
+        self._deployer = Deployer(jax_seed=jax_seed, verbose=False)
 
         self._per_device_batch_size = per_device_batch_size
         _, self._global_batch_size = self._deployer.process_batch_size(

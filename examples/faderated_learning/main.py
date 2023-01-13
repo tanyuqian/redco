@@ -126,7 +126,7 @@ def main(data_dir='./data',
         n_clients=n_clients,
         n_data_shards=n_data_shards)
 
-    deployer = Deployer(jax_seed=jax_seed)
+    deployer = Deployer(jax_seed=jax_seed, verbose=False)
 
     model = CNN()
     dummy_batch = collate_fn([eval_dataset[0]])

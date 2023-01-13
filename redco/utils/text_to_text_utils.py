@@ -1,5 +1,6 @@
 import numpy as np
 
+import jax
 import jax.numpy as jnp
 import optax
 
@@ -49,8 +50,9 @@ def text_to_text_default_loss_fn(state, params, batch, train):
     labels = batch.pop("labels")
     label_weights = batch['decoder_attention_mask']
 
+    _, dropout_rng = jax.random.split(state.train_rng)
     logits = state.apply_fn(
-        **batch, params=params, dropout_rng=state.dropout_rng, train=train)[0]
+        **batch, params=params, dropout_rng=dropout_rng, train=train)[0]
 
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
