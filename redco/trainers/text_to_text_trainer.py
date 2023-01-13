@@ -53,7 +53,7 @@ class TextToTextTrainer(Trainer):
             src_key=src_key,
             tgt_key=tgt_key,
             params=params,
-            params_shard_rule=params_shard_rules)
+            params_shard_rules=params_shard_rules)
 
     def get_default_predictor(self, gen_kwargs):
         return self._default_predictor_fn(gen_kwargs=gen_kwargs)
