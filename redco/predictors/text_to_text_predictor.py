@@ -9,8 +9,8 @@ from ..utils.text_to_text_utils import \
 
 class TextToTextPredictor(Predictor):
     def __init__(self,
-                 model,
                  deployer,
+                 hf_model,
                  tokenizer,
                  decoder_start_token_id,
                  max_src_len,
@@ -31,7 +31,7 @@ class TextToTextPredictor(Predictor):
             tgt_key=tgt_key)
 
         pred_fn = partial(
-            text_to_text_default_pred_fn, model=model, gen_kwargs=gen_kwargs)
+            text_to_text_default_pred_fn, model=hf_model, gen_kwargs=gen_kwargs)
         output_fn = partial(text_to_text_default_output_fn, tokenizer=tokenizer)
 
         super(TextToTextPredictor, self).__init__(
