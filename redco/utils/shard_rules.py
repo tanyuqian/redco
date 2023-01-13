@@ -1,9 +1,11 @@
 from jax.experimental.pjit import PartitionSpec as P
 
 
-def get_shard_rules(arch_name):
-    if 't5' in arch_name.lower():
+def get_shard_rules(model_type):
+    if model_type == 't5':
         return _get_partition_rules_t5_v1_1()
+    elif model_type == 'bart':
+        return _get_partition_rules_bart()
     else:
         return None
 
@@ -28,4 +30,21 @@ def _get_partition_rules_t5_v1_1():
         (("final_layer_norm", "weight"), None),
         # output head
         (("lm_head", "kernel"), P(None, "mp")),
+    ]
+
+def _get_partition_rules_bart():
+    return [
+        (('bias', ), None),
+        (('shared', 'embedding'), P('mp', None)),
+        (('self_attn_layer_norm', 'scale'), None),
+        (('layernorm_embedding', 'scale'), None),
+        (('encoder_attn_layer_norm', 'scale'), None),
+        (('final_layer_norm', 'scale'), None),
+        (('fc1', 'kernel'), P(None, "mp")),
+        (('fc2', 'kernel'), P('mp', None)),
+        (('k_proj', 'kernel'), P(None, "mp")),
+        (('q_proj', 'kernel'), P(None, "mp")),
+        (('v_proj', 'kernel'), P(None, "mp")),
+        (('out_proj', 'kernel'), P('mp', None)),
+        (('embed_positions', 'embedding'), P(None, 'mp'))
     ]
