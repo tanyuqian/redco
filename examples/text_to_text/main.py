@@ -60,14 +60,13 @@ def main(dataset_name='xsum',
         model=model,
         params=freeze(model.params),
         optimizer=optimizer,
-        lr_schedule_fn=lr_schedule_fn,
+        learning_rate=lr_schedule_fn,
         deployer=deployer,
         tokenizer=tokenizer,
         max_src_len=max_src_len,
         max_tgt_len=max_tgt_len,
         src_key=src_key,
         tgt_key=tgt_key,
-        dummy_example=dataset['train'][0],
         params_shard_rules=get_shard_rules(model_type=model.config.model_type))
 
     predictor = trainer.get_default_predictor(
