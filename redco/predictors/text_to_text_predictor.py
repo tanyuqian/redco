@@ -15,7 +15,6 @@ class TextToTextPredictor(Predictor):
                  max_src_len,
                  max_tgt_len,
                  gen_kwargs,
-                 dummy_example,
                  src_key='src',
                  tgt_key='tgt',
                  params=None,

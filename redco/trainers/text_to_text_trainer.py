@@ -42,7 +42,7 @@ class TextToTextTrainer(Trainer):
         self._default_predictor_fn = partial(
             TextToTextPredictor,
             deployer=deployer,
-            hf_model=model,
+            model=model,
             tokenizer=tokenizer,
             max_src_len=max_src_len,
             max_tgt_len=max_tgt_len,
