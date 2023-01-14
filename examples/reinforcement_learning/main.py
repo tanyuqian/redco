@@ -7,10 +7,11 @@ from ppo_utils import PPOAgent, Transition
 
 
 def main(env_name='CartPole-v1',
+         n_episodes=1000,
          actor_lr=1e-3,
          critic_lr=1e-2,
          gamma=0.98,
-         lambda_td=0.95,
+         gae_lambda=0.95,
          epsilon=0.2,
          jax_seed=42):
     env = gym.make(env_name)
@@ -23,12 +24,12 @@ def main(env_name='CartPole-v1',
         critic_lr=critic_lr,
         per_device_batch_size=32,
         gamma=gamma,
-        lambda_td=lambda_td,
+        gae_lambda=gae_lambda,
         epsilon=epsilon,
         jax_seed=jax_seed)
 
     episode_rewards = []
-    for episode_idx in range(1000):
+    for episode_idx in range(n_episodes):
         sum_rewards = 0.
         state, info = env.reset()
         transitions = []

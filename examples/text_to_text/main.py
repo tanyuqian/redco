@@ -42,7 +42,7 @@ def main(dataset_name='xsum',
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     with jax.default_device(jax.devices('cpu')[0]):
-        hf_model = FlaxAutoModelForSeq2SeqLM.from_pretrained(
+        model = FlaxAutoModelForSeq2SeqLM.from_pretrained(
             model_name_or_path, from_pt=True)
 
     deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=mesh_model_shards)
@@ -57,8 +57,8 @@ def main(dataset_name='xsum',
         weight_decay=weight_decay)
 
     trainer = TextToTextTrainer(
-        hf_model=hf_model,
-        params=freeze(hf_model.params),
+        model=model,
+        params=freeze(model.params),
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
         deployer=deployer,
@@ -68,7 +68,7 @@ def main(dataset_name='xsum',
         src_key=src_key,
         tgt_key=tgt_key,
         dummy_example=dataset['train'][0],
-        params_shard_rules=get_shard_rules(hf_model.config.architectures[0]))
+        params_shard_rules=get_shard_rules(model_type=model.config.model_type))
 
     predictor = trainer.get_default_predictor(
         gen_kwargs={'max_length': max_tgt_len, 'num_beams': num_beams})

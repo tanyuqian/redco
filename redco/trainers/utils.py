@@ -53,3 +53,10 @@ def default_eval_step(state, batch, loss_fn, under_pmap):
         metrics = jax.lax.pmean(metrics, axis_name='batch')
 
     return metrics
+
+
+def get_lr_schedule_fn(learning_rate):
+    if isinstance(learning_rate, Callable):
+        return learning_rate
+    else:
+        return lambda t: learning_rate

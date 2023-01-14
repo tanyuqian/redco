@@ -52,7 +52,7 @@ class Deployer:
             batch_size=batch_size,
             collate_fn=collate_fn,
             do_shard=(self.mesh is None),
-            desc=desc,
+            desc=f'{desc} (global_batch_size = {global_batch_size})',
             verbose=self._verbose)
 
     def process_batch_preds(self, batch_preds):

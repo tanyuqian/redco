@@ -32,14 +32,16 @@ def _get_partition_rules_t5_v1_1():
         (("lm_head", "kernel"), P(None, "mp")),
     ]
 
+
 def _get_partition_rules_bart():
     return [
+        (('final_logits_bias',), None),
         (('bias', ), None),
-        (('shared', 'embedding'), P('mp', None)),
         (('self_attn_layer_norm', 'scale'), None),
         (('layernorm_embedding', 'scale'), None),
         (('encoder_attn_layer_norm', 'scale'), None),
         (('final_layer_norm', 'scale'), None),
+        (('shared', 'embedding'), None),
         (('fc1', 'kernel'), P(None, "mp")),
         (('fc2', 'kernel'), P('mp', None)),
         (('k_proj', 'kernel'), P(None, "mp")),

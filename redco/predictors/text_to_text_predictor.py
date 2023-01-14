@@ -10,7 +10,7 @@ from ..utils.text_to_text_utils import \
 class TextToTextPredictor(Predictor):
     def __init__(self,
                  deployer,
-                 hf_model,
+                 model,
                  tokenizer,
                  max_src_len,
                  max_tgt_len,
@@ -23,14 +23,14 @@ class TextToTextPredictor(Predictor):
         collate_fn = partial(
             text_to_text_default_collate_fn,
             tokenizer=tokenizer,
-            decoder_start_token_id=hf_model.config.decoder_start_token_id,
+            decoder_start_token_id=model.config.decoder_start_token_id,
             max_src_len=max_src_len,
             max_tgt_len=max_tgt_len,
             src_key=src_key,
             tgt_key=tgt_key)
 
         pred_fn = partial(
-            text_to_text_default_pred_fn, model=hf_model, gen_kwargs=gen_kwargs)
+            text_to_text_default_pred_fn, model=model, gen_kwargs=gen_kwargs)
         output_fn = partial(text_to_text_default_output_fn, tokenizer=tokenizer)
 
         super(TextToTextPredictor, self).__init__(
@@ -39,5 +39,4 @@ class TextToTextPredictor(Predictor):
             pred_fn=pred_fn,
             output_fn=output_fn,
             params=params,
-            params_shard_rules=params_shard_rules,
-            dummy_example=dummy_example)
+            params_shard_rules=params_shard_rules)

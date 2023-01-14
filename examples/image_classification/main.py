@@ -80,15 +80,12 @@ def main(data_dir='./data/',
         loss_fn=loss_fn,
         params=params,
         optimizer=optimizer,
-        lr_schedule_fn=lambda t: learning_rate,
-        dummy_example=dataset['train'][0])
+        learning_rate=learning_rate)
 
     predictor = Predictor(
         deployer=deployer,
         collate_fn=collate_fn,
-        pred_fn=partial(pred_fn, model=model),
-        output_fn=lambda x: x.tolist(),
-        dummy_example=dataset['test'][0])
+        pred_fn=partial(pred_fn, model=model))
 
     trainer.fit(
         train_examples=dataset['train'],

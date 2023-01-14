@@ -7,7 +7,8 @@ import jax
 from jax.experimental.pjit import pjit
 from jax.experimental.pjit import PartitionSpec as P
 
-from .utils import TrainState, default_train_step, default_eval_step
+from .utils import \
+    TrainState, default_train_step, default_eval_step, get_lr_schedule_fn
 
 
 class Trainer:
@@ -18,25 +19,24 @@ class Trainer:
                  loss_fn,
                  params,
                  optimizer,
-                 lr_schedule_fn,
-                 dummy_example,
+                 learning_rate,
                  params_shard_rules=None):
         self._deployer = deployer
         self._collate_fn = collate_fn
 
         self._state = None
         self._state_spec = None
+
         self.create_train_state(
             apply_fn=apply_fn,
             params=params,
             params_shard_rules=params_shard_rules,
             optimizer=optimizer,
-            lr_schedule_fn=lr_schedule_fn)
+            lr_schedule_fn=get_lr_schedule_fn(learning_rate=learning_rate))
 
+        self._loss_fn = loss_fn
         self._p_train_step = None
         self._p_eval_step = None
-        self.setup_running_step(
-            loss_fn=loss_fn, dummy_batch=collate_fn([dummy_example]))
 
     def create_train_state(self,
                            apply_fn,
@@ -118,6 +118,10 @@ class Trainer:
             desc=f'Training ({desc})')
 
         for batch in data_batches:
+            if self._p_train_step is None:
+                self.setup_running_step(
+                    loss_fn=self._loss_fn, dummy_batch=batch)
+
             self._state, metrics = self._deployer.run_model_step(
                 step_fn=self._p_train_step, input_args=(self._state, batch))
 
@@ -135,6 +139,10 @@ class Trainer:
 
         losses = []
         for batch in data_batches:
+            if self._p_eval_step is None:
+                self.setup_running_step(
+                    loss_fn=self._loss_fn, dummy_batch=batch)
+
             metrics = self._deployer.run_model_step(
                 step_fn=self._p_eval_step, input_args=(self._state, batch))
 

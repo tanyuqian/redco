@@ -10,21 +10,20 @@ from ..predictors.text_to_text_predictor import TextToTextPredictor
 class TextToTextTrainer(Trainer):
     def __init__(self,
                  deployer,
-                 hf_model,
+                 model,
                  params,
                  optimizer,
-                 lr_schedule_fn,
+                 learning_rate,
                  tokenizer,
                  max_src_len,
                  max_tgt_len,
-                 dummy_example,
                  src_key='src',
                  tgt_key='tgt',
                  params_shard_rules=None):
         collate_fn = partial(
             text_to_text_default_collate_fn,
             tokenizer=tokenizer,
-            decoder_start_token_id=hf_model.config.decoder_start_token_id,
+            decoder_start_token_id=model.config.decoder_start_token_id,
             max_src_len=max_src_len,
             max_tgt_len=max_tgt_len,
             src_key=src_key,
@@ -32,23 +31,21 @@ class TextToTextTrainer(Trainer):
 
         super(TextToTextTrainer, self).__init__(
             collate_fn=collate_fn,
-            apply_fn=hf_model.__call__,
+            apply_fn=model.__call__,
             loss_fn=text_to_text_default_loss_fn,
             params=params,
             optimizer=optimizer,
             deployer=deployer,
-            lr_schedule_fn=lr_schedule_fn,
-            dummy_example=dummy_example,
+            learning_rate=learning_rate,
             params_shard_rules=params_shard_rules)
 
         self._default_predictor_fn = partial(
             TextToTextPredictor,
             deployer=deployer,
-            hf_model=hf_model,
+            hf_model=model,
             tokenizer=tokenizer,
             max_src_len=max_src_len,
             max_tgt_len=max_tgt_len,
-            dummy_example=dummy_example,
             src_key=src_key,
             tgt_key=tgt_key,
             params=params,

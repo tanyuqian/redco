@@ -8,22 +8,21 @@ class Predictor:
                  deployer,
                  collate_fn,
                  pred_fn,
-                 output_fn,
-                 dummy_example,
+                 output_fn=None,
                  params=None,
                  params_shard_rules=None):
         self._deployer = deployer
         self._collate_fn = collate_fn
 
         self._params = params
+        self._params_shard_rules = params_shard_rules
+        self._pred_fn = pred_fn
         self._p_pred_step = None
 
-        self.setup_running_step(
-            pred_fn=pred_fn,
-            dummy_batch=collate_fn([dummy_example]),
-            params_shard_rules=params_shard_rules)
-
-        self._output_fn = output_fn
+        if output_fn is None:
+            self._output_fn = lambda x: x.tolist()
+        else:
+            self._output_fn = output_fn
 
     def setup_running_step(self, pred_fn, dummy_batch, params_shard_rules):
         if self._deployer.mesh is None:
@@ -63,6 +62,12 @@ class Predictor:
 
         preds = []
         for batch in data_batches:
+            if self._p_pred_step is None:
+                self.setup_running_step(
+                    pred_fn=self._pred_fn,
+                    dummy_batch=batch,
+                    params_shard_rules=self._params_shard_rules)
+
             batch_preds = self._deployer.run_model_step(
                 step_fn=self._p_pred_step, input_args=(batch, params))
 

@@ -18,7 +18,7 @@ class PPOAgent:
                  critic_lr,
                  per_device_batch_size,
                  gamma,
-                 lambda_td,
+                 gae_lambda,
                  epsilon,
                  jax_seed=42):
         self._deployer = Deployer(jax_seed=jax_seed, verbose=False)
@@ -35,8 +35,7 @@ class PPOAgent:
                 learning_rate=actor_lr,
                 input_dim=state_dim,
                 loss_fn=partial(actor_loss_fn, epsilon=epsilon),
-                pred_fn=partial(pred_fn, model=actor_model),
-                output_fn=lambda x: x.tolist())
+                pred_fn=partial(pred_fn, model=actor_model))
 
         critic_model = MLP(output_dim=1)
         self._critic_trainer, self._critic_predictor = \
@@ -47,10 +46,10 @@ class PPOAgent:
                 input_dim=state_dim,
                 loss_fn=critic_loss_fn,
                 pred_fn=partial(pred_fn, model=critic_model),
-                output_fn=lambda x: x[:, 0].tolist())
+                output_fn=lambda model_output: model_output[:, 0].tolist())
 
         self._gamma = gamma
-        self._lambda_td = lambda_td
+        self._gae_lambda = gae_lambda
         self._train_examples = []
 
     def predict_values(self, states):
@@ -92,20 +91,22 @@ class PPOAgent:
             log_probs0s, actions[..., None], axis=-1)[..., 0]
 
         advantage = 0.
-        for t in reversed(list(range(0, len(transitions)))):
-            td_target = \
-                transitions[t].reward \
-                + self._gamma * v_next_states[t] * (1. - transitions[t].done)
-            advantage = \
-                self._gamma * self._lambda_td * advantage \
-                + (td_target - v_states[t])
+        for trans, v_state, v_next_state, log_probs0 in zip(
+                reversed(transitions),
+                reversed(v_states),
+                reversed(v_next_states),
+                reversed(log_probs0s)):
+            td_target = trans.reward \
+                        + self._gamma * v_next_state * (1. - trans.done)
+            advantage = self._gamma * self._gae_lambda * advantage \
+                        + (td_target - v_state)
 
             self._train_examples.append({
-                'states': transitions[t].state,
-                'actions': transitions[t].action,
+                'states': trans.state,
+                'actions': trans.action,
                 'td_targets': td_target,
                 'advantages': advantage,
-                'log_probs0': log_probs0s[t]
+                'log_probs0': log_probs0
             })
 
     def train(self, n_epochs):
@@ -148,13 +149,6 @@ def get_trainer_and_predictor(
         deployer, model, learning_rate, input_dim, loss_fn, pred_fn, output_fn):
     params = model.init(deployer.gen_rng(), jnp.zeros((1, input_dim)))['params']
     optimizer = optax.adam(learning_rate=learning_rate)
-    dummy_example = {
-        'states': np.zeros(input_dim),
-        'actions': 0,
-        'td_targets': 0.,
-        'advantages': 0.,
-        'log_probs0': 0.
-    }
 
     trainer = Trainer(
         deployer=deployer,
@@ -163,15 +157,13 @@ def get_trainer_and_predictor(
         loss_fn=loss_fn,
         params=params,
         optimizer=optimizer,
-        lr_schedule_fn=lambda t: learning_rate,
-        dummy_example=dummy_example)
+        learning_rate=learning_rate)
 
     predictor = Predictor(
         deployer=deployer,
         collate_fn=collate_fn,
         pred_fn=pred_fn,
-        output_fn=output_fn,
-        dummy_example=dummy_example)
+        output_fn=output_fn)
 
     return trainer, predictor
 
