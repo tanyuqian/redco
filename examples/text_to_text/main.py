@@ -44,6 +44,7 @@ def main(dataset_name='xsum',
     with jax.default_device(jax.devices('cpu')[0]):
         model = FlaxAutoModelForSeq2SeqLM.from_pretrained(
             model_name_or_path, from_pt=True)
+        model.params = model.to_fp32(model.params)
 
     deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=mesh_model_shards)
 
