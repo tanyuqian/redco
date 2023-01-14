@@ -41,7 +41,7 @@ def _get_partition_rules_bart():
         (('layernorm_embedding', 'scale'), None),
         (('encoder_attn_layer_norm', 'scale'), None),
         (('final_layer_norm', 'scale'), None),
-        (('shared', 'embedding'), None),
+        (('shared', 'embedding'), P(None, 'mp')),
         (('fc1', 'kernel'), P(None, "mp")),
         (('fc2', 'kernel'), P('mp', None)),
         (('k_proj', 'kernel'), P(None, "mp")),
