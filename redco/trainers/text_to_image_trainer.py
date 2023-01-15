@@ -35,7 +35,7 @@ class TextToImageTrainer(Trainer):
             collate_fn=collate_fn,
             apply_fn=lambda x: None,
             loss_fn=loss_fn,
-            params=pipeline_params['unet'],
+            params={'unet': pipeline_params['unet']},
             optimizer=optimizer,
             learning_rate=learning_rate,
             params_shard_rules=params_shard_rules)
