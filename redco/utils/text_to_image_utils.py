@@ -98,7 +98,8 @@ def text_to_image_default_pred_fn(pred_rng,
     pred_params = {
         'unet': params['unet'],
         'text_encoder': pipeline_params['text_encoder'],
-        'vae': pipeline_params['vae']
+        'vae': pipeline_params['vae'],
+        'scheduler': pipeline_params['scheduler']
     }
 
     return pipeline._generate(
