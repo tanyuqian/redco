@@ -76,7 +76,7 @@ def text_to_image_default_loss_fn(
 
 def text_to_image_default_pred_fn(
         batch, params, pipeline, pipeline_params, n_infer_steps, resolution):
-    pipeline_params['unet'] = params
+    pipeline_params['unet'] = params['unet']
     return pipeline._generate(
         prompt_ids=batch['input_ids'],
         params=pipeline_params,
