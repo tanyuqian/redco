@@ -46,6 +46,6 @@ def get_dreambooth_dataset(predictor,
                        'frowning',
                        'screaming']:
         dataset['validation'].append(
-            {text_key: f'A {expression} {instance_prompt}'})
+            {text_key: f'a {expression} {instance_prompt}'})
 
     return dataset
