@@ -32,7 +32,7 @@ def main(instance_dir='./skr_dog_images',
         pipeline, pipeline_params = FlaxStableDiffusionPipeline.from_pretrained(
             model_name_or_path)
         pipeline_params = pipeline.unet.to_fp16(pipeline_params)
-        pipeline_params['unet'] = pipeline.unet.to_fp32(pipeline_params)
+        pipeline_params['unet'] = pipeline.unet.to_fp32(pipeline_params['unet'])
 
     lr_schedule_fn = optax.constant_schedule(value=learning_rate)
     optimizer = optax.MultiSteps(
@@ -73,7 +73,7 @@ def main(instance_dir='./skr_dog_images',
     images = predictor.predict(
         examples=dataset['validation'],
         per_device_batch_size=eval_per_device_batch_size,
-        params=params)
+        params=trainer.params)
 
     os.makedirs(output_dir, exist_ok=True)
     for example, image in zip(dataset['validation'], images):
