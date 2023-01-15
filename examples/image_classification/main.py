@@ -2,6 +2,7 @@ from functools import partial
 import fire
 import numpy as np
 
+import jax
 import jax.numpy as jnp
 from flax import linen as nn
 import optax
@@ -13,7 +14,7 @@ from redco import Deployer, Trainer, Predictor
 
 class CNN(nn.Module):
     @nn.compact
-    def __call__(self, x):
+    def __call__(self, x, training):
         x = nn.Conv(features=32, kernel_size=(3, 3))(x)
         x = nn.relu(x)
         x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
@@ -21,6 +22,7 @@ class CNN(nn.Module):
         x = nn.relu(x)
         x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
         x = x.reshape((x.shape[0], -1))  # flatten
+        x = nn.Dropout(rate=0.4, deterministic=not training)(x)
         x = nn.Dense(features=256)(x)
         x = nn.relu(x)
         x = nn.Dense(features=10)(x)
@@ -40,14 +42,17 @@ def collate_fn(examples):
 
 
 def loss_fn(state, params, batch, train):
-    logits = state.apply_fn({'params': params}, batch['images'])
+    _, dropout_rng = jax.random.split(state.train_rng)
+    logits = state.apply_fn(
+        {'params': params}, batch['images'],
+        training=train, rngs={'dropout': dropout_rng})
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch['labels'])
     return jnp.mean(loss)
 
 
 def pred_fn(pred_rng, batch, params, model):
-    return model.apply({'params': params}, batch['images']).argmax(axis=-1)
+    return model.apply({'params': params}, batch['images'], training=False).argmax(axis=-1)
 
 
 def eval_metric_fn(eval_results):
@@ -70,7 +75,7 @@ def main(data_dir='./data/',
 
     model = CNN()
     dummy_batch = collate_fn([dataset['train'][0]])
-    params = model.init(deployer.gen_rng(), dummy_batch['images'])['params']
+    params = model.init(deployer.gen_rng(), dummy_batch['images'], training=False)['params']
     optimizer = optax.adam(learning_rate=learning_rate)
 
     trainer = Trainer(

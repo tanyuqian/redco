@@ -30,11 +30,11 @@ def get_dreambooth_dataset(predictor,
     for idx in range(max(len(instance_paths), n_class_images)):
         dataset['train'].append({
             image_key: Image.open(instance_paths[idx % len(instance_paths)]),
-            text_key: instance_prompt
+            text_key: f'a photo of a {instance_prompt}'
         })
         dataset['train'].append({
             image_key: Image.open(class_paths[idx % len(class_paths)]),
-            text_key: class_prompt
+            text_key: f'a photo of a {class_prompt}'
         })
 
     for expression in ['depressed',

@@ -11,13 +11,13 @@ from dreambooth_utils import get_dreambooth_dataset
 
 
 def main(instance_dir='./skr_dog_images',
-         instance_prompt='sks dog',
+         instance_prompt='skr dog',
          class_dir='./normal_dog_images',
-         class_prompt='a photo of a dog',
+         class_prompt='dog',
          n_class_images=200,
          image_key='image',
          text_key='text',
-         model_name_or_path='flax/stable-diffusion-2-1-base',
+         model_name_or_path='duongna/stable-diffusion-v1-4-flax',
          resolution=512,
          n_infer_steps=50,
          n_epochs=1,
