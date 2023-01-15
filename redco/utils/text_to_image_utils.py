@@ -54,11 +54,11 @@ def text_to_image_default_loss_fn(
         key=timestep_rng,
         shape=(bsz,),
         minval=0,
-        maxval=pipeline.noise_scheduler.config.num_train_timesteps)
+        maxval=pipeline.scheduler.config.num_train_timesteps)
 
     # Add noise to the latents according to the noise magnitude at each timestep
     # (this is the forward diffusion process)
-    noisy_latents = pipeline.noise_scheduler.add_noise(
+    noisy_latents = pipeline.scheduler.add_noise(
         original_samples=latents,
         noise=noise,
         timesteps=timesteps)
