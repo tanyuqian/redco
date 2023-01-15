@@ -13,7 +13,7 @@ from dreambooth_utils import get_dreambooth_dataset
 def main(instance_dir='./skr_dog_images',
          instance_prompt='sks dog',
          class_dir='./normal_dog_images',
-         class_prompt='dog',
+         class_prompt='a phone of a dog',
          n_class_images=200,
          image_key='image',
          text_key='text',
