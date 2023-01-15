@@ -38,7 +38,7 @@ class Predictor:
 
             self._p_pred_step = pjit(
                 pred_fn,
-                in_axis_resources=(data_spec, params_spec),
+                in_axis_resources=(None, data_spec, params_spec),
                 out_axis_resources=None)
 
     def predict(self, examples, per_device_batch_size, params=None):
@@ -68,8 +68,12 @@ class Predictor:
                     dummy_batch=batch,
                     params_shard_rules=self._params_shard_rules)
 
+            pred_rng = self._deployer.process_to_run_model(
+                self._deployer.gen_rng(), is_prng_key=True)
+
             batch_preds = self._deployer.run_model_step(
-                step_fn=self._p_pred_step, input_args=(batch, params))
+                step_fn=self._p_pred_step,
+                input_args=(pred_rng, batch, params))
 
             batch_preds = self._deployer.process_batch_preds(
                 batch_preds=batch_preds)

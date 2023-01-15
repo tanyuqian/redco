@@ -74,13 +74,18 @@ def text_to_image_default_loss_fn(
     return loss
 
 
-def text_to_image_default_pred_fn(
-        batch, params, pipeline, pipeline_params, n_infer_steps, resolution):
+def text_to_image_default_pred_fn(pred_rng,
+                                  batch,
+                                  params,
+                                  pipeline,
+                                  pipeline_params,
+                                  n_infer_steps,
+                                  resolution):
     pipeline_params['unet'] = params['unet']
     return pipeline._generate(
         prompt_ids=batch['input_ids'],
         params=pipeline_params,
-        prng_seed=jax.random.PRNGKey(0),
+        prng_seed=jax.random.PRNGKey(pred_rng),
         num_inference_steps=n_infer_steps,
         height=resolution,
         width=resolution)

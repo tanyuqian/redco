@@ -1,5 +1,6 @@
 import jax
 from flax.jax_utils import replicate, unreplicate
+from flax.training.common_utils import shard_prng_key
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_multistep_adamw_optimizer
@@ -63,9 +64,12 @@ class Deployer:
         else:
             return batch_preds
 
-    def process_to_run_model(self, x):
+    def process_to_run_model(self, x, is_prng_key=False):
         if self._mesh is None:
-            return replicate(x)
+            if is_prng_key:
+                return shard_prng_key(x)
+            else:
+                return replicate(x)
         else:
             return x
 

@@ -9,9 +9,9 @@ from redco import Deployer, TextToImageTrainer
 from dreambooth_utils import get_dreambooth_dataset
 
 
-def main(instance_dir='./skr_dog_dir',
+def main(instance_dir='./skr_dog_images',
          instance_prompt='a photo of sks dog',
-         class_dir='./normal_dog_dir',
+         class_dir='./normal_dog_images',
          class_prompt='a photo of dog',
          n_class_images=200,
          image_key='image',
