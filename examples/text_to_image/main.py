@@ -17,7 +17,7 @@ def main(instance_dir='./skr_dog_images',
          n_class_images=200,
          image_key='image',
          text_key='text',
-         model_name_or_path='flax/stable-diffusion-2-1-base',
+         model_name_or_path='duongna/stable-diffusion-v1-4-flax',
          resolution=512,
          n_infer_steps=50,
          n_epochs=1,
@@ -29,8 +29,7 @@ def main(instance_dir='./skr_dog_images',
          output_dir='outputs',
          jax_seed=42):
     with jax.default_device(jax.devices('cpu')[0]):
-        pipeline, pipeline_params = FlaxStableDiffusionPipeline.from_pretrained(
-            model_name_or_path)
+        pipeline, pipeline_params = FlaxStableDiffusionPipeline.from_pretrained(model_name_or_path)
         pipeline_params = pipeline.unet.to_fp16(pipeline_params)
         pipeline_params['unet'] = pipeline.unet.to_fp32(pipeline_params['unet'])
 
