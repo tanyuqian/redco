@@ -26,7 +26,7 @@ def get_dreambooth_dataset(predictor,
 
     instance_paths = glob.glob(f'{instance_dir}/*')
     class_paths = glob.glob(f'{class_dir}/*')
-    dataset = {'train': [], 'test': []}
+    dataset = {'train': [], 'validation': []}
     for idx in range(max(len(instance_paths), len(class_paths))):
         dataset['train'].append({
             image_key: Image.open(instance_paths[idx % len(instance_paths)]),
