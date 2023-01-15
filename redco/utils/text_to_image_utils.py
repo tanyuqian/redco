@@ -34,7 +34,7 @@ def text_to_image_default_collate_fn(examples,
 def text_to_image_default_loss_fn(
         state, params, batch, train, pipeline, freezed_params):
     dropout_rng, sample_rng, noise_rng, timestep_rng = \
-        jax.random.split(state.dropout_rng, num=4)
+        jax.random.split(state.train_rng, num=4)
 
     # Convert images to latent space
     vae_outputs = pipeline.vae.apply(
