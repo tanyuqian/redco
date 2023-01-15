@@ -1,17 +1,23 @@
 import fire
-import datasets
+import jax
 import optax
 
 from diffusers import FlaxStableDiffusionPipeline
 
-from redco import Deployer, TextToImageTrainer, TextToImagePredictor
+from redco import Deployer, TextToImageTrainer
+
+from dreambooth_utils import get_dreambooth_dataset
 
 
-def main(dataset_name='lambdalabs/pokemon-blip-captions',
+def main(instance_dir='./skr_dog_dir',
+         instance_prompt='a photo of sks dog',
+         class_dir='./normal_dog_dir',
+         class_prompt='a photo of dog',
+         n_class_images=200,
          image_key='image',
          text_key='text',
-         model_name_or_path='flax/stable-diffusion-2-1',
-         resolution=768,
+         model_name_or_path='flax/stable-diffusion-2-1-base',
+         resolution=512,
          n_infer_steps=50,
          n_epochs=2,
          per_device_batch_size=2,
@@ -20,15 +26,9 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
          learning_rate=4e-5,
          weight_decay=1e-2,
          jax_seed=42):
-    dataset = {
-        'train': list(
-            datasets.load_dataset(dataset_name, split='train[:90%]')),
-        'validation': list(
-            datasets.load_dataset(dataset_name, split='train[90%:]'))
-    }
-
-    pipeline, pipeline_params = \
-        FlaxStableDiffusionPipeline.from_pretrained(model_name_or_path)
+    with jax.default_device(jax.devices('cpu')[0]):
+        pipeline, pipeline_params = FlaxStableDiffusionPipeline.from_pretrained(
+            model_name_or_path)
 
     lr_schedule_fn = optax.constant_schedule(value=learning_rate)
     optimizer = optax.MultiSteps(
@@ -39,36 +39,38 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
 
     trainer = TextToImageTrainer(
         deployer=deployer,
-        apply_fn=pipeline.unet.apply,
-        params=pipeline_params['unet'],
-        optimizer=optimizer,
-        lr_schedule_fn=lr_schedule_fn,
         pipeline=pipeline,
         pipeline_params=pipeline_params,
         resolution=resolution,
-        dummy_example=dataset['train'][0],
+        optimizer=optimizer,
+        learning_rate=lr_schedule_fn,
         image_key=image_key,
         text_key=text_key,
         params_shard_rules=None)
 
-    predictor = TextToImagePredictor(
-        deployer=deployer,
-        pipeline=pipeline,
-        pipeline_params=pipeline_params,
-        resolution=resolution,
-        n_infer_steps=n_infer_steps,
-        dummy_example=dataset['validation'][0],
-        image_key=image_key,
-        text_key=text_key)
+    predictor = trainer.get_default_predictor(n_infer_steps=n_infer_steps)
 
-    trainer.fit(
-        train_examples=dataset['train'],
-        per_device_batch_size=per_device_batch_size,
-        n_epochs=n_epochs,
-        eval_examples=dataset['validation'],
-        eval_predictor=predictor,
-        eval_loss=True,
-        eval_per_device_batch_size=eval_per_device_batch_size)
+    dataset = get_dreambooth_dataset(
+        predictor=predictor,
+        per_device_batch_size=eval_per_device_batch_size,
+        instance_dir=instance_dir,
+        instance_prompt=instance_prompt,
+        class_dir=class_dir,
+        class_prompt=class_prompt,
+        n_class_images=n_class_images,
+        text_key=text_key,
+        image_key=image_key)
+
+    print(len(dataset))
+
+    # trainer.fit(
+    #     train_examples=dataset['train'],
+    #     per_device_batch_size=per_device_batch_size,
+    #     n_epochs=n_epochs,
+    #     eval_examples=dataset['validation'],
+    #     eval_predictor=predictor,
+    #     eval_loss=True,
+    #     eval_per_device_batch_size=eval_per_device_batch_size)
 
 
 if __name__ == '__main__':

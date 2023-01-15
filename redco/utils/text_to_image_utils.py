@@ -22,9 +22,10 @@ def text_to_image_default_collate_fn(examples,
         truncation=True,
         return_tensors='np')
 
-    batch['pixel_values'] = np.stack([
-        preprocess(example[image_key], resolution=resolution, dtype=np.float32)
-        for example in examples])
+    if image_key in examples[0]:
+        batch['pixel_values'] = np.stack([
+            preprocess(example[image_key], resolution=resolution, dtype=np.float32)
+            for example in examples])
 
     return batch
 

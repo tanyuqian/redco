@@ -220,3 +220,6 @@ class Trainer:
     @property
     def step(self):
         return self._deployer.process_to_deliver(self._state.step)
+
+    def get_default_predictor(self, *args, **kwargs):
+        raise NotImplementedError

@@ -14,9 +14,8 @@ class TextToImagePredictor(Predictor):
                  pipeline_params,
                  resolution,
                  n_infer_steps,
-                 dummy_example,
-                 image_key,
-                 text_key,
+                 image_key='image',
+                 text_key='text',
                  params=None,
                  params_shard_rules=None):
         collate_fn = partial(
@@ -43,5 +42,4 @@ class TextToImagePredictor(Predictor):
             pred_fn=pred_fn,
             output_fn=output_fn,
             params=params,
-            params_shard_rules=params_shard_rules,
-            dummy_example=dummy_example)
+            params_shard_rules=params_shard_rules)

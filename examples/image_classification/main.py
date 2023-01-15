@@ -73,6 +73,11 @@ def main(data_dir='./data/',
     params = model.init(deployer.gen_rng(), dummy_batch['images'])['params']
     optimizer = optax.adam(learning_rate=learning_rate)
 
+    import flax
+    for key, value in flax.traverse_util.flatten_dict(params).items():
+        print(key, value.shape)
+    exit()
+
     trainer = Trainer(
         deployer=deployer,
         collate_fn=collate_fn,
