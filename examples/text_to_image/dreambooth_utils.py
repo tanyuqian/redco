@@ -24,17 +24,28 @@ def get_dreambooth_dataset(predictor,
         for i, image in enumerate(images):
             image.save(f'{class_dir}/gen_{i}.jpg')
 
-    dataset = []
-    for image_path in glob.glob(f'{instance_dir}/*'):
-        dataset.append({
-            text_key: instance_prompt,
-            image_key: Image.open(image_path)
+    instance_paths = glob.glob(f'{instance_dir}/*')
+    class_paths = glob.glob(f'{class_dir}/*')
+    dataset = {'train': [], 'test': []}
+    for idx in range(max(len(instance_paths), len(class_paths))):
+        dataset['train'].append({
+            image_key: Image.open(instance_paths[idx % len(instance_paths)]),
+            text_key: instance_prompt
+        })
+        dataset['train'].append({
+            image_key: Image.open(class_paths[idx % len(class_paths)]),
+            text_key: class_prompt
         })
 
-    for image_path in glob.glob(f'{class_dir}/*'):
-        dataset.append({
-            text_key: class_prompt,
-            image_key: Image.open(image_path)
-        })
+    for expression in ['depressed',
+                       'sleeping',
+                       'sad',
+                       'joyous',
+                       'barking',
+                       'crying',
+                       'frowning',
+                       'screaming']:
+        dataset['validation'].append(
+            {text_key: f'A {expression} {instance_prompt}'})
 
     return dataset

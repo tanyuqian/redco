@@ -1,3 +1,4 @@
+import os
 import fire
 import jax
 import optax
@@ -10,21 +11,22 @@ from dreambooth_utils import get_dreambooth_dataset
 
 
 def main(instance_dir='./skr_dog_images',
-         instance_prompt='a photo of sks dog',
+         instance_prompt='sks dog',
          class_dir='./normal_dog_images',
-         class_prompt='a photo of dog',
+         class_prompt='dog',
          n_class_images=200,
          image_key='image',
          text_key='text',
          model_name_or_path='flax/stable-diffusion-2-1-base',
          resolution=512,
          n_infer_steps=50,
-         n_epochs=2,
+         n_epochs=1,
          per_device_batch_size=2,
          eval_per_device_batch_size=2,
          accumulate_grad_batches=2,
-         learning_rate=4e-5,
+         learning_rate=5e-6,
          weight_decay=1e-2,
+         output_dir='outputs',
          jax_seed=42):
     with jax.default_device(jax.devices('cpu')[0]):
         pipeline, pipeline_params = FlaxStableDiffusionPipeline.from_pretrained(
@@ -61,16 +63,19 @@ def main(instance_dir='./skr_dog_images',
         text_key=text_key,
         image_key=image_key)
 
-    print(len(dataset))
+    trainer.fit(
+        train_examples=dataset['train'],
+        per_device_batch_size=per_device_batch_size,
+        n_epochs=n_epochs)
 
-    # trainer.fit(
-    #     train_examples=dataset['train'],
-    #     per_device_batch_size=per_device_batch_size,
-    #     n_epochs=n_epochs,
-    #     eval_examples=dataset['validation'],
-    #     eval_predictor=predictor,
-    #     eval_loss=True,
-    #     eval_per_device_batch_size=eval_per_device_batch_size)
+    images = predictor.predict(
+        examples=dataset['validation'],
+        per_device_batch_size=eval_per_device_batch_size)
+
+    os.makedirs(output_dir, exist_ok=True)
+    for example, image in zip(dataset['validation'], images):
+        save_filename = '_'.join(example[text_key].split())
+        image.save(f'{output_dir}/{save_filename}.jpg')
 
 
 if __name__ == '__main__':
