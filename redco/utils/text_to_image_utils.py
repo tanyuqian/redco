@@ -85,7 +85,7 @@ def text_to_image_default_pred_fn(pred_rng,
     return pipeline._generate(
         prompt_ids=batch['input_ids'],
         params=pipeline_params,
-        prng_seed=jax.random.PRNGKey(pred_rng),
+        prng_seed=pred_rng,
         num_inference_steps=n_infer_steps,
         height=resolution,
         width=resolution)
