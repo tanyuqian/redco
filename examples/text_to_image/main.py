@@ -31,6 +31,8 @@ def main(instance_dir='./skr_dog_images',
     with jax.default_device(jax.devices('cpu')[0]):
         pipeline, pipeline_params = FlaxStableDiffusionPipeline.from_pretrained(
             model_name_or_path)
+        pipeline_params = pipeline.unet.to_fp16(pipeline_params)
+        pipeline_params['unet'] = pipeline.unet.to_fp32(pipeline_params)
 
     lr_schedule_fn = optax.constant_schedule(value=learning_rate)
     optimizer = optax.MultiSteps(
