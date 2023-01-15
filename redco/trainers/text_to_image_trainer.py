@@ -28,7 +28,7 @@ class TextToImageTrainer(Trainer):
         loss_fn = partial(
             text_to_image_default_loss_fn,
             pipeline=pipeline,
-            pipeline_params=pipeline_params)
+            freezed_params=pipeline_params)
 
         super(TextToImageTrainer, self).__init__(
             deployer=deployer,

@@ -28,7 +28,7 @@ class TextToImagePredictor(Predictor):
         pred_fn = partial(
             text_to_image_default_pred_fn,
             pipeline=pipeline,
-            pipeline_params=pipeline_params,
+            freezed_params=pipeline_params,
             n_infer_steps=n_infer_steps,
             resolution=resolution)
 
