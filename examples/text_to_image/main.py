@@ -70,7 +70,8 @@ def main(instance_dir='./skr_dog_images',
 
     images = predictor.predict(
         examples=dataset['validation'],
-        per_device_batch_size=eval_per_device_batch_size)
+        per_device_batch_size=eval_per_device_batch_size,
+        params=trainer.params)
 
     os.makedirs(output_dir, exist_ok=True)
     for example, image in zip(dataset['validation'], images):
