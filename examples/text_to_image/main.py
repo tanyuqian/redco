@@ -70,9 +70,6 @@ def main(instance_dir='./skr_dog_images',
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs)
 
-    params = jax.device_put(trainer.params, jax.devices('cpu')[0])
-    del trainer
-
     images = predictor.predict(
         examples=dataset['validation'],
         per_device_batch_size=eval_per_device_batch_size,
