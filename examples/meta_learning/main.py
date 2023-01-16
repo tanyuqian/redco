@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
-from redco import Deployer, MAMLTrainer, MAMLPredictor
+from redco import Deployer, MAMLTrainer
 
 from utils import CNN, get_torchmeta_dataset, sample_tasks
 
@@ -30,7 +30,7 @@ def main(dataset_name='omniglot',
          n_ways=5,
          n_shots=5,
          n_test_shots=15,
-         n_tasks_per_epoch=10000,
+         n_tasks_per_epoch=100,
          n_epochs=1000,
          learning_rate=1e-3,
          per_device_batch_size=16,
@@ -51,37 +51,21 @@ def main(dataset_name='omniglot',
     dummy_example = sample_tasks(tm_dataset=tm_dataset['train'], n_tasks=1)[0]
     params = model.init(deployer.gen_rng(), np.array(
         dummy_example['train']['inputs']))['params']
-    optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
-        train_size=n_tasks_per_epoch,
-        per_device_batch_size=per_device_batch_size,
-        n_epochs=n_epochs,
-        learning_rate=learning_rate,
-        accumulate_grad_batches=1,
-        warmup_rate=0.,
-        weight_decay=0.)
+    optimizer = optax.adam(learning_rate=learning_rate)
 
     trainer = MAMLTrainer(
         deployer=deployer,
         apply_fn=model.apply,
         params=params,
         optimizer=optimizer,
-        lr_schedule_fn=lr_schedule_fn,
         inner_loss_fn=partial(inner_loss_fn, model=model),
         inner_learning_rate=inner_learning_rate,
         inner_n_steps=inner_n_steps,
-        dummy_example=dummy_example,
         train_key=train_key,
         val_key=val_key)
 
-    predictor = MAMLPredictor(
-        deployer=deployer,
-        inner_loss_fn=partial(inner_loss_fn, model=model),
-        inner_learning_rate=inner_learning_rate,
-        inner_n_steps=inner_n_steps,
-        inner_pred_fn=partial(inner_pred_fn, model=model),
-        output_fn=lambda x: x.tolist(),
-        dummy_example=dummy_example,
-        train_key=train_key, val_key=val_key)
+    predictor = trainer.get_default_predictor(
+        inner_pred_fn=partial(inner_pred_fn, model=model))
 
     eval_examples = sample_tasks(
         tm_dataset=tm_dataset['val'], n_tasks=n_tasks_per_epoch)

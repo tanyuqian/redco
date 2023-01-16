@@ -167,7 +167,7 @@ class Trainer:
             self.train(
                 examples=epoch_train_examples,
                 per_device_batch_size=per_device_batch_size,
-                desc=f'epoch {epoch_idx}')
+                desc=f'epoch {epoch_idx} / {n_epochs}')
 
             if eval_examples is None:
                 pass

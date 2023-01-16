@@ -95,9 +95,14 @@ def text_to_image_default_pred_fn(pred_rng,
                                   freezed_params,
                                   n_infer_steps,
                                   resolution):
+    if 'text_encoder' in params:
+        text_encoder_params = params['text_encoder']
+    else:
+        text_encoder_params = freezed_params['text_encoder']
+
     pred_params = {
         'unet': params['unet'],
-        'text_encoder': freezed_params['text_encoder'],
+        'text_encoder': text_encoder_params,
         'vae': freezed_params['vae'],
         'scheduler': freezed_params['scheduler']
     }

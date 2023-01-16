@@ -11,10 +11,9 @@ class MAMLPredictor(Predictor):
                  inner_learning_rate,
                  inner_n_steps,
                  inner_pred_fn,
-                 output_fn,
-                 dummy_example,
                  train_key='train',
                  val_key='test',
+                 output_fn=None,
                  params=None,
                  params_shard_rules=None):
         collate_fn = partial(
@@ -32,6 +31,5 @@ class MAMLPredictor(Predictor):
             collate_fn=collate_fn,
             pred_fn=pred_fn,
             output_fn=output_fn,
-            dummy_example=dummy_example,
             params=params,
             params_shard_rules=params_shard_rules)
