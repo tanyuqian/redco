@@ -9,7 +9,8 @@ def get_dreambooth_dataset(predictor,
                            instance_desc,
                            class_dir,
                            class_desc,
-                           n_class_images,
+                           n_instance_samples_per_epoch,
+                           n_class_samples_per_epoch,
                            with_prior_preservation,
                            text_key,
                            image_key):
@@ -18,15 +19,17 @@ def get_dreambooth_dataset(predictor,
     if with_prior_preservation:
         if not os.path.exists(class_dir):
             os.makedirs(class_dir)
-        if len(glob.glob(f'{class_dir}/*')) < n_class_images:
             examples_to_predict = \
-                [{text_key: f'a photo of {class_desc}'}] * n_class_images
+                [{text_key: f'a photo of {class_desc}'}] * \
+                n_class_samples_per_epoch
             images = predictor.predict(
                 examples=examples_to_predict,
                 per_device_batch_size=per_device_batch_size)
 
             for i, image in enumerate(images):
                 image.save(f'{class_dir}/gen_{i}.jpg')
+        else:
+            assert len(glob.glob(f'{class_dir}/*')) >= n_class_samples_per_epoch
 
         for class_image_path in glob.glob(f'{class_dir}/*'):
             dataset['train'].append({
@@ -35,7 +38,7 @@ def get_dreambooth_dataset(predictor,
             })
 
     instance_paths = glob.glob(f'{instance_dir}/*')
-    for idx in range(max(len(instance_paths), n_class_images)):
+    for idx in range(n_instance_samples_per_epoch):
         dataset['train'].append({
             image_key: Image.open(instance_paths[idx % len(instance_paths)]),
             text_key: f'a photo of {instance_desc}'

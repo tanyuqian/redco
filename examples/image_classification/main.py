@@ -2,7 +2,6 @@ from functools import partial
 import fire
 import numpy as np
 
-import jax
 import jax.numpy as jnp
 from flax import linen as nn
 import optax
