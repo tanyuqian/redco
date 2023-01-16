@@ -35,7 +35,7 @@ def main(instance_dir='./skr_dog_images',
             model_name_or_path)
 
         params = {}
-        for key in pipeline_params:
+        for key in list(pipeline_params.keys()):
             if key == 'unet' or (train_text_encoder and key == 'text_encoder'):
                 params[key] = pipeline_params.pop(key)
 
