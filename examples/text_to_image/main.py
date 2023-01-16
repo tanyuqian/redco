@@ -11,16 +11,18 @@ from dreambooth_utils import get_dreambooth_dataset
 
 
 def main(instance_dir='./skr_dog_images',
-         instance_prompt='skr dog',
+         instance_desc='skr dog',
          class_dir='./normal_dog_images',
-         class_prompt='dog',
+         class_desc='dog',
          n_class_images=200,
          image_key='image',
          text_key='text',
          model_name_or_path='duongna/stable-diffusion-v1-4-flax',
          resolution=512,
          n_infer_steps=50,
-         n_epochs=40,
+         n_epochs=8,
+         with_prior_preservation=False,
+         train_text_encoder=False,
          per_device_batch_size=2,
          eval_per_device_batch_size=2,
          accumulate_grad_batches=2,
@@ -31,12 +33,17 @@ def main(instance_dir='./skr_dog_images',
     with jax.default_device(jax.devices('cpu')[0]):
         pipeline, pipeline_params = FlaxStableDiffusionPipeline.from_pretrained(
             model_name_or_path)
-        pipeline_params = pipeline.unet.to_fp16(pipeline_params)
-        pipeline_params['unet'] = pipeline.unet.to_fp32(pipeline_params['unet'])
 
-    lr_schedule_fn = optax.constant_schedule(value=learning_rate)
+        params = {}
+        for key in pipeline_params:
+            if key == 'unet' or (train_text_encoder and key == 'text_encoder'):
+                params[key] = pipeline_params.pop(key)
+
+        pipeline_params = pipeline.unet.to_fp16(pipeline_params)
+        params = pipeline.unet.to_fp32(params)
+
     optimizer = optax.MultiSteps(
-        optax.adamw(learning_rate=lr_schedule_fn, weight_decay=weight_decay),
+        optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay),
         every_k_schedule=accumulate_grad_batches)
 
     deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=1)
@@ -44,10 +51,10 @@ def main(instance_dir='./skr_dog_images',
     trainer = TextToImageTrainer(
         deployer=deployer,
         pipeline=pipeline,
-        pipeline_params=pipeline_params,
+        params=params,
+        freezed_params=pipeline_params,
         resolution=resolution,
         optimizer=optimizer,
-        learning_rate=lr_schedule_fn,
         image_key=image_key,
         text_key=text_key,
         params_shard_rules=None)
@@ -58,12 +65,13 @@ def main(instance_dir='./skr_dog_images',
         predictor=predictor,
         per_device_batch_size=eval_per_device_batch_size,
         instance_dir=instance_dir,
-        instance_prompt=instance_prompt,
+        instance_desc=instance_desc,
         class_dir=class_dir,
-        class_prompt=class_prompt,
+        class_desc=class_desc,
         n_class_images=n_class_images,
         text_key=text_key,
-        image_key=image_key)
+        image_key=image_key,
+        with_prior_preservation=with_prior_preservation)
 
     trainer.fit(
         train_examples=dataset['train'],

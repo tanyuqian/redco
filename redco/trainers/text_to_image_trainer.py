@@ -11,12 +11,13 @@ class TextToImageTrainer(Trainer):
     def __init__(self,
                  deployer,
                  pipeline,
-                 pipeline_params,
+                 params,
+                 freezed_params,
                  resolution,
                  optimizer,
-                 learning_rate,
                  image_key='image',
                  text_key='text',
+                 lr_schedule_fn=None,
                  params_shard_rules=None):
         collate_fn = partial(
             text_to_image_default_collate_fn,
@@ -28,27 +29,27 @@ class TextToImageTrainer(Trainer):
         loss_fn = partial(
             text_to_image_default_loss_fn,
             pipeline=pipeline,
-            freezed_params=pipeline_params)
+            freezed_params=freezed_params)
 
         super(TextToImageTrainer, self).__init__(
             deployer=deployer,
             collate_fn=collate_fn,
             apply_fn=lambda x: None,
             loss_fn=loss_fn,
-            params={'unet': pipeline_params['unet']},
+            params=params,
             optimizer=optimizer,
-            learning_rate=learning_rate,
+            lr_schedule_fn=lr_schedule_fn,
             params_shard_rules=params_shard_rules)
 
         self._default_predictor_fn = partial(
             TextToImagePredictor,
             deployer=deployer,
             pipeline=pipeline,
-            pipeline_params=pipeline_params,
+            freezed_params=freezed_params,
             resolution=resolution,
             image_key=image_key,
             text_key=text_key,
-            params={'unet': pipeline_params['unet']},
+            params=params,
             params_shard_rules=params_shard_rules)
 
     def get_default_predictor(self, n_infer_steps):
