@@ -6,9 +6,10 @@ import numpy as np
 import jax
 from jax.experimental.pjit import pjit
 from jax.experimental.pjit import PartitionSpec as P
+from flax.jax_utils import replicate
+from flax.training.train_state import TrainState
 
-from .utils import \
-    TrainState, default_train_step, default_eval_step, get_lr_schedule_fn
+from .utils import default_train_step, default_eval_step
 
 
 class Trainer:
@@ -19,40 +20,33 @@ class Trainer:
                  loss_fn,
                  params,
                  optimizer,
-                 learning_rate,
+                 lr_schedule_fn=None,
                  params_shard_rules=None):
         self._deployer = deployer
         self._collate_fn = collate_fn
+        self._loss_fn = loss_fn
+        self._lr_schedule_fn = lr_schedule_fn
 
         self._state = None
         self._state_spec = None
+        self._p_train_step = None
+        self._p_eval_step = None
 
         self.create_train_state(
             apply_fn=apply_fn,
             params=params,
             params_shard_rules=params_shard_rules,
-            optimizer=optimizer,
-            lr_schedule_fn=get_lr_schedule_fn(learning_rate=learning_rate))
-
-        self._loss_fn = loss_fn
-        self._p_train_step = None
-        self._p_eval_step = None
+            optimizer=optimizer)
 
     def create_train_state(self,
                            apply_fn,
                            params,
                            params_shard_rules,
-                           optimizer,
-                           lr_schedule_fn):
+                           optimizer):
         if self._deployer.mesh is None:
             self._state = TrainState.create(
-                apply_fn=apply_fn,
-                params=params,
-                tx=optimizer,
-                train_rng=self._deployer.gen_rng(),
-                lr_schedule_fn=lr_schedule_fn)
-
-            self._state = self._state.replicate()
+                apply_fn=apply_fn, params=params, tx=optimizer)
+            self._state = replicate(self._state)
         else:
             params_spec = self._deployer.get_params_spec(
                 params=params, shard_rules=params_shard_rules)
@@ -66,8 +60,6 @@ class Trainer:
                 params=params,
                 tx=optimizer,
                 opt_state=opt_state,
-                train_rng=self._deployer.gen_rng(),
-                lr_schedule_fn=lr_schedule_fn,
                 step=0)
 
             self._state_spec = TrainState(
@@ -75,18 +67,25 @@ class Trainer:
                 params=params_spec,
                 tx=optimizer,
                 opt_state=opt_state_spec,
-                train_rng=None,
-                lr_schedule_fn=lr_schedule_fn,
                 step=None)
 
-    def setup_running_step(self, loss_fn, dummy_batch):
+    def setup_running_step(self, dummy_batch):
+        train_step_fn = partial(
+            default_train_step,
+            loss_fn=self._loss_fn,
+            lr_schedule_fn=self._lr_schedule_fn,
+            under_pmap=(self._deployer.mesh is None))
+
+        eval_step_fn = partial(
+            default_eval_step,
+            loss_fn=self._loss_fn,
+            under_pmap=(self._deployer.mesh is None))
+
         if self._deployer.mesh is None:
-            self._p_train_step = jax.pmap(partial(
-                default_train_step, loss_fn=loss_fn, under_pmap=True),
-                axis_name='batch')
-            self._p_eval_step = jax.pmap(partial(
-                default_eval_step, loss_fn=loss_fn, under_pmap=True),
-                axis_name='batch')
+            del dummy_batch
+
+            self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
+            self._p_eval_step = jax.pmap(eval_step_fn, axis_name='batch')
         else:
             data_spec = {
                 key: P(*(('dp',) + (None,) * (len(value.shape) - 1)))
@@ -94,13 +93,13 @@ class Trainer:
             }
 
             self._p_train_step = pjit(
-                partial(default_train_step, loss_fn=loss_fn, under_pmap=False),
-                in_axis_resources=(self._state_spec, data_spec),
+                train_step_fn,
+                in_axis_resources=(None, self._state_spec, data_spec),
                 out_axis_resources=(self._state_spec, None),
-                donate_argnums=(0,))
+                donate_argnums=(0, 1))
 
             self._p_eval_step = pjit(
-                partial(default_eval_step, loss_fn=loss_fn, under_pmap=False),
+                eval_step_fn,
                 in_axis_resources=(self._state_spec, data_spec),
                 out_axis_resources=None)
 
@@ -115,11 +114,13 @@ class Trainer:
 
         for batch in data_batches:
             if self._p_train_step is None:
-                self.setup_running_step(
-                    loss_fn=self._loss_fn, dummy_batch=batch)
+                self.setup_running_step(dummy_batch=batch)
 
+            train_rng = self._deployer.process_to_run_model(
+                self._deployer.gen_rng())
             self._state, metrics = self._deployer.run_model_step(
-                step_fn=self._p_train_step, input_args=(self._state, batch))
+                step_fn=self._p_train_step,
+                input_args=(train_rng, self._state, batch))
 
             metrics = self._deployer.process_to_deliver(metrics)
             data_batches.set_postfix(**metrics)
@@ -136,8 +137,7 @@ class Trainer:
         losses = []
         for batch in data_batches:
             if self._p_eval_step is None:
-                self.setup_running_step(
-                    loss_fn=self._loss_fn, dummy_batch=batch)
+                self.setup_running_step(dummy_batch=batch)
 
             metrics = self._deployer.run_model_step(
                 step_fn=self._p_eval_step, input_args=(self._state, batch))

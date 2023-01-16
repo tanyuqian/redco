@@ -13,12 +13,12 @@ class TextToTextTrainer(Trainer):
                  model,
                  params,
                  optimizer,
-                 learning_rate,
                  tokenizer,
                  max_src_len,
                  max_tgt_len,
                  src_key='src',
                  tgt_key='tgt',
+                 lr_schedule_fn=None,
                  params_shard_rules=None):
         collate_fn = partial(
             text_to_text_default_collate_fn,
@@ -36,7 +36,7 @@ class TextToTextTrainer(Trainer):
             params=params,
             optimizer=optimizer,
             deployer=deployer,
-            learning_rate=learning_rate,
+            lr_schedule_fn=lr_schedule_fn,
             params_shard_rules=params_shard_rules)
 
         self._default_predictor_fn = partial(

@@ -41,18 +41,18 @@ def collate_fn(examples):
     }
 
 
-def loss_fn(state, params, batch, train):
-    _, dropout_rng = jax.random.split(state.train_rng)
+def loss_fn(train_rng, state, params, batch, is_training):
     logits = state.apply_fn(
         {'params': params}, batch['images'],
-        training=train, rngs={'dropout': dropout_rng})
+        training=is_training, rngs={'dropout': train_rng})
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch['labels'])
     return jnp.mean(loss)
 
 
 def pred_fn(pred_rng, batch, params, model):
-    return model.apply({'params': params}, batch['images'], training=False).argmax(axis=-1)
+    return model.apply(
+        {'params': params}, batch['images'], training=False).argmax(axis=-1)
 
 
 def eval_metric_fn(eval_results):
@@ -84,8 +84,7 @@ def main(data_dir='./data/',
         apply_fn=model.apply,
         loss_fn=loss_fn,
         params=params,
-        optimizer=optimizer,
-        learning_rate=learning_rate)
+        optimizer=optimizer)
 
     predictor = Predictor(
         deployer=deployer,

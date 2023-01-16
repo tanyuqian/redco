@@ -34,12 +34,12 @@ def collate_fn(examples):
     }
 
 
-def loss_fn(state, params, batch, train):
+def loss_fn(train_rng, state, params, batch, is_training):
     logits = state.apply_fn({'params': params}, batch['images'])
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch['labels'])
     return jnp.mean(loss)
 
 
-def pred_fn(batch, params, model):
+def pred_fn(pred_rng, batch, params, model):
     return model.apply({'params': params}, batch['images']).argmax(axis=-1)

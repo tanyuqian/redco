@@ -6,7 +6,7 @@ import gymnasium as gym
 from ppo_utils import PPOAgent, Transition
 
 
-def main(env_name='CartPole-v1',
+def main(env_name='Acrobot-v1',
          n_episodes=1000,
          actor_lr=1e-3,
          critic_lr=1e-2,
@@ -56,7 +56,11 @@ def main(env_name='CartPole-v1',
 
     env.close()
 
-    plt.plot(np.arange(len(episode_rewards)), episode_rewards)
+    plt.plot(np.arange(len(episode_rewards)), episode_rewards, label='ppo')
+    plt.xlabel('Episode')
+    plt.ylabel('Reward')
+    plt.title(env_name)
+    plt.legend()
     plt.show()
 
 

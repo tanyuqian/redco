@@ -1,6 +1,5 @@
 import numpy as np
 
-import jax
 import jax.numpy as jnp
 import optax
 
@@ -46,13 +45,12 @@ def text_to_text_default_collate_fn(examples,
     return model_inputs
 
 
-def text_to_text_default_loss_fn(state, params, batch, train):
+def text_to_text_default_loss_fn(train_rng, state, params, batch, is_training):
     labels = batch.pop("labels")
     label_weights = batch['decoder_attention_mask']
 
-    _, dropout_rng = jax.random.split(state.train_rng)
     logits = state.apply_fn(
-        **batch, params=params, dropout_rng=dropout_rng, train=train)[0]
+        **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
 
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
@@ -60,11 +58,12 @@ def text_to_text_default_loss_fn(state, params, batch, train):
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def text_to_text_default_pred_fn(batch, params, model, gen_kwargs):
+def text_to_text_default_pred_fn(pred_rng, batch, params, model, gen_kwargs):
     output_ids = model.generate(
         input_ids=batch['input_ids'],
         attention_mask=batch['attention_mask'],
         params=params,
+        prng_key=pred_rng,
         **gen_kwargs)
     return output_ids.sequences
 

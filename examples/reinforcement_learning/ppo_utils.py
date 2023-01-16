@@ -35,7 +35,8 @@ class PPOAgent:
                 learning_rate=actor_lr,
                 input_dim=state_dim,
                 loss_fn=partial(actor_loss_fn, epsilon=epsilon),
-                pred_fn=partial(pred_fn, model=actor_model))
+                pred_fn=partial(pred_fn, model=actor_model),
+                output_fn=None)
 
         critic_model = MLP(output_dim=1)
         self._critic_trainer, self._critic_predictor = \
@@ -145,8 +146,13 @@ class MLP(nn.Module):
         return nn.Dense(features=self.output_dim)(x)
 
 
-def get_trainer_and_predictor(
-        deployer, model, learning_rate, input_dim, loss_fn, pred_fn, output_fn):
+def get_trainer_and_predictor(deployer,
+                              model,
+                              learning_rate,
+                              input_dim,
+                              loss_fn,
+                              pred_fn,
+                              output_fn):
     params = model.init(deployer.gen_rng(), jnp.zeros((1, input_dim)))['params']
     optimizer = optax.adam(learning_rate=learning_rate)
 
@@ -156,8 +162,7 @@ def get_trainer_and_predictor(
         apply_fn=model.apply,
         loss_fn=loss_fn,
         params=params,
-        optimizer=optimizer,
-        learning_rate=learning_rate)
+        optimizer=optimizer)
 
     predictor = Predictor(
         deployer=deployer,
@@ -177,7 +182,7 @@ def collate_fn(examples):
     return batch
 
 
-def actor_loss_fn(state, params, batch, train, epsilon):
+def actor_loss_fn(train_rng, state, params, batch, is_training, epsilon):
     log_probs = nn.log_softmax(
         state.apply_fn({'params': params}, batch['states']))
     log_probs = jnp.take_along_axis(
@@ -189,10 +194,10 @@ def actor_loss_fn(state, params, batch, train, epsilon):
         jnp.clip(ratio, 1. - epsilon, 1. + epsilon) * batch['advantages']))
 
 
-def critic_loss_fn(state, params, batch, train):
+def critic_loss_fn(train_rng, state, params, batch, is_training):
     return jnp.mean(jnp.square(state.apply_fn(
         {'params': params}, batch['states'])[:, 0] - batch['td_targets']))
 
 
-def pred_fn(batch, params, model):
+def pred_fn(pred_rng, batch, params, model):
     return model.apply({'params': params}, batch['states'])

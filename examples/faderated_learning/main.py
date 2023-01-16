@@ -15,7 +15,7 @@ from redco import Deployer, Trainer, Predictor
 
 
 class FedAvgServer:
-    def __init__(self, deployer, model, params, n_clients, dummy_example):
+    def __init__(self, deployer, model, params, n_clients):
         self._deployer = deployer
         self._model = model
         self._params = params
@@ -27,21 +27,17 @@ class FedAvgServer:
             apply_fn=self._model.apply,
             loss_fn=loss_fn,
             params=params,
-            optimizer=optax.adam(learning_rate=0.),
-            lr_schedule_fn=lambda t: 0.,
-            dummy_example=dummy_example)
+            optimizer=optax.adam(learning_rate=0.))
 
         self._predictor = Predictor(
             deployer=self._deployer,
             collate_fn=collate_fn,
             pred_fn=partial(pred_fn, model=self._model),
             output_fn=lambda x: x.tolist(),
-            params=self._params,
-            dummy_example=dummy_example)
+            params=self._params)
 
     def train_client(self,
                      examples,
-                     params,
                      learning_rate,
                      per_device_batch_size,
                      n_epochs):
@@ -49,8 +45,7 @@ class FedAvgServer:
             apply_fn=self._model.apply,
             params=self._params,
             params_shard_rules=None,
-            optimizer=optax.adam(learning_rate=learning_rate),
-            lr_schedule_fn=lambda t: learning_rate)
+            optimizer=optax.adam(learning_rate=learning_rate))
 
         self._trainer.fit(
             train_examples=examples,
@@ -89,7 +84,6 @@ class FedAvgServer:
             for client_idx in round_client_idxes:
                 client_params = self.train_client(
                     examples=client_train_datasets[client_idx],
-                    params=self._params,
                     learning_rate=learning_rate,
                     per_device_batch_size=per_device_batch_size,
                     n_epochs=n_client_epochs_per_round)
@@ -133,11 +127,7 @@ def main(data_dir='./data',
     params = model.init(deployer.gen_rng(), dummy_batch['images'])['params']
 
     server = FedAvgServer(
-        deployer=deployer,
-        model=model,
-        params=params,
-        n_clients=n_clients,
-        dummy_example=eval_dataset[0])
+        deployer=deployer, model=model, params=params, n_clients=n_clients)
 
     server.run(
         n_rounds=n_rounds,
