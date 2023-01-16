@@ -33,8 +33,7 @@ class TextToImagePredictor(Predictor):
             resolution=resolution)
 
         output_fn = partial(
-            text_to_image_default_output_fn,
-            numpy_to_pil_fn=pipeline.numpy_to_pil)
+            text_to_image_default_output_fn, pipeline=pipeline)
 
         super(TextToImagePredictor, self).__init__(
             deployer=deployer,

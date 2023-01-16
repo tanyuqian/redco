@@ -32,9 +32,9 @@ def text_to_image_default_collate_fn(examples,
 
 
 def text_to_image_default_loss_fn(
-        state, params, batch, train, pipeline, freezed_params):
+        train_rng, state, params, batch, is_training, pipeline, freezed_params):
     dropout_rng, sample_rng, noise_rng, timestep_rng = \
-        jax.random.split(state.train_rng, num=4)
+        jax.random.split(train_rng, num=4)
 
     # Convert images to latent space
     vae_outputs = pipeline.vae.apply(
@@ -69,7 +69,7 @@ def text_to_image_default_loss_fn(
             batch["input_ids"],
             params=params["text_encoder"],
             dropout_rng=dropout_rng,
-            train=train)[0]
+            train=is_training)[0]
     else:
         encoder_hidden_states = pipeline.text_encoder(
             batch["input_ids"],
@@ -82,7 +82,7 @@ def text_to_image_default_loss_fn(
         sample=noisy_latents,
         timesteps=timesteps,
         encoder_hidden_states=encoder_hidden_states,
-        train=train)
+        train=is_training)
     noise_pred = unet_outputs.sample
 
     return jnp.mean(jnp.square(noise - noise_pred))
@@ -111,5 +111,5 @@ def text_to_image_default_pred_fn(pred_rng,
         width=resolution)
 
 
-def text_to_image_default_output_fn(batch_preds, numpy_to_pil_fn):
-    return numpy_to_pil_fn(np.asarray(batch_preds))
+def text_to_image_default_output_fn(batch_preds, pipeline):
+    return pipeline.numpy_to_pil(np.asarray(batch_preds))
