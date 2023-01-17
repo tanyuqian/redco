@@ -107,7 +107,8 @@ def main(dataset_name='cnn_dailymail',
     gen_kwargs = {
         'max_length': max_length,
         'do_sample': True,
-        'top_p': top_p
+        'top_p': top_p,
+        'pad_token_id': tokenizer.eos_token_id
     }
 
     predictor = Predictor(
