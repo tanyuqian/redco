@@ -56,7 +56,7 @@ def output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
 
 
-def main(dataset_name=('cnn_dailymail', '3.0.0'),
+def main(dataset_name='cnn_dailymail',
          text_key='article',
          model_name_or_path='gpt2',
          mesh_model_shards=1,
@@ -70,7 +70,7 @@ def main(dataset_name=('cnn_dailymail', '3.0.0'),
          weight_decay=0.,
          top_p=0.96,
          jax_seed=42):
-    dataset = datasets.load_dataset(dataset_name)
+    dataset = datasets.load_dataset(dataset_name, '3.0.0')
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
@@ -96,7 +96,7 @@ def main(dataset_name=('cnn_dailymail', '3.0.0'),
             tokenizer=tokenizer,
             text_key=text_key,
             max_length=max_length),
-        apply_fn=model.__call_,
+        apply_fn=model.__call__,
         loss_fn=loss_fn,
         params=freeze(model.params),
         optimizer=optimizer,
