@@ -31,7 +31,8 @@ def get_dreambooth_dataset(predictor,
         else:
             assert len(glob.glob(f'{class_dir}/*')) >= n_class_samples_per_epoch
 
-        for class_image_path in glob.glob(f'{class_dir}/*'):
+        for class_image_path in \
+                glob.glob(f'{class_dir}/*')[:n_class_samples_per_epoch]:
             dataset['train'].append({
                 image_key: Image.open(class_image_path),
                 text_key: f'a photo of {class_desc}'
