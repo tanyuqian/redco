@@ -58,7 +58,7 @@ def output_fn(batch_preds, tokenizer):
 
 def main(dataset_name='cnn_dailymail',
          text_key='article',
-         model_name_or_path='facebook/opt-1.3b',
+         model_name_or_path='facebook/opt-350m',
          mesh_model_shards=2,
          n_epochs=2,
          per_device_batch_size=1,
