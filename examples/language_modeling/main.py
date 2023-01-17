@@ -119,7 +119,7 @@ def main(dataset_name='cnn_dailymail',
             text_key=text_key,
             max_length=1),
         pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
-        output_fn=partial(output_fn, tokenizer),
+        output_fn=partial(output_fn, tokenizer=tokenizer),
         params=freeze(model.params),
         params_shard_rules=get_shard_rules(model_type=model.config.model_type))
 
