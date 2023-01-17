@@ -56,7 +56,7 @@ def output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
 
 
-def main(dataset_name='cnn_dailymail/3.0.0',
+def main(dataset_name=('cnn_dailymail', '3.0.0'),
          text_key='article',
          model_name_or_path='gpt2',
          mesh_model_shards=1,
@@ -124,7 +124,11 @@ def main(dataset_name='cnn_dailymail/3.0.0',
     trainer.fit(
         train_examples=dataset['train'],
         n_epochs=n_epochs,
-        per_device_batch_size=per_device_batch_size)
+        per_device_batch_size=per_device_batch_size,
+        eval_examples=dataset['validation'],
+        eval_per_device_batch_size=eval_per_device_batch_size,
+        eval_loss=True,
+        eval_predictor=predictor)
 
 
 if __name__ == '__main__':
