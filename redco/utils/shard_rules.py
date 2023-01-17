@@ -4,6 +4,8 @@ from jax.experimental.pjit import PartitionSpec as P
 def get_shard_rules(model_type):
     if model_type == 't5':
         return _get_partition_rules_t5_v1_1()
+    elif model_type == 'gptj':
+        return _get_partition_rules_gptj()
     elif model_type == 'bart':
         return _get_partition_rules_bart()
     else:
@@ -30,6 +32,29 @@ def _get_partition_rules_t5_v1_1():
         (("final_layer_norm", "weight"), None),
         # output head
         (("lm_head", "kernel"), P(None, "mp")),
+    ]
+
+
+def _get_partition_rules_gptj():
+    return [
+        # embeddings
+        (("transformer", "wte", "embedding"), P(None, 'mp')),
+        # atention
+        (("attn", "(k_proj|q_proj|v_proj)", "kernel"), P(None, "mp")),
+        (("attn", "out_proj", "kernel"), P("mp", None)),
+        # mlp
+        (("mlp", "fc_in", "kernel"), P(None, "mp")),
+        (("mlp", "fc_in", "bias"), P("mp")),
+        (("mlp", "fc_out", "kernel"), P("mp", None)),
+        (("mlp", "fc_out", "bias"), None),
+        # layer norms
+        ((r"ln_\d+", "bias"), None),
+        ((r"\d+", r"ln_\d+", "scale"), None),
+        (("ln_f", "bias"), None),
+        (("ln_f", "scale"), None),
+        # output head
+        (("lm_head", "kernel"), P(None, "mp")),
+        (("lm_head", "bias"), P("mp")),
     ]
 
 
