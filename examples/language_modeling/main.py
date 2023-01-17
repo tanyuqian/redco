@@ -74,6 +74,7 @@ def main(dataset_name='cnn_dailymail',
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+    tokenizer.pad_token = tokenizer.eos_token
     with jax.default_device(jax.devices('cpu')[0]):
         model = FlaxAutoModelForCausalLM.from_pretrained(model_name_or_path)
         model.params = model.to_fp32(model.params)
