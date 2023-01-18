@@ -58,8 +58,8 @@ def output_fn(batch_preds, tokenizer):
 
 def main(dataset_name='cnn_dailymail',
          text_key='article',
-         model_name_or_path='facebook/opt-350m',
-         mesh_model_shards=2,
+         model_name_or_path='EleutherAI/gpt-j-6B',
+         mesh_model_shards=8,
          n_epochs=2,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
@@ -90,6 +90,8 @@ def main(dataset_name='cnn_dailymail',
         warmup_rate=warmup_rate,
         weight_decay=weight_decay)
 
+    params_shard_rules = deployer.guess_shard_rules(params=model.params)
+
     trainer = Trainer(
         deployer=deployer,
         collate_fn=partial(
@@ -102,7 +104,7 @@ def main(dataset_name='cnn_dailymail',
         params=freeze(model.params),
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
-        params_shard_rules=get_shard_rules(model_type=model.config.model_type))
+        params_shard_rules=params_shard_rules)
 
     gen_kwargs = {
         'max_length': max_length,
@@ -121,7 +123,7 @@ def main(dataset_name='cnn_dailymail',
         pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
         output_fn=partial(output_fn, tokenizer=tokenizer),
         params=freeze(model.params),
-        params_shard_rules=get_shard_rules(model_type=model.config.model_type))
+        params_shard_rules=params_shard_rules)
 
     trainer.fit(
         train_examples=dataset['train'],

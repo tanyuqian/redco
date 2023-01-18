@@ -10,7 +10,8 @@ from .model_parallel_utils.mesh_utils import (
     get_host_batch_size,
     shard_params_and_opt_state,
     shard_params,
-    get_param_spec)
+    get_param_spec,
+    guess_shard_rules)
 
 
 class Deployer:
@@ -97,6 +98,13 @@ class Deployer:
             accumulate_grad_batches=accumulate_grad_batches,
             warmup_rate=warmup_rate,
             weight_decay=weight_decay)
+
+    def guess_shard_rules(self, params):
+        if self._mesh is None:
+            return None
+        else:
+            return guess_shard_rules(
+                params=params, mesh_model_shards=self._mesh.shape[1])
 
     def get_params_spec(self, params, shard_rules):
         return get_param_spec(params=params, shard_rules=shard_rules)

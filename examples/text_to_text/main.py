@@ -8,7 +8,7 @@ from flax.core.frozen_dict import freeze
 
 from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 
-from redco import Deployer, TextToTextTrainer, get_shard_rules
+from redco import Deployer, TextToTextTrainer
 
 
 def eval_rouge(eval_results, tgt_key):
@@ -68,7 +68,7 @@ def main(dataset_name='xsum',
         max_tgt_len=max_tgt_len,
         src_key=src_key,
         tgt_key=tgt_key,
-        params_shard_rules=get_shard_rules(model_type=model.config.model_type))
+        params_shard_rules=deployer.guess_shard_rules(params=model.params))
 
     predictor = trainer.get_default_predictor(
         gen_kwargs={'max_length': max_tgt_len, 'num_beams': num_beams})
