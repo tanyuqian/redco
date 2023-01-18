@@ -105,7 +105,7 @@ def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
 
         elif key[-1] == 'embedding':
             assert len(param.shape) == 2
-            if param.shape[0] % mesh_model_shards == 0:
+            if param.shape[0] % mesh_model_shards != 0:
                 shard_rules[('embedding')] = P(None, 'mp')
 
         else:
