@@ -96,7 +96,7 @@ class Trainer:
                 train_step_fn,
                 in_axis_resources=(None, self._state_spec, data_spec),
                 out_axis_resources=(self._state_spec, None),
-                donate_argnums=(0, 1))
+                donate_argnums=(1, ))
 
             self._p_eval_step = pjit(
                 eval_step_fn,
