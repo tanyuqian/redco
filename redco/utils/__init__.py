@@ -1,1 +1,0 @@
-from .shard_rules import get_shard_rules
