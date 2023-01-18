@@ -10,7 +10,7 @@ import optax
 
 from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
 
-from redco import Deployer, Trainer, Predictor, get_shard_rules
+from redco import Deployer, Trainer, Predictor
 
 
 def collate_fn(examples, tokenizer, text_key, max_length):
@@ -58,8 +58,8 @@ def output_fn(batch_preds, tokenizer):
 
 def main(dataset_name='cnn_dailymail',
          text_key='article',
-         model_name_or_path='EleutherAI/gpt-j-6B',
-         mesh_model_shards=8,
+         model_name_or_path='facebook/opt-350m',
+         mesh_model_shards=2,
          n_epochs=2,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
