@@ -89,8 +89,8 @@ def under_attention(flat_param_key):
 
 def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
     shard_rules = {
-        ('(bias|scale)'): None,
-        ('embedding'): P('mp', None),
+        ('(bias|scale)', ): None,
+        ('embedding', ): P('mp', None),
     }
 
     last_dense_mp_dim = None
