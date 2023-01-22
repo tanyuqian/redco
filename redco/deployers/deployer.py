@@ -25,8 +25,7 @@ class Deployer:
             batch_size = per_device_batch_size * jax.local_device_count()
             global_batch_size = batch_size * jax.process_count()
         else:
-            global_batch_size = \
-                per_device_batch_size * self._mesh.devices.shape[0]
+            global_batch_size = per_device_batch_size * self._mesh.shape['dp']
             batch_size = get_host_batch_size(
                 global_batch_size=global_batch_size, mesh=self._mesh)
 
@@ -104,7 +103,7 @@ class Deployer:
             return None
         else:
             return guess_shard_rules(
-                params=params, mesh_model_shards=self._mesh.shape[1])
+                params=params, mesh_model_shards=self._mesh.shape['mp'])
 
     def get_params_spec(self, params, shard_rules):
         return get_param_spec(params=params, shard_rules=shard_rules)

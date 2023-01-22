@@ -109,13 +109,13 @@ def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
                 shard_rules[('embedding', )] = P(None, 'mp')
 
         else:
-            if rule_key in shard_rules:
+            if len(param.squeeze().shape) == 1:
+                shard_rules[rule_key] = None
+
+            elif rule_key in shard_rules:
                 for dim_size, rule_str in zip(
                         param.shape, shard_rules[rule_key]):
                     assert rule_str != 'mp' or dim_size % mesh_model_shards == 0
-
-            elif len(param.squeeze().shape) == 1:
-                shard_rules[rule_key] = None
 
             elif under_attention(key) and rule_key[0][0] == 'o':
                 shard_rules[rule_key] = P('mp', None)
