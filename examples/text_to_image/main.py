@@ -1,3 +1,4 @@
+from functools import partial
 import os
 import fire
 import jax
@@ -7,7 +8,8 @@ from diffusers import FlaxStableDiffusionPipeline
 
 from redco import Deployer, TextToImageTrainer
 
-from dreambooth_utils import get_dreambooth_dataset
+from dreambooth_utils import \
+    get_dreambooth_dataset, dreambooth_image_preprocess_fn
 
 
 def main(instance_dir='./skr_dog_images',
@@ -47,8 +49,10 @@ def main(instance_dir='./skr_dog_images',
         optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay),
         every_k_schedule=accumulate_grad_batches)
 
-    deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=1)
+    deployer = Deployer(jax_seed=jax_seed)
 
+    image_preprocess_fn = partial(
+        dreambooth_image_preprocess_fn, resolution=resolution)
     trainer = TextToImageTrainer(
         deployer=deployer,
         pipeline=pipeline,
@@ -56,6 +60,7 @@ def main(instance_dir='./skr_dog_images',
         freezed_params=pipeline_params,
         resolution=resolution,
         optimizer=optimizer,
+        coscum_image_preprocess_fn=image_preprocess_fn,
         image_key=image_key,
         text_key=text_key,
         params_shard_rules=None)

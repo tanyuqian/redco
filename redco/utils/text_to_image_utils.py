@@ -1,9 +1,11 @@
+from functools import partial
+
 import numpy as np
 import jax
 import jax.numpy as jnp
 
 
-def preprocess(image, resolution, dtype):
+def default_image_preprocess_fn(image, resolution, dtype=np.float16):
     image = image.convert('RGB').resize((resolution, resolution))
     image = np.array(image, dtype=dtype) / 255.0
     image = image.transpose(2, 0, 1)
@@ -13,6 +15,7 @@ def preprocess(image, resolution, dtype):
 def text_to_image_default_collate_fn(examples,
                                      pipeline,
                                      resolution,
+                                     costum_image_preprocess_fn=None,
                                      image_key='image',
                                      text_key='text'):
     batch = pipeline.tokenizer(
@@ -23,10 +26,14 @@ def text_to_image_default_collate_fn(examples,
         return_tensors='np')
 
     if image_key in examples[0]:
+        if costum_image_preprocess_fn is not None:
+            image_preprocess_fn = costum_image_preprocess_fn
+        else:
+            image_preprocess_fn = partial(
+                default_image_preprocess_fn, resolution=resolution)
+
         batch['pixel_values'] = np.stack([
-            preprocess(
-                example[image_key], resolution=resolution, dtype=np.float16)
-            for example in examples])
+            image_preprocess_fn(example[image_key]) for example in examples])
 
     return batch
 

@@ -17,12 +17,14 @@ class TextToImageTrainer(Trainer):
                  optimizer,
                  image_key='image',
                  text_key='text',
+                 coscum_image_preprocess_fn=None,
                  lr_schedule_fn=None,
                  params_shard_rules=None):
         collate_fn = partial(
             text_to_image_default_collate_fn,
             pipeline=pipeline,
             resolution=resolution,
+            coscum_image_preprocess_fn=coscum_image_preprocess_fn,
             image_key=image_key,
             text_key=text_key)
 
