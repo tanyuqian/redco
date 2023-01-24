@@ -25,6 +25,8 @@ def get_logger(verbose):
 
 
 def log_info(logger, info, title):
+    info = str(info)
+
     if title is not None:
         max_len = max(max([len(t) for t in info.split('\n')]), len(title) + 4)
 

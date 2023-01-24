@@ -41,7 +41,7 @@ class Trainer:
 
         n_params = \
             sum(np.prod(param.shape) for param in flatten_dict(params).values())
-        self._deployer.log(f'#params in Trainer: {n_params}')
+        self._deployer.log_info(n_params, title='Params in trainer')
 
     def create_train_state(self,
                            apply_fn,
@@ -175,7 +175,7 @@ class Trainer:
                 desc=f'epoch {epoch_idx} / {n_epochs}')
 
             if eval_examples is None:
-                self._deployer.log(
+                self._deployer.log_info(
                     'No evaluation cuz \'eval_examples\' is None.')
             else:
                 eval_metrics = {}
@@ -211,7 +211,7 @@ class Trainer:
                     if eval_metric_fn is not None:
                         eval_metrics.update(eval_metric_fn(eval_results))
 
-                self._deployer.log(
+                self._deployer.log_info(
                     info=json.dumps(eval_metrics, indent=4),
                     title=f'Epoch {epoch_idx} eval results')
 

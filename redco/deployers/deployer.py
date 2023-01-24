@@ -4,7 +4,7 @@ from flax.training.common_utils import shard_prng_key
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_multistep_adamw_optimizer
-from .log_utils import get_logger
+from .log_utils import get_logger, log_info
 
 from .model_parallel_utils.mesh_utils import (
     get_mesh,
@@ -133,16 +133,8 @@ class Deployer:
         self._rng, new_rng = jax.random.split(self._rng)
         return new_rng
 
-    def log(self, info, title=None):
-        if title is not None:
-            boarder_len
-
-            self._logger.info(f'=== {title}')
-            for t in info.split('\n'):
-                self._logger.info(t)
-            self._logger.info('=' * 64)
-        else:
-            self._logger.info(info)
+    def log_info(self, info, title=None):
+        log_info(logger=self._logger, info=info, title=title)
 
     @property
     def mesh(self):
