@@ -129,7 +129,7 @@ class Trainer:
 
             metrics = self._deployer.process_to_deliver(metrics)
             data_batches.set_postfix(**metrics)
-            self._deployer.log_metrics(metrics=metrics)
+            self._deployer.log_metrics(metrics=metrics, step=self.step)
 
     def eval_loss(self, examples, per_device_batch_size):
         data_batches = self._deployer.get_model_input_batches(
@@ -217,7 +217,8 @@ class Trainer:
                     title=f'Epoch {epoch_idx} eval results')
                 self._deployer.log_metrics(metrics={
                     f'eval_{key}': value
-                    for key, value in eval_metrics.items()})
+                    for key, value in eval_metrics.items()
+                }, step=self.step)
 
     @property
     def params(self):
