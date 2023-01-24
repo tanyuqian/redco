@@ -1,6 +1,7 @@
 import jax
 from flax.jax_utils import replicate, unreplicate
 from flax.training.common_utils import shard_prng_key
+from flax.metrics import tensorboard
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_multistep_adamw_optimizer
@@ -15,11 +16,17 @@ from .model_parallel_utils.mesh_utils import (
 
 
 class Deployer:
-    def __init__(self, jax_seed, mesh_model_shards=1, verbose=True):
+    def __init__(self,
+                 jax_seed,
+                 mesh_model_shards=1,
+                 verbose=True,
+                 workdir='./workdir'):
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._verbose = verbose
         self._mesh = get_mesh(mesh_model_shards=mesh_model_shards)
         self._logger = get_logger(verbose=verbose)
+        self._summary_writer = \
+            tensorboard.SummaryWriter(f'{workdir}/tensorboard')
 
     def process_batch_size(self, per_device_batch_size):
         if self._mesh is None:
@@ -135,6 +142,11 @@ class Deployer:
 
     def log_info(self, info, title=None):
         log_info(logger=self._logger, info=info, title=title)
+
+    def log_metrics(self, metrics, step):
+        if jax.process_index() == 0:
+            for metric_name, value in metrics.items():
+                self._summary_writer.scalar(metric_name, value, step=step)
 
     @property
     def mesh(self):
