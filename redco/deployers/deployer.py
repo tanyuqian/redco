@@ -106,9 +106,12 @@ class Deployer:
             shard_rules = guess_shard_rules(
                 params=params, mesh_model_shards=self._mesh.shape['mp'])
 
-            self._logger.info(f'=== Guessed shard rules ===')
+            self._logger.info('=' * 50)
+            self._logger.info(f'Guessed shard rules')
+            self._logger.info('=' * 50)
             for shard_rule in shard_rules:
                 self._logger.info(shard_rule)
+            self._logger.info('=' * 50)
 
             return shard_rules
 
