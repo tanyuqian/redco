@@ -35,6 +35,6 @@ def log_info(logger, info, title):
         logger.info('-' * max_len)
         for t in info.split('\n'):
             logger.info(t)
-        logger.info('=' * (max_len + 4))
+        logger.info('=' * max_len)
     else:
         logger.info(info)
