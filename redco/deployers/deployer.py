@@ -106,7 +106,7 @@ class Deployer:
             shard_rules = guess_shard_rules(
                 params=params, mesh_model_shards=self._mesh.shape['mp'])
 
-            self.log(
+            self.log_info(
                 info='\n'.join([f'{t}' for t in shard_rules]),
                 title='Guessed shard rules')
 
