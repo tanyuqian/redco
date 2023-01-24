@@ -22,3 +22,17 @@ def get_logger(verbose):
         logging.root.removeHandler(handler)
 
     return logger
+
+
+def log_info(logger, info, title):
+    if title is not None:
+        max_len = max(max([len(t) for t in info.split('\n')]), len(title) + 4)
+
+        logger.info('=' * max_len)
+        logger.info(f'### {title}')
+        logger.info('-' * max_len)
+        for t in info.split('\n'):
+            logger.info(t)
+        logger.info('=' * (max_len + 4))
+    else:
+        logger.info(info)

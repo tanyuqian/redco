@@ -135,9 +135,9 @@ class Deployer:
 
     def log(self, info, title=None):
         if title is not None:
-            self._logger.info('=' * 64)
+            boarder_len
+
             self._logger.info(f'=== {title}')
-            self._logger.info('=' * 64)
             for t in info.split('\n'):
                 self._logger.info(t)
             self._logger.info('=' * 64)
