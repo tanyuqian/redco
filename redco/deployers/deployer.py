@@ -4,12 +4,12 @@ from flax.training.common_utils import shard_prng_key
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_multistep_adamw_optimizer
+from .log_utils import get_logger
 
 from .model_parallel_utils.mesh_utils import (
     get_mesh,
     get_host_batch_size,
     shard_params_and_opt_state,
-    shard_params,
     get_param_spec,
     guess_shard_rules)
 
@@ -19,6 +19,7 @@ class Deployer:
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._verbose = verbose
         self._mesh = get_mesh(mesh_model_shards=mesh_model_shards)
+        self._logger = get_logger(verbose=verbose)
 
     def process_batch_size(self, per_device_batch_size):
         if self._mesh is None:
@@ -102,15 +103,17 @@ class Deployer:
         if self._mesh is None:
             return None
         else:
-            return guess_shard_rules(
+            shard_rules = guess_shard_rules(
                 params=params, mesh_model_shards=self._mesh.shape['mp'])
+
+            self._logger.info(f'=== Guessed shard rules ===')
+            for shard_rule in shard_rules:
+                self._logger.info(shard_rule)
+
+            return shard_rules
 
     def get_params_spec(self, params, shard_rules):
         return get_param_spec(params=params, shard_rules=shard_rules)
-
-    def shard_params(self, params, params_spec):
-        return shard_params(
-            params=params, params_spec=params_spec, mesh=self._mesh)
 
     def shard_params_and_opt_state(self, params, params_spec, optimizer):
         return shard_params_and_opt_state(
@@ -129,6 +132,10 @@ class Deployer:
     def gen_rng(self):
         self._rng, new_rng = jax.random.split(self._rng)
         return new_rng
+
+    @property
+    def logger(self):
+        return self._logger
 
     @property
     def mesh(self):

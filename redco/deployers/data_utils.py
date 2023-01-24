@@ -1,7 +1,5 @@
-import copy
 import tqdm
 
-import numpy as np
 import jax
 import jax.numpy as jnp
 from flax.training.common_utils import shard
@@ -12,7 +10,8 @@ def get_dataloader(examples, batch_size, collate_fn, do_shard):
         return jax.tree_util.tree_map(jnp.asarray, value)
 
     for i in range(0, len(examples) // batch_size):
-        batch=collate_fn(examples=examples[i * batch_size:(i + 1) * batch_size])
+        batch = collate_fn(
+            examples=examples[i * batch_size:(i + 1) * batch_size])
         yield {
             key: shard(make_jnp(value)) if do_shard else make_jnp(value)
             for key, value in batch.items()

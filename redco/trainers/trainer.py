@@ -8,6 +8,7 @@ from jax.experimental.pjit import pjit
 from jax.experimental.pjit import PartitionSpec as P
 from flax.jax_utils import replicate
 from flax.training.train_state import TrainState
+from flax.traverse_util import flatten_dict
 
 from .utils import default_train_step, default_eval_step
 
@@ -37,6 +38,10 @@ class Trainer:
             params=params,
             params_shard_rules=params_shard_rules,
             optimizer=optimizer)
+
+        n_params = \
+            sum(np.prod(param.shape) for param in flatten_dict(params).values())
+        self._deployer.logger.info(f'#params: {n_params}')
 
     def create_train_state(self,
                            apply_fn,
@@ -170,8 +175,8 @@ class Trainer:
                 desc=f'epoch {epoch_idx} / {n_epochs}')
 
             if eval_examples is None:
-                pass
-                # print('No evaluation cuz \'eval_examples\' is None.')
+                self._deployer.logger.info(
+                    'No evaluation cuz \'eval_examples\' is None.')
             else:
                 eval_metrics = {}
 
@@ -206,8 +211,8 @@ class Trainer:
                     if eval_metric_fn is not None:
                         eval_metrics.update(eval_metric_fn(eval_results))
 
-                print(f'Epoch {epoch_idx}, evaluation results:')
-                print(json.dumps(eval_metrics, indent=4))
+                self._deployer.logger.info(
+                    f'Epoch {epoch_idx}, evaluation results: {eval_metrics}')
 
     @property
     def params(self):

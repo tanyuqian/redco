@@ -41,18 +41,6 @@ def get_param_spec(params, shard_rules):
     return set_partitions(unfreeze(params), shard_rules)
 
 
-def shard_params(params, params_spec, mesh):
-    param_init_fn = pjit(
-        lambda x: x,
-        in_axis_resources=(params_spec, ),
-        out_axis_resources=params_spec)
-
-    with mesh:
-        params = param_init_fn(params)
-
-    return params
-
-
 def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
     def init_fn(params_):
         opt_state_ = optimizer.init(params_)
