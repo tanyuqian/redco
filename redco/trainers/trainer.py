@@ -175,7 +175,7 @@ class Trainer:
                 desc=f'epoch {epoch_idx} / {n_epochs}')
 
             if eval_examples is None:
-                self._deployer.logger.info(
+                self._deployer.log(
                     'No evaluation cuz \'eval_examples\' is None.')
             else:
                 eval_metrics = {}
@@ -211,8 +211,9 @@ class Trainer:
                     if eval_metric_fn is not None:
                         eval_metrics.update(eval_metric_fn(eval_results))
 
-                self._deployer.logger.info(
-                    f'Epoch {epoch_idx}, evaluation results: {eval_metrics}')
+                self._deployer.log(
+                    info=json.dumps(eval_metrics, indent=4),
+                    title=f'Epoch {epoch_idx} eval results')
 
     @property
     def params(self):

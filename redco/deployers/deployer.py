@@ -106,12 +106,9 @@ class Deployer:
             shard_rules = guess_shard_rules(
                 params=params, mesh_model_shards=self._mesh.shape['mp'])
 
-            self._logger.info('=' * 50)
-            self._logger.info(f'Guessed shard rules')
-            self._logger.info('=' * 50)
-            for shard_rule in shard_rules:
-                self._logger.info(shard_rule)
-            self._logger.info('=' * 50)
+            self.log(
+                info='\n'.join([f'{t}' for t in shard_rules]),
+                title='Guessed shard rules')
 
             return shard_rules
 
@@ -136,9 +133,16 @@ class Deployer:
         self._rng, new_rng = jax.random.split(self._rng)
         return new_rng
 
-    @property
-    def logger(self):
-        return self._logger
+    def log(self, info, title=None):
+        if title is not None:
+            self._logger.info('=' * 64)
+            self._logger.info(f'=== {title}')
+            self._logger.info('=' * 64)
+            for t in info.split('\n'):
+                self._logger.info(t)
+            self._logger.info('=' * 64)
+        else:
+            self._logger.info(info)
 
     @property
     def mesh(self):
