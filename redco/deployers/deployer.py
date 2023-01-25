@@ -33,7 +33,7 @@ class Deployer:
         self._logger = get_logger(verbose=verbose)
 
         if run_tensorboard:
-            from flax import tensorboard
+            from flax.metrics import tensorboard
             self._summary_writer = tensorboard.SummaryWriter(workdir)
         else:
             self._summary_writer = None
