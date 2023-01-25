@@ -25,8 +25,8 @@ def get_multistep_adamw_optimizer(train_size,
         optimizer = optax.adamw(
             learning_rate=lr_schedule_fn, weight_decay=weight_decay)
     else:
-        optimizer = optax.MultiSteps(
-            optax.adamw(learning_rate=lr_schedule_fn, weight_decay=weight_decay),
+        optimizer = optax.MultiSteps(optax.adamw(
+            learning_rate=lr_schedule_fn, weight_decay=weight_decay),
             every_k_schedule=accumulate_grad_batches)
 
     return optimizer, lr_schedule_fn

@@ -72,7 +72,7 @@ def main(dataset_name='xsum',
          jax_seed=42):
     dataset = {
         'train': list(datasets.load_dataset(dataset_name, split='train')),
-        'validation': ['' * 100]
+        'validation': [{text_key: ''} for _ in range(50)]
     }
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
