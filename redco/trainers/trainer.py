@@ -41,7 +41,7 @@ class Trainer:
 
         n_params = \
             sum(np.prod(param.shape) for param in flatten_dict(params).values())
-        self._deployer.log_info(n_params, title='Training parameters')
+        self._deployer.log_info(f'{n_params:,}', title='Training parameters')
 
     def create_train_state(self,
                            apply_fn,
