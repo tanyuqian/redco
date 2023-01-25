@@ -56,8 +56,8 @@ def output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
 
 
-def main(dataset_name='cnn_dailymail',
-         text_key='article',
+def main(dataset_name='xsum',
+         text_key='document',
          model_name_or_path='facebook/opt-350m',
          mesh_model_shards=2,
          n_epochs=2,
@@ -70,8 +70,10 @@ def main(dataset_name='cnn_dailymail',
          weight_decay=0.,
          top_p=0.96,
          jax_seed=42):
-    dataset = datasets.load_dataset(dataset_name, '3.0.0')
-    dataset = {key: list(dataset[key]) for key in dataset.keys()}
+    dataset = {
+        'train': list(datasets.load_dataset(dataset_name, split='train')),
+        'validation': ['' * 100]
+    }
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     tokenizer.pad_token = tokenizer.eos_token
