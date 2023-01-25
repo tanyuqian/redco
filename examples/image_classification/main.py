@@ -74,7 +74,8 @@ def main(data_dir='./data/',
 
     model = CNN()
     dummy_batch = collate_fn([dataset['train'][0]])
-    params = model.init(deployer.gen_rng(), dummy_batch['images'], training=False)['params']
+    params = model.init(
+        deployer.gen_rng(), dummy_batch['images'], training=False)['params']
     optimizer = optax.adam(learning_rate=learning_rate)
 
     trainer = Trainer(

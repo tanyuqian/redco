@@ -1,4 +1,5 @@
 import logging
+import json
 import jax
 
 
@@ -11,6 +12,13 @@ def get_logger(verbose):
         datefmt="%m/%d/%Y %H:%M:%S"))
 
     logger.addHandler(handler)
+
+    handler = logging.FileHandler(filename='./workdir/log.txt')
+    handler.setFormatter(logging.Formatter(
+        fmt="[%(asctime)s - %(name)s - %(levelname)s] %(message)s",
+        datefmt="%m/%d/%Y %H:%M:%S"))
+    logger.addHandler(handler)
+
     logger.propagate = False
 
     if verbose and jax.process_index() == 0:
@@ -38,3 +46,14 @@ def log_info(logger, info, title):
         logger.info('=' * max_len)
     else:
         logger.info(info)
+
+
+def save_outputs(outputs, workdir, desc, logger, summary_writer, step):
+    outputs = jax.tree_util.tree_map(str, outputs)
+    json.dump(outputs, open(f'{workdir}/outputs_{desc}.json', 'w'), indent=4)
+    logger.info(
+        f'Outputs ({desc}) has been saved into {workdir}/outputs_{desc}.json.')
+
+    if summary_writer is not None:
+        samples_str = json.dumps(outputs[:10], indent=4).replace('\n', '\n\n')
+        summary_writer.text('outputs', samples_str, step=step)

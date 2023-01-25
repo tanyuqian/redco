@@ -41,7 +41,7 @@ class Trainer:
 
         n_params = \
             sum(np.prod(param.shape) for param in flatten_dict(params).values())
-        self._deployer.log_info(n_params, title='Params in trainer')
+        self._deployer.log_info(n_params, title='Training parameters')
 
     def create_train_state(self,
                            apply_fn,
@@ -196,21 +196,17 @@ class Trainer:
                         params=self.params,
                         per_device_batch_size=eval_per_device_batch_size)
 
-                    eval_results = [
+                    eval_outputs = [
                         {'example': example, 'pred': pred}
                         for example, pred in zip(eval_examples, preds)]
 
-                    try:
-                        json.dump(
-                            eval_results,
-                            open(f'outputs_epoch{epoch_idx}.json', 'w'),
-                            indent=4)
-                    except:
-                        pickle.dump(eval_results, open(
-                            f'outputs_epoch{epoch_idx}.pkl', 'wb'))
-
                     if eval_metric_fn is not None:
-                        eval_metrics.update(eval_metric_fn(eval_results))
+                        eval_metrics.update(eval_metric_fn(eval_outputs))
+
+                    self._deployer.save_outputs(
+                        outputs=eval_outputs,
+                        desc=f'epoch{epoch_idx}',
+                        step=self.step)
 
                 self._deployer.log_info(
                     info=json.dumps(eval_metrics, indent=4),

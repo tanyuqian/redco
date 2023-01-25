@@ -11,12 +11,12 @@ from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 from redco import Deployer, TextToTextTrainer
 
 
-def eval_rouge(eval_results, tgt_key):
+def eval_rouge(eval_outputs, tgt_key):
     rouge_scorer = evaluate.load('rouge')
 
     return rouge_scorer.compute(
-        predictions=[result['pred'] for result in eval_results],
-        references=[result['example'][tgt_key] for result in eval_results],
+        predictions=[result['pred'] for result in eval_outputs],
+        references=[result['example'][tgt_key] for result in eval_outputs],
         rouge_types=['rouge1', 'rouge2', 'rougeL'],
         use_stemmer=True)
 
@@ -36,7 +36,9 @@ def main(dataset_name='xsum',
          learning_rate=4e-5,
          warmup_rate=0.1,
          weight_decay=0.,
-         jax_seed=42):
+         jax_seed=42,
+         workdir='./workdir',
+         run_tensorboard=False):
     dataset = datasets.load_dataset(dataset_name)
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
@@ -46,7 +48,12 @@ def main(dataset_name='xsum',
             model_name_or_path, from_pt=True)
         model.params = model.to_fp32(model.params)
 
-    deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=mesh_model_shards)
+    deployer = Deployer(
+        jax_seed=jax_seed,
+        mesh_model_shards=mesh_model_shards,
+        workdir=workdir,
+        run_tensorboard=run_tensorboard,
+        verbose=True)
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),

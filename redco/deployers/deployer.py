@@ -1,11 +1,12 @@
+import os
+
 import jax
 from flax.jax_utils import replicate, unreplicate
 from flax.training.common_utils import shard_prng_key
-from flax.metrics import tensorboard
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_multistep_adamw_optimizer
-from .log_utils import get_logger, log_info
+from .log_utils import get_logger, log_info, save_outputs
 
 from .model_parallel_utils.mesh_utils import (
     get_mesh,
@@ -20,13 +21,22 @@ class Deployer:
                  jax_seed,
                  mesh_model_shards=1,
                  verbose=True,
-                 workdir='./workdir'):
+                 workdir='./workdir',
+                 run_tensorboard=False):
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._verbose = verbose
         self._mesh = get_mesh(mesh_model_shards=mesh_model_shards)
+
+        self._workdir = workdir
+        os.makedirs(workdir, exist_ok=True)
+
         self._logger = get_logger(verbose=verbose)
-        self._summary_writer = \
-            tensorboard.SummaryWriter(f'{workdir}/tensorboard')
+
+        if run_tensorboard:
+            from flax import tensorboard
+            self._summary_writer = tensorboard.SummaryWriter(workdir)
+        else:
+            self._summary_writer = None
 
     def process_batch_size(self, per_device_batch_size):
         if self._mesh is None:
@@ -144,9 +154,19 @@ class Deployer:
         log_info(logger=self._logger, info=info, title=title)
 
     def log_metrics(self, metrics, step):
-        if jax.process_index() == 0:
+        if jax.process_index() == 0 and self._summary_writer is not None:
             for metric_name, value in metrics.items():
                 self._summary_writer.scalar(metric_name, value, step=step)
+
+    def save_outputs(self, outputs, desc, step):
+        if jax.process_index() == 0:
+            save_outputs(
+                workdir=self._workdir,
+                outputs=outputs,
+                desc=desc,
+                step=step,
+                logger=self._logger,
+                summary_writer=self._summary_writer)
 
     @property
     def mesh(self):
