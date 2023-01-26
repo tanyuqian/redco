@@ -1,5 +1,6 @@
 from functools import partial
 import fire
+import jax
 import numpy as np
 import optax
 
@@ -81,8 +82,11 @@ def main(dataset_name='sst2',
         run_tensorboard=run_tensorboard)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-    model = FlaxAutoModelForSequenceClassification.from_pretrained(
-        model_name_or_path, num_labels=num_labels)
+
+    with jax.default_device(jax.devices('cpu')[0]):
+        model = FlaxAutoModelForSequenceClassification.from_pretrained(
+            model_name_or_path, num_labels=num_labels)
+        model.params = model.to_fp32(model.params)
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),
