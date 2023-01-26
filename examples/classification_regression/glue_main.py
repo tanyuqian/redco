@@ -47,9 +47,9 @@ def pred_fn(pred_rng, batch, params, model):
     return logits.argmax(axis=-1)
 
 
-def eval_metric_fn(eval_outputs):
+def eval_metric_fn(eval_outputs, label_key):
     preds = np.array([result['pred'] for result in eval_outputs])
-    labels = np.array([result['example'][1] for result in eval_outputs])
+    labels = np.array([result['example'][label_key] for result in eval_outputs])
     return {'acc': np.mean(preds == labels).item()}
 
 
@@ -119,7 +119,7 @@ def main(dataset_name='sst2',
         eval_per_device_batch_size=eval_per_device_batch_size,
         eval_loss=True,
         eval_predictor=predictor,
-        eval_metric_fn=eval_metric_fn)
+        eval_metric_fn=partial(eval_metric_fn, label_key=label_key))
 
 
 if __name__ == '__main__':
