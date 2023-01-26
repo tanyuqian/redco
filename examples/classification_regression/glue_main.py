@@ -4,7 +4,7 @@ import numpy as np
 import optax
 
 from datasets import load_dataset
-from transformers import AutoTokenizer, FlaxAutoModelForSequenceClassification
+from transformers import AutoTokenizer, FlaxRobertaForSequenceClassification, FlaxAutoModelForSequenceClassification
 
 from redco import Deployer, Trainer
 
@@ -58,7 +58,7 @@ def main(dataset_name='sst2',
          model_name_or_path='roberta-large',
          max_length=512,
          n_epochs=2,
-         per_device_batch_size=2,
+         per_device_batch_size=1,
          eval_per_device_batch_size=8,
          accumulate_grad_batches=2,
          learning_rate=4e-5,
@@ -69,13 +69,14 @@ def main(dataset_name='sst2',
          run_tensorboard=False):
     dataset = load_dataset('glue', dataset_name)
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
+    num_labels = len(set([example[label_key] for example in dataset['train']]))
 
     deployer = Deployer(
         jax_seed=jax_seed, workdir=workdir, run_tensorboard=run_tensorboard)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = FlaxAutoModelForSequenceClassification.from_pretrained(
-        model_name_or_path)
+        model_name_or_path, num_labels=num_labels)
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),
