@@ -8,8 +8,10 @@ from jax.experimental.pjit import PartitionSpec as P
 from flax.jax_utils import replicate
 from flax.training.train_state import TrainState
 from flax.traverse_util import flatten_dict
+from flax.core.frozen_dict import freeze
 
 from .utils import default_train_step, default_eval_step
+from ..predictors import Predictor
 
 
 class Trainer:
@@ -34,13 +36,20 @@ class Trainer:
 
         self.create_train_state(
             apply_fn=apply_fn,
-            params=params,
+            params=freeze(params),
             params_shard_rules=params_shard_rules,
             optimizer=optimizer)
 
         n_params = \
             sum(np.prod(param.shape) for param in flatten_dict(params).values())
         self._deployer.log_info(f'{n_params:,}', title='Training parameters')
+
+        self._default_predictor_fn = partial(
+            Predictor,
+            deployer=deployer,
+            collate_fn=collate_fn,
+            params=params,
+            params_shard_rules=params_shard_rules)
 
     def create_train_state(self,
                            apply_fn,
@@ -215,6 +224,9 @@ class Trainer:
                     for key, value in eval_metrics.items()
                 }, step=self.step)
 
+    def get_default_predictor(self, pred_fn, output_fn=None):
+        return self._default_predictor_fn(pred_fn=pred_fn, output_fn=output_fn)
+
     @property
     def params(self):
         return self._deployer.process_to_deliver(self._state.params)
@@ -223,5 +235,3 @@ class Trainer:
     def step(self):
         return self._deployer.process_to_deliver(self._state.step)
 
-    def get_default_predictor(self, *args, **kwargs):
-        raise NotImplementedError
