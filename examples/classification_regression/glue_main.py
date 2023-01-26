@@ -4,7 +4,7 @@ import numpy as np
 import optax
 
 from datasets import load_dataset
-from transformers import AutoTokenizer, FlaxRobertaForSequenceClassification, FlaxAutoModelForSequenceClassification
+from transformers import AutoTokenizer, FlaxAutoModelForSequenceClassification
 
 from redco import Deployer, Trainer
 
@@ -41,6 +41,8 @@ def loss_fn(train_rng, state, params, batch, is_training):
 
 
 def pred_fn(pred_rng, batch, params, model):
+    batch.pop('labels')
+
     logits = model(**batch, params=params, train=False).logits
     return logits.argmax(axis=-1)
 
@@ -56,6 +58,7 @@ def main(dataset_name='sst2',
          sent1_key=None,
          label_key='label',
          model_name_or_path='roberta-large',
+         mesh_model_shards=2,
          max_length=512,
          n_epochs=2,
          per_device_batch_size=1,
@@ -72,7 +75,10 @@ def main(dataset_name='sst2',
     num_labels = len(set([example[label_key] for example in dataset['train']]))
 
     deployer = Deployer(
-        jax_seed=jax_seed, workdir=workdir, run_tensorboard=run_tensorboard)
+        mesh_model_shards=mesh_model_shards,
+        jax_seed=jax_seed,
+        workdir=workdir,
+        run_tensorboard=run_tensorboard)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = FlaxAutoModelForSequenceClassification.from_pretrained(
@@ -99,7 +105,8 @@ def main(dataset_name='sst2',
         apply_fn=model,
         loss_fn=loss_fn,
         params=model.params,
-        optimizer=optimizer)
+        optimizer=optimizer,
+        params_shard_rules=deployer.guess_shard_rules(params=model.params))
 
     predictor = trainer.get_default_predictor(
         pred_fn=partial(pred_fn, model=model))
