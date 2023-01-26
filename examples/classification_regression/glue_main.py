@@ -37,7 +37,7 @@ def loss_fn(train_rng, state, params, batch, is_training):
         **batch, params=params, dropout_rng=train_rng, train=is_training).logits
 
     return optax.softmax_cross_entropy_with_integer_labels(
-        logits=logits, labels=labels)
+        logits=logits, labels=labels).mean()
 
 
 def pred_fn(pred_rng, batch, params, model):
