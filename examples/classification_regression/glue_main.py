@@ -110,6 +110,7 @@ def main(dataset_name='sst2',
         loss_fn=loss_fn,
         params=model.params,
         optimizer=optimizer,
+        lr_schedule_fn=lr_schedule_fn,
         params_shard_rules=deployer.guess_shard_rules(params=model.params))
 
     predictor = trainer.get_default_predictor(
