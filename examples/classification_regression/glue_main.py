@@ -14,7 +14,7 @@ def collate_fn(
     texts = []
     for example in examples:
         if sent1_key is None:
-            texts.append((example[sent0_key], ))
+            texts.append(example[sent0_key])
         else:
             texts.append((example[sent0_key], example[sent1_key]))
 
@@ -107,8 +107,8 @@ def main(dataset_name='sst2',
         train_examples=dataset['train'],
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
-        eval_examples=dataset['test'],
-        eval_per_device_batch_size=per_device_batch_size,
+        eval_examples=dataset['validation'],
+        eval_per_device_batch_size=eval_per_device_batch_size,
         eval_loss=True,
         eval_predictor=predictor,
         eval_metric_fn=eval_metric_fn)
