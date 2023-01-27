@@ -90,7 +90,11 @@ def main(dataset_name='xsum',
         generation_config = GenerationConfig.from_pretrained(model_name_or_path)
     except:
         generation_config = GenerationConfig.from_model_config(model.config)
-    generation_config.update(max_length=max_length, do_sample=True, top_p=top_p)
+    generation_config.update(
+        max_length=max_length,
+        do_sample=True,
+        top_p=top_p,
+        pad_token_id=model.config.eos_token_id)
 
     deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=mesh_model_shards)
     deployer.log_info(
