@@ -108,14 +108,12 @@ def main(dataset_name='xsum',
     params_shard_rules = deployer.guess_shard_rules(params=model.params)
 
     collate_fn_ = partial(collate_fn, tokenizer=tokenizer, text_key=text_key)
-    pred_fn_ = partial(
-        pred_fn, model=model, generation_config=generation_config)
 
     trainer = Trainer(
         deployer=deployer,
         collate_fn=partial(collate_fn_, max_length=max_length),
         apply_fn=model.__call__,
-        loss_fn=partial(loss_fn),
+        loss_fn=partial(loss_fn, model_type=model.config.model_type),
         params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
@@ -124,7 +122,8 @@ def main(dataset_name='xsum',
     predictor = Predictor(
         deployer=deployer,
         collate_fn=partial(collate_fn_, max_length=1),
-        pred_fn=pred_fn_,
+        pred_fn=partial(
+            pred_fn, model=model, generation_config=generation_config),
         output_fn=partial(output_fn, tokenizer=tokenizer),
         params=model.params,
         params_shard_rules=params_shard_rules)
