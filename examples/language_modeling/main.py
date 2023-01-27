@@ -8,7 +8,8 @@ import jax.numpy as jnp
 from flax.core.frozen_dict import freeze
 import optax
 
-from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
+from transformers import \
+    AutoTokenizer, FlaxAutoModelForCausalLM, GenerationConfig
 
 from redco import Deployer, Trainer, Predictor
 
@@ -42,13 +43,13 @@ def loss_fn(train_rng, state, params, batch, is_training):
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def pred_fn(pred_rng, batch, params, model, gen_kwargs):
+def pred_fn(pred_rng, batch, params, model, generation_config):
     output_ids = model.generate(
         input_ids=batch['input_ids'],
         attention_mask=batch['attention_mask'],
+        generation_config=generation_config,
         params=params,
-        prng_key=pred_rng,
-        **gen_kwargs)
+        prng_key=pred_rng)
     return output_ids.sequences
 
 
@@ -81,6 +82,12 @@ def main(dataset_name='xsum',
         model = FlaxAutoModelForCausalLM.from_pretrained(model_name_or_path)
         model.params = model.to_fp32(model.params)
 
+    try:
+        generation_config = GenerationConfig.from_pretrained(model_name_or_path)
+    except:
+        generation_config = GenerationConfig.from_model_config(model.config)
+    generation_config.update(max_length=max_length, do_sample=True, top_p=top_p)
+
     deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=mesh_model_shards)
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
@@ -108,13 +115,6 @@ def main(dataset_name='xsum',
         lr_schedule_fn=lr_schedule_fn,
         params_shard_rules=params_shard_rules)
 
-    gen_kwargs = {
-        'max_length': max_length,
-        'do_sample': True,
-        'top_p': top_p,
-        'pad_token_id': tokenizer.eos_token_id
-    }
-
     predictor = Predictor(
         deployer=deployer,
         collate_fn=partial(
@@ -122,7 +122,10 @@ def main(dataset_name='xsum',
             tokenizer=tokenizer,
             text_key=text_key,
             max_length=1),
-        pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
+        pred_fn=partial(
+            pred_fn,
+            model=model,
+            generation_config=generation_config),
         output_fn=partial(output_fn, tokenizer=tokenizer),
         params=freeze(model.params),
         params_shard_rules=params_shard_rules)
