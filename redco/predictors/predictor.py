@@ -1,6 +1,7 @@
 import jax
 from jax.experimental.pjit import pjit
 from jax.experimental.pjit import PartitionSpec as P
+from flax.core.frozen_dict import freeze
 
 
 class Predictor:
@@ -14,7 +15,7 @@ class Predictor:
         self._deployer = deployer
         self._collate_fn = collate_fn
 
-        self._params = params
+        self._params = freeze(params)
         self._params_shard_rules = params_shard_rules
         self._pred_fn = pred_fn
         self._p_pred_step = None

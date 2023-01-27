@@ -5,7 +5,6 @@ import numpy as np
 
 import jax
 import jax.numpy as jnp
-from flax.core.frozen_dict import freeze
 import optax
 
 from transformers import \
@@ -30,12 +29,17 @@ def collate_fn(examples, tokenizer, text_key, max_length):
     return batch
 
 
-def loss_fn(train_rng, state, params, batch, is_training):
+def loss_fn(train_rng, state, params, batch, is_training, model_type):
     labels = batch.pop("labels")
     label_weights = batch['attention_mask']
 
+    if model_type != 'opt':
+        is_training_kwarg = {'train': is_training}
+    else:
+        is_training_kwarg = {'deterministic': not is_training}
+
     logits = state.apply_fn(
-        **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
+        **batch, params=params, dropout_rng=train_rng, **is_training_kwarg)[0]
 
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
@@ -59,13 +63,13 @@ def output_fn(batch_preds, tokenizer):
 
 def main(dataset_name='xsum',
          text_key='document',
-         model_name_or_path='facebook/opt-350m',
+         model_name_or_path='gpt2-large',
          mesh_model_shards=2,
          n_epochs=2,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
          accumulate_grad_batches=1,
-         max_length=32,
+         max_length=512,
          learning_rate=4e-5,
          warmup_rate=0.1,
          weight_decay=0.,
@@ -89,6 +93,8 @@ def main(dataset_name='xsum',
     generation_config.update(max_length=max_length, do_sample=True, top_p=top_p)
 
     deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=mesh_model_shards)
+    deployer.log_info(
+        generation_config.to_json_string(), title='generation config')
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),
@@ -101,33 +107,26 @@ def main(dataset_name='xsum',
 
     params_shard_rules = deployer.guess_shard_rules(params=model.params)
 
+    collate_fn_ = partial(collate_fn, tokenizer=tokenizer, text_key=text_key)
+    pred_fn_ = partial(
+        pred_fn, model=model, generation_config=generation_config)
+
     trainer = Trainer(
         deployer=deployer,
-        collate_fn=partial(
-            collate_fn,
-            tokenizer=tokenizer,
-            text_key=text_key,
-            max_length=max_length),
+        collate_fn=partial(collate_fn_, max_length=max_length),
         apply_fn=model.__call__,
-        loss_fn=loss_fn,
-        params=freeze(model.params),
+        loss_fn=partial(loss_fn),
+        params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
         params_shard_rules=params_shard_rules)
 
     predictor = Predictor(
         deployer=deployer,
-        collate_fn=partial(
-            collate_fn,
-            tokenizer=tokenizer,
-            text_key=text_key,
-            max_length=1),
-        pred_fn=partial(
-            pred_fn,
-            model=model,
-            generation_config=generation_config),
+        collate_fn=partial(collate_fn_, max_length=1),
+        pred_fn=pred_fn_,
         output_fn=partial(output_fn, tokenizer=tokenizer),
-        params=freeze(model.params),
+        params=model.params,
         params_shard_rules=params_shard_rules)
 
     trainer.fit(
