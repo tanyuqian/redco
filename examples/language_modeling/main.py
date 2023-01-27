@@ -74,7 +74,9 @@ def main(dataset_name='xsum',
          warmup_rate=0.1,
          weight_decay=0.,
          top_p=0.96,
-         jax_seed=42):
+         jax_seed=42,
+         workdir='./workdir',
+         run_tensorboard=False):
     dataset = {
         'train': list(datasets.load_dataset(dataset_name, split='train')),
         'validation': [{text_key: ''} for _ in range(50)]
@@ -96,7 +98,12 @@ def main(dataset_name='xsum',
         top_p=top_p,
         pad_token_id=model.config.eos_token_id)
 
-    deployer = Deployer(jax_seed=jax_seed, mesh_model_shards=mesh_model_shards)
+    deployer = Deployer(
+        jax_seed=jax_seed,
+        mesh_model_shards=mesh_model_shards,
+        workdir=workdir,
+        run_tensorboard=run_tensorboard,
+        verbose=True)
     deployer.log_info(
         generation_config.to_json_string(), title='generation config')
 
