@@ -32,7 +32,7 @@ def get_logger(verbose):
     return logger
 
 
-def log_info(logger, info, title):
+def log_info(info, title, logger, summary_writer, step=0):
     info = str(info)
 
     if title is not None:
@@ -44,6 +44,9 @@ def log_info(logger, info, title):
         for t in info.split('\n'):
             logger.info(t)
         logger.info('=' * max_len)
+
+        if summary_writer is not None:
+            summary_writer.text(title, info.replace('\n', '\n\n'), step=step)
     else:
         logger.info(info)
 

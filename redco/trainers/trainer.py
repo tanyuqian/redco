@@ -218,7 +218,8 @@ class Trainer:
 
                 self._deployer.log_info(
                     info=json.dumps(eval_metrics, indent=4),
-                    title=f'Epoch {epoch_idx} eval results')
+                    title=f'Eval results',
+                    step=self.step)
                 self._deployer.log_metrics(metrics={
                     f'eval_{key}': value
                     for key, value in eval_metrics.items()

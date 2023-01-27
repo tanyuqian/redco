@@ -150,8 +150,18 @@ class Deployer:
         self._rng, new_rng = jax.random.split(self._rng)
         return new_rng
 
-    def log_info(self, info, title=None):
-        log_info(logger=self._logger, info=info, title=title)
+    def log_info(self, info, title=None, step=None):
+        if step is not None:
+            title = f'{title} (step {step})'
+        else:
+            step = 0
+
+        log_info(
+            info=info,
+            title=title,
+            logger=self._logger,
+            summary_writer=self._summary_writer,
+            step=step)
 
     def log_metrics(self, metrics, step):
         if jax.process_index() == 0 and self._summary_writer is not None:
