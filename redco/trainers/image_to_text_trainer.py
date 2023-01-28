@@ -24,7 +24,7 @@ class ImageToTextTrainer(Trainer):
             image_to_text_default_collate_fn,
             images_to_pixel_values_fn=images_to_pixel_values_fn,
             tokenizer=tokenizer,
-            decoder_start_token_id=model.decoder_start_token_id,
+            decoder_start_token_id=model.config.decoder_start_token_id,
             max_tgt_len=max_tgt_len,
             image_path_key=image_path_key,
             image_key=image_key,
