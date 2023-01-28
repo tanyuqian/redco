@@ -4,8 +4,6 @@ import datasets
 import evaluate
 import jax
 
-from flax.core.frozen_dict import freeze
-
 from transformers import \
     AutoTokenizer, FlaxAutoModelForSeq2SeqLM, GenerationConfig
 
@@ -72,11 +70,10 @@ def main(dataset_name='xsum',
         weight_decay=weight_decay)
 
     trainer = TextToTextTrainer(
+        deployer=deployer,
         model=model,
-        params=freeze(model.params),
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
-        deployer=deployer,
         tokenizer=tokenizer,
         max_src_len=max_src_len,
         max_tgt_len=max_tgt_len,

@@ -42,3 +42,6 @@ class TextToTextPredictor(Predictor):
             output_fn=output_fn,
             params=params,
             params_shard_rules=params_shard_rules)
+
+        deployer.log_info(
+            generation_config.to_json_string(), title='generation config')

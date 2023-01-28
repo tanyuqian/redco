@@ -11,7 +11,6 @@ class TextToTextTrainer(Trainer):
     def __init__(self,
                  deployer,
                  model,
-                 params,
                  optimizer,
                  tokenizer,
                  max_src_len,
@@ -33,7 +32,7 @@ class TextToTextTrainer(Trainer):
             collate_fn=collate_fn,
             apply_fn=model.__call__,
             loss_fn=text_to_text_default_loss_fn,
-            params=params,
+            params=model.params,
             optimizer=optimizer,
             deployer=deployer,
             lr_schedule_fn=lr_schedule_fn,
@@ -48,7 +47,7 @@ class TextToTextTrainer(Trainer):
             max_tgt_len=max_tgt_len,
             src_key=src_key,
             tgt_key=tgt_key,
-            params=params,
+            params=model.params,
             params_shard_rules=params_shard_rules)
 
     def get_default_predictor(self, generation_config):
