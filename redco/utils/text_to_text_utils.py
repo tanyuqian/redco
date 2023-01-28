@@ -59,11 +59,11 @@ def text_to_text_default_loss_fn(train_rng, state, params, batch, is_training):
 
 
 def text_to_text_default_pred_fn(
-        pred_rng, batch, params, model, generation_configs):
+        pred_rng, batch, params, model, generation_config):
     output_ids = model.generate(
         input_ids=batch['input_ids'],
         attention_mask=batch['attention_mask'],
-        generation_configs=generation_configs,
+        generation_config=generation_config,
         params=params,
         prng_key=pred_rng)
     return output_ids.sequences

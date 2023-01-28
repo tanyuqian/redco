@@ -104,6 +104,7 @@ def main(dataset_name='xsum',
         workdir=workdir,
         run_tensorboard=run_tensorboard,
         verbose=True)
+
     deployer.log_info(
         generation_config.to_json_string(), title='generation config')
 
