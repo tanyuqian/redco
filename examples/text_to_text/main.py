@@ -82,7 +82,7 @@ def main(dataset_name='xsum',
         params_shard_rules=deployer.guess_shard_rules(params=model.params))
 
     predictor = trainer.get_default_predictor(
-        gen_kwargs={'max_length': max_tgt_len, 'num_beams': num_beams})
+        generation_config=generation_config)
 
     trainer.fit(
         train_examples=dataset['train'],

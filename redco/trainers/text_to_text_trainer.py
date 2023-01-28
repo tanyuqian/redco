@@ -51,5 +51,5 @@ class TextToTextTrainer(Trainer):
             params=params,
             params_shard_rules=params_shard_rules)
 
-    def get_default_predictor(self, gen_kwargs):
-        return self._default_predictor_fn(gen_kwargs=gen_kwargs)
+    def get_default_predictor(self, generation_config):
+        return self._default_predictor_fn(generation_config=generation_config)
