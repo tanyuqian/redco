@@ -4,11 +4,11 @@ import fire
 
 import datasets
 import evaluate
-from transformers import \
-    AutoImageProcessor,\
-    AutoTokenizer,\
-    FlaxVisionEncoderDecoderModel,\
-    GenerationConfig
+from transformers import (
+    AutoImageProcessor,
+    AutoTokenizer,
+    FlaxVisionEncoderDecoderModel,
+    GenerationConfig)
 
 from redco import Deployer, ImageToTextTrainer
 
