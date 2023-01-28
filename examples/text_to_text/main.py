@@ -49,8 +49,11 @@ def main(dataset_name='xsum',
             model_name_or_path, from_pt=True)
         model.params = model.to_fp32(model.params)
 
-    generation_config = GenerationConfig.from_pretrained(
-        model_name_or_path, max_length=max_tgt_len, num_beams=num_beams)
+    try:
+        generation_config = GenerationConfig.from_pretrained(model_name_or_path)
+    except:
+        generation_config = GenerationConfig.from_model_config(model.config)
+    generation_config.update(max_length=max_tgt_len, num_beams=num_beams)
 
     deployer = Deployer(
         jax_seed=jax_seed,
