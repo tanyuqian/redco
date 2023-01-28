@@ -3,13 +3,20 @@ import os
 import fire
 import jax
 import optax
+import numpy as np
 
+from torchvision import transforms
 from diffusers import FlaxStableDiffusionPipeline
 
 from redco import Deployer, TextToImageTrainer
 
-from dreambooth_utils import \
-    get_dreambooth_dataset, dreambooth_image_preprocess_fn
+from dreambooth_utils import get_dreambooth_dataset
+
+
+def images_to_pixel_values_fn(images, image_transforms):
+    return np.stack(
+        [image_transforms(image) for image in images],
+        dtype=np.float16)
 
 
 def main(instance_dir='./skr_dog_images',
@@ -19,6 +26,7 @@ def main(instance_dir='./skr_dog_images',
          n_instance_samples_per_epoch=400,
          n_class_samples_per_epoch=200,
          image_key='image',
+         image_path_key=None,
          text_key='text',
          model_name_or_path='duongna/stable-diffusion-v1-4-flax',
          resolution=512,
@@ -49,10 +57,14 @@ def main(instance_dir='./skr_dog_images',
         optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay),
         every_k_schedule=accumulate_grad_batches)
 
+    image_transforms = transforms.Compose([
+        transforms.Resize(resolution),
+        transforms.RandomCrop(resolution),
+        transforms.ToTensor(),
+        transforms.Normalize([0.5], [0.5])])
+
     deployer = Deployer(jax_seed=jax_seed)
 
-    image_preprocess_fn = partial(
-        dreambooth_image_preprocess_fn, resolution=resolution)
     trainer = TextToImageTrainer(
         deployer=deployer,
         pipeline=pipeline,
@@ -60,8 +72,10 @@ def main(instance_dir='./skr_dog_images',
         freezed_params=pipeline_params,
         resolution=resolution,
         optimizer=optimizer,
-        costum_image_preprocess_fn=image_preprocess_fn,
+        images_to_pixel_values_fn=partial(
+            images_to_pixel_values_fn, image_transforms=image_transforms),
         image_key=image_key,
+        image_path_key=image_path_key,
         text_key=text_key,
         params_shard_rules=None)
 

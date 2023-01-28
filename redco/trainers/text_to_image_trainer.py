@@ -15,23 +15,26 @@ class TextToImageTrainer(Trainer):
                  freezed_params,
                  resolution,
                  optimizer,
+                 images_to_pixel_values_fn,
                  image_key='image',
+                 image_path_key=None,
                  text_key='text',
-                 costum_image_preprocess_fn=None,
                  lr_schedule_fn=None,
                  params_shard_rules=None):
         collate_fn = partial(
             text_to_image_default_collate_fn,
             pipeline=pipeline,
             resolution=resolution,
-            costum_image_preprocess_fn=costum_image_preprocess_fn,
+            images_to_pixel_values_fn=images_to_pixel_values_fn,
             image_key=image_key,
+            image_path_key=image_path_key,
             text_key=text_key)
 
         loss_fn = partial(
             text_to_image_default_loss_fn,
             pipeline=pipeline,
-            freezed_params=freezed_params)
+            freezed_params=freezed_params,
+            noise_scheduler_state=pipeline.scheduler.create_state())
 
         super(TextToImageTrainer, self).__init__(
             deployer=deployer,

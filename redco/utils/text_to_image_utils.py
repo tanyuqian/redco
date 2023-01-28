@@ -1,21 +1,13 @@
-from functools import partial
-
+from PIL import Image
 import numpy as np
 import jax
 import jax.numpy as jnp
 
 
-def default_image_preprocess_fn(image, resolution, dtype=np.float16):
-    image = image.convert('RGB').resize((resolution, resolution))
-    image = np.array(image, dtype=dtype) / 255.0
-    image = image.transpose(2, 0, 1)
-    return image
-
-
 def text_to_image_default_collate_fn(examples,
                                      pipeline,
-                                     resolution,
-                                     costum_image_preprocess_fn=None,
+                                     images_to_pixel_values_fn=None,
+                                     image_path_key=None,
                                      image_key='image',
                                      text_key='text'):
     batch = pipeline.tokenizer(
@@ -25,36 +17,46 @@ def text_to_image_default_collate_fn(examples,
         truncation=True,
         return_tensors='np')
 
-    if image_key in examples[0]:
-        if costum_image_preprocess_fn is not None:
-            image_preprocess_fn = costum_image_preprocess_fn
-        else:
-            image_preprocess_fn = partial(
-                default_image_preprocess_fn, resolution=resolution)
+    if image_key is not None and image_key in examples[0]:
+            images = [example[image_key].convert('RGB') for example in examples]
+    elif image_path_key is not None and image_path_key in examples[0]:
+        images = [
+            Image.open(example[image_path_key]).convert('RGB')
+            for example in examples]
+    else:
+        images = None
 
-        batch['pixel_values'] = np.stack([
-            image_preprocess_fn(example[image_key]) for example in examples])
+    if images_to_pixel_values_fn is not None and images is not None:
+        batch['pixel_values']: images_to_pixel_values_fn(images)
 
     return batch
 
 
-def text_to_image_default_loss_fn(
-        train_rng, state, params, batch, is_training, pipeline, freezed_params):
+def text_to_image_default_loss_fn(train_rng,
+                                  state,
+                                  params,
+                                  batch,
+                                  is_training,
+                                  pipeline,
+                                  freezed_params,
+                                  noise_scheduler_state):
     dropout_rng, sample_rng, noise_rng, timestep_rng = \
         jax.random.split(train_rng, num=4)
 
     # Convert images to latent space
     vae_outputs = pipeline.vae.apply(
-        {"params": freezed_params['vae']}, batch["pixel_values"],
-        deterministic=True, method=pipeline.vae.encode)
+        {"params": freezed_params['vae']},
+        batch["pixel_values"],
+        deterministic=True,
+        method=pipeline.vae.encode)
     latents = vae_outputs.latent_dist.sample(sample_rng)
-    # (NHWC) -> (NCHW)
-    latents = jnp.transpose(latents, (0, 3, 1, 2))
+    latents = jnp.transpose(latents, (0, 3, 1, 2))  # (NHWC) -> (NCHW)
     latents = latents * 0.18215
 
     # Sample noise that we'll add to the latents
     noise_rng, timestep_rng = jax.random.split(sample_rng)
     noise = jax.random.normal(noise_rng, latents.shape)
+
     # Sample a random timestep for each image
     bsz = latents.shape[0]
     timesteps = jax.random.randint(
@@ -66,6 +68,7 @@ def text_to_image_default_loss_fn(
     # Add noise to the latents according to the noise magnitude at each timestep
     # (this is the forward diffusion process)
     noisy_latents = pipeline.scheduler.add_noise(
+        state=noise_scheduler_state,
         original_samples=latents,
         noise=noise,
         timesteps=timesteps)
@@ -84,15 +87,28 @@ def text_to_image_default_loss_fn(
             train=False)[0]
 
     # Predict the noise residual
-    unet_outputs = pipeline.unet.apply(
+    model_pred = pipeline.unet.apply(
         {"params": params["unet"]},
         sample=noisy_latents,
         timesteps=timesteps,
         encoder_hidden_states=encoder_hidden_states,
-        train=is_training)
-    noise_pred = unet_outputs.sample
+        train=is_training).sample
 
-    return jnp.mean(jnp.square(noise - noise_pred))
+    # Get the target for loss depending on the prediction type
+    if pipeline.scheduler.config.prediction_type == "epsilon":
+        target = noise
+    elif pipeline.scheduler.config.prediction_type == "v_prediction":
+        target = pipeline.scheduler.get_velocity(
+            state=noise_scheduler_state,
+            sample=latents,
+            noise=noise,
+            timesteps=timesteps)
+    else:
+        raise ValueError(
+            f"Unknown prediction type "
+            f"{pipeline.scheduler.config.prediction_type}")
+
+    return jnp.mean(jnp.square(target - model_pred))
 
 
 def text_to_image_default_pred_fn(pred_rng,

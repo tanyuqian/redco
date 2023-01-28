@@ -14,7 +14,6 @@ class TextToImagePredictor(Predictor):
                  freezed_params,
                  resolution,
                  n_infer_steps,
-                 image_key='image',
                  text_key='text',
                  params=None,
                  params_shard_rules=None):
@@ -22,7 +21,6 @@ class TextToImagePredictor(Predictor):
             text_to_image_default_collate_fn,
             pipeline=pipeline,
             resolution=resolution,
-            image_key=image_key,
             text_key=text_key)
 
         pred_fn = partial(

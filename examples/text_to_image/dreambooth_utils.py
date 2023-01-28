@@ -75,13 +75,3 @@ def get_dreambooth_dataset(predictor,
     return dataset
 
 
-def dreambooth_image_preprocess_fn(image, resolution):
-    image_transforms = transforms.Compose([
-        transforms.Resize(
-            resolution, interpolation=transforms.InterpolationMode.BILINEAR),
-        transforms.RandomCrop(resolution),
-        transforms.ToTensor(),
-        transforms.Normalize([0.5], [0.5]),
-    ])
-
-    return np.array(image_transforms(image), dtype=np.float16)
