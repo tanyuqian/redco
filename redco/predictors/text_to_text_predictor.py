@@ -14,7 +14,7 @@ class TextToTextPredictor(Predictor):
                  tokenizer,
                  max_src_len,
                  max_tgt_len,
-                 gen_kwargs,
+                 generation_configs,
                  src_key='src',
                  tgt_key='tgt',
                  params=None,
@@ -29,7 +29,10 @@ class TextToTextPredictor(Predictor):
             tgt_key=tgt_key)
 
         pred_fn = partial(
-            text_to_text_default_pred_fn, model=model, gen_kwargs=gen_kwargs)
+            text_to_text_default_pred_fn,
+            model=model,
+            generation_configs=generation_configs)
+
         output_fn = partial(text_to_text_default_output_fn, tokenizer=tokenizer)
 
         super(TextToTextPredictor, self).__init__(

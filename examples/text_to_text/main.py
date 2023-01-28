@@ -6,7 +6,8 @@ import jax
 
 from flax.core.frozen_dict import freeze
 
-from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
+from transformers import \
+    AutoTokenizer, FlaxAutoModelForSeq2SeqLM, GenerationConfig
 
 from redco import Deployer, TextToTextTrainer
 
@@ -47,6 +48,9 @@ def main(dataset_name='xsum',
         model = FlaxAutoModelForSeq2SeqLM.from_pretrained(
             model_name_or_path, from_pt=True)
         model.params = model.to_fp32(model.params)
+
+    generation_config = GenerationConfig.from_pretrained(
+        model_name_or_path, max_length=max_tgt_len, num_beams=num_beams)
 
     deployer = Deployer(
         jax_seed=jax_seed,

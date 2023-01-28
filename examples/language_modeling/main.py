@@ -88,11 +88,8 @@ def main(dataset_name='xsum',
         model = FlaxAutoModelForCausalLM.from_pretrained(model_name_or_path)
         model.params = model.to_fp32(model.params)
 
-    try:
-        generation_config = GenerationConfig.from_pretrained(model_name_or_path)
-    except:
-        generation_config = GenerationConfig.from_model_config(model.config)
-    generation_config.update(
+    generation_config = GenerationConfig.from_pretrained(
+        model_name_or_path,
         max_length=max_length,
         do_sample=True,
         top_p=top_p,
@@ -145,7 +142,7 @@ def main(dataset_name='xsum',
         per_device_batch_size=per_device_batch_size,
         eval_examples=dataset['validation'],
         eval_per_device_batch_size=eval_per_device_batch_size,
-        eval_loss=True,
+        eval_loss=False,
         eval_predictor=predictor)
 
 
