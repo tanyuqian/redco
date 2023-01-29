@@ -1,9 +1,6 @@
 import os
 import glob
-
-import numpy as np
 from PIL import Image
-from torchvision import transforms
 
 
 def get_dreambooth_dataset(predictor,
