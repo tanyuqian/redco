@@ -1,6 +1,7 @@
 from functools import partial
 import fire
 import jax
+import jax.numpy as jnp
 import numpy as np
 import optax
 
@@ -31,33 +32,45 @@ def collate_fn(
     return batch
 
 
-def loss_fn(train_rng, state, params, batch, is_training):
+def loss_fn(train_rng, state, params, batch, is_training, is_regression):
     labels = batch.pop('labels')
 
     logits = state.apply_fn(
         **batch, params=params, dropout_rng=train_rng, train=is_training).logits
 
-    return optax.softmax_cross_entropy_with_integer_labels(
-        logits=logits, labels=labels).mean()
+    if is_regression:
+        return jnp.mean(jnp.square(logits[..., 0] - labels))
+    else:
+        return optax.softmax_cross_entropy_with_integer_labels(
+            logits=logits, labels=labels).mean()
 
 
-def pred_fn(pred_rng, batch, params, model):
+def pred_fn(pred_rng, batch, params, model, is_regression):
     batch.pop('labels')
 
     logits = model(**batch, params=params, train=False).logits
-    return logits.argmax(axis=-1)
+
+    if is_regression:
+        return logits[..., 0]
+    else:
+        return logits.argmax(axis=-1)
 
 
-def eval_metric_fn(eval_outputs, label_key):
+def eval_metric_fn(eval_outputs, label_key, is_regression):
     preds = np.array([result['pred'] for result in eval_outputs])
     labels = np.array([result['example'][label_key] for result in eval_outputs])
-    return {'acc': np.mean(preds == labels).item()}
+
+    if is_regression:
+        return {'square error': np.mean(np.square(preds - labels))}
+    else:
+        return {'acc': np.mean(preds == labels).item()}
 
 
 def main(dataset_name='sst2',
          sent0_key='sentence',
          sent1_key=None,
          label_key='label',
+         is_regression=False,
          model_name_or_path='roberta-large',
          mesh_model_shards=2,
          max_length=512,
@@ -73,7 +86,12 @@ def main(dataset_name='sst2',
          run_tensorboard=False):
     dataset = load_dataset('glue', dataset_name)
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
-    num_labels = len(set([example[label_key] for example in dataset['train']]))
+
+    if is_regression:
+        num_labels = len(set(
+            [example[label_key] for example in dataset['train']]))
+    else:
+        num_labels = 1
 
     deployer = Deployer(
         mesh_model_shards=mesh_model_shards,
@@ -107,14 +125,14 @@ def main(dataset_name='sst2',
             tokenizer=tokenizer,
             max_length=max_length),
         apply_fn=model,
-        loss_fn=loss_fn,
+        loss_fn=partial(loss_fn, is_regression=is_regression),
         params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
         params_shard_rules=deployer.guess_shard_rules(params=model.params))
 
     predictor = trainer.get_default_predictor(
-        pred_fn=partial(pred_fn, model=model))
+        pred_fn=partial(pred_fn, model=model, is_regression=is_regression))
 
     trainer.fit(
         train_examples=dataset['train'],
@@ -124,7 +142,8 @@ def main(dataset_name='sst2',
         eval_per_device_batch_size=eval_per_device_batch_size,
         eval_loss=True,
         eval_predictor=predictor,
-        eval_metric_fn=partial(eval_metric_fn, label_key=label_key))
+        eval_metric_fn=partial(
+            eval_metric_fn, label_key=label_key, is_regression=is_regression))
 
 
 if __name__ == '__main__':
