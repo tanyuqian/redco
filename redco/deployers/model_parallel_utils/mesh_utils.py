@@ -11,14 +11,14 @@ import optax
 from .partition_utils import set_partitions
 
 
-def get_mesh(mesh_model_shards):
-    if mesh_model_shards == 1:
+def get_mesh(n_model_shards):
+    if n_model_shards == 1:
         return None
 
-    assert jax.device_count() % mesh_model_shards == 0
+    assert jax.device_count() % n_model_shards == 0
 
     mesh_devices = np.array(jax.devices()).reshape(
-        jax.device_count() // mesh_model_shards, mesh_model_shards)
+        jax.device_count() // n_model_shards, n_model_shards)
     mesh = Mesh(mesh_devices, ('dp', 'mp'))
 
     return mesh

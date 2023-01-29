@@ -64,7 +64,7 @@ def output_fn(batch_preds, tokenizer):
 def main(dataset_name='xsum',
          text_key='document',
          model_name_or_path='gpt2-large',
-         mesh_model_shards=2,
+         n_model_shards=2,
          n_epochs=2,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
@@ -100,7 +100,7 @@ def main(dataset_name='xsum',
 
     deployer = Deployer(
         jax_seed=jax_seed,
-        mesh_model_shards=mesh_model_shards,
+        n_model_shards=n_model_shards,
         workdir=workdir,
         run_tensorboard=run_tensorboard,
         verbose=True)

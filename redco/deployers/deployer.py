@@ -19,13 +19,13 @@ from .model_parallel_utils.mesh_utils import (
 class Deployer:
     def __init__(self,
                  jax_seed,
-                 mesh_model_shards=1,
+                 n_model_shards=1,
                  verbose=True,
                  workdir='./workdir',
                  run_tensorboard=False):
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._verbose = verbose
-        self._mesh = get_mesh(mesh_model_shards=mesh_model_shards)
+        self._mesh = get_mesh(n_model_shards=n_model_shards)
 
         self._workdir = workdir
         os.makedirs(workdir, exist_ok=True)

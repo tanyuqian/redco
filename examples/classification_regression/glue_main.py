@@ -72,7 +72,7 @@ def main(dataset_name='sst2',
          label_key='label',
          is_regression=False,
          model_name_or_path='roberta-large',
-         mesh_model_shards=2,
+         n_model_shards=2,
          max_length=512,
          n_epochs=2,
          per_device_batch_size=4,
@@ -94,7 +94,7 @@ def main(dataset_name='sst2',
         num_labels = 1
 
     deployer = Deployer(
-        mesh_model_shards=mesh_model_shards,
+        n_model_shards=n_model_shards,
         jax_seed=jax_seed,
         workdir=workdir,
         run_tensorboard=run_tensorboard)
