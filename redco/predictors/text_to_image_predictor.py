@@ -20,7 +20,6 @@ class TextToImagePredictor(Predictor):
         collate_fn = partial(
             text_to_image_default_collate_fn,
             pipeline=pipeline,
-            resolution=resolution,
             text_key=text_key)
 
         pred_fn = partial(

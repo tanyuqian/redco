@@ -15,8 +15,7 @@ from dreambooth_utils import get_dreambooth_dataset
 
 def images_to_pixel_values_fn(images, image_transforms):
     return np.stack(
-        [image_transforms(image) for image in images],
-        dtype=np.float16)
+        [image_transforms(image) for image in images]).astype(np.float16)
 
 
 def main(instance_dir='./skr_dog_images',
@@ -70,7 +69,6 @@ def main(instance_dir='./skr_dog_images',
         pipeline=pipeline,
         params=params,
         freezed_params=pipeline_params,
-        resolution=resolution,
         optimizer=optimizer,
         images_to_pixel_values_fn=partial(
             images_to_pixel_values_fn, image_transforms=image_transforms),
@@ -79,7 +77,8 @@ def main(instance_dir='./skr_dog_images',
         text_key=text_key,
         params_shard_rules=None)
 
-    predictor = trainer.get_default_predictor(n_infer_steps=n_infer_steps)
+    predictor = trainer.get_default_predictor(
+        resolution=resolution, n_infer_steps=n_infer_steps)
 
     dataset = get_dreambooth_dataset(
         predictor=predictor,

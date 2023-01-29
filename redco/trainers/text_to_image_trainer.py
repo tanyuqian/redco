@@ -13,7 +13,6 @@ class TextToImageTrainer(Trainer):
                  pipeline,
                  params,
                  freezed_params,
-                 resolution,
                  optimizer,
                  images_to_pixel_values_fn,
                  image_key='image',
@@ -24,7 +23,6 @@ class TextToImageTrainer(Trainer):
         collate_fn = partial(
             text_to_image_default_collate_fn,
             pipeline=pipeline,
-            resolution=resolution,
             images_to_pixel_values_fn=images_to_pixel_values_fn,
             image_key=image_key,
             image_path_key=image_path_key,
@@ -51,11 +49,10 @@ class TextToImageTrainer(Trainer):
             deployer=deployer,
             pipeline=pipeline,
             freezed_params=freezed_params,
-            resolution=resolution,
-            image_key=image_key,
             text_key=text_key,
             params=params,
             params_shard_rules=params_shard_rules)
 
-    def get_default_predictor(self, n_infer_steps):
-        return self._default_predictor_fn(n_infer_steps=n_infer_steps)
+    def get_default_predictor(self, resolution, n_infer_steps):
+        return self._default_predictor_fn(
+            resolution=resolution, n_infer_steps=n_infer_steps)

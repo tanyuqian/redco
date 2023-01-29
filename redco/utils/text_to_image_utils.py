@@ -27,7 +27,7 @@ def text_to_image_default_collate_fn(examples,
         images = None
 
     if images_to_pixel_values_fn is not None and images is not None:
-        batch['pixel_values']: images_to_pixel_values_fn(images)
+        batch['pixel_values'] = images_to_pixel_values_fn(images)
 
     return batch
 
@@ -117,7 +117,8 @@ def text_to_image_default_pred_fn(pred_rng,
                                   pipeline,
                                   freezed_params,
                                   n_infer_steps,
-                                  resolution):
+                                  resolution,
+                                  guidance_scale=7.5):
     if 'text_encoder' in params:
         text_encoder_params = params['text_encoder']
     else:
@@ -135,6 +136,7 @@ def text_to_image_default_pred_fn(pred_rng,
         params=pred_params,
         prng_seed=pred_rng,
         num_inference_steps=n_infer_steps,
+        guidance_scale=guidance_scale,
         height=resolution,
         width=resolution)
 
