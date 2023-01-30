@@ -11,15 +11,9 @@ class JsonlDataset(Dataset):
             split = filename.split('/')[-1][:-len('.jsonl')]
             self._split_filenames[split] = filename
 
-    def get_examples(self, split):
+    def __getitem__(self, split):
         examples = []
         for line in open(self._split_filenames[split]):
             examples.append(json.loads(line))
 
         return examples
-
-    def get_size(self, split):
-        n_lines = 0
-        for _ in open(self._split_filenames[split]):
-            n_lines += 1
-        return n_lines
