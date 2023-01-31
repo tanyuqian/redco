@@ -88,10 +88,10 @@ def main(dataset_name='sst2',
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
     if is_regression:
+        num_labels = 1
+    else:
         num_labels = len(set(
             [example[label_key] for example in dataset['train']]))
-    else:
-        num_labels = 1
 
     deployer = Deployer(
         n_model_shards=n_model_shards,
