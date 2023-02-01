@@ -87,11 +87,8 @@ def main(dataset_name='sst2',
     dataset = load_dataset('glue', dataset_name)
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
-    if is_regression:
-        num_labels = 1
-    else:
-        num_labels = len(set(
-            [example[label_key] for example in dataset['train']]))
+    num_labels = 1 if is_regression \
+        else len(set([example[label_key] for example in dataset['train']]))
 
     deployer = Deployer(
         n_model_shards=n_model_shards,

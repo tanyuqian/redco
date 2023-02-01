@@ -1,7 +1,11 @@
+from functools import partial
+
 import jax
 from jax.experimental.pjit import pjit
 from jax.experimental.pjit import PartitionSpec as P
 from flax.core.frozen_dict import freeze
+
+from .utils import add_idxes, collate_fn_wrapper, pred_fn_wrapper
 
 
 class Predictor:
@@ -13,11 +17,14 @@ class Predictor:
                  params=None,
                  params_shard_rules=None):
         self._deployer = deployer
-        self._collate_fn = collate_fn
+        self._collate_fn = partial(collate_fn_wrapper, collate_fn=collate_fn)
 
-        self._params = freeze(params)
+        self._params = freeze(params) if params is not None else None
         self._params_shard_rules = params_shard_rules
-        self._pred_fn = pred_fn
+        self._pred_fn = partial(
+            pred_fn_wrapper,
+            pred_fn=pred_fn,
+            under_pmap=self._deployer.mesh is None)
         self._p_pred_step = None
 
         if output_fn is None:
@@ -39,7 +46,7 @@ class Predictor:
 
             self._p_pred_step = pjit(
                 pred_fn,
-                in_axis_resources=(None, data_spec, params_spec),
+                in_axis_resources=(None, params_spec, data_spec),
                 out_axis_resources=None)
 
     def predict(self, examples, per_device_batch_size, params=None):
@@ -50,6 +57,7 @@ class Predictor:
         _, global_batch_size = self._deployer.process_batch_size(
             per_device_batch_size=per_device_batch_size)
         examples = examples + [examples[0]] * (global_batch_size - 1)
+        examples = add_idxes(examples=examples)
 
         params = self._deployer.process_to_run_model(params)
 
@@ -72,12 +80,12 @@ class Predictor:
             pred_rng = self._deployer.process_to_run_model(
                 self._deployer.gen_rng(), is_prng_key=True)
 
-            batch_preds = self._deployer.run_model_step(
+            batch_preds_with_idxes = self._deployer.run_model_step(
                 step_fn=self._p_pred_step,
-                input_args=(pred_rng, batch, params))
+                input_args=(pred_rng, params, batch))
 
             batch_preds = self._deployer.process_batch_preds(
-                batch_preds=batch_preds)
+                batch_preds_with_idxes=batch_preds_with_idxes)
             batch_preds = self._output_fn(batch_preds)
             preds.extend(batch_preds)
 

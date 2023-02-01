@@ -1,6 +1,7 @@
 import os
 
 import jax
+import jax.numpy as jnp
 from flax.jax_utils import replicate, unreplicate
 from flax.training.common_utils import shard_prng_key
 
@@ -74,13 +75,26 @@ class Deployer:
             desc=f'{desc} (global_batch_size = {global_batch_size})',
             verbose=self._verbose)
 
-    def process_batch_preds(self, batch_preds):
+    def process_batch_preds(self, batch_preds_with_idxes):
         if self._mesh is None:
-            return jax.tree_util.tree_map(
+            batch_preds_with_idxes = jax.tree_util.tree_map(
+                lambda x: x[0], batch_preds_with_idxes)
+
+            batch_preds = batch_preds_with_idxes['raw_preds']
+            idxes = batch_preds_with_idxes['__idx__']
+
+            preds = jax.tree_util.tree_map(
                 lambda t: t.reshape((t.shape[0] * t.shape[1],) + t.shape[2:]),
                 batch_preds)
+            idxes = idxes.reshape(-1)
+            idxes_argsort = jnp.argsort(idxes, axis=None)
+
+            return jax.tree_util.tree_map(lambda t: t[idxes_argsort], preds)
         else:
-            return batch_preds
+            idxes = batch_preds_with_idxes['__idx__']
+            assert idxes == jnp.sort(idxes)
+
+            return batch_preds_with_idxes['raw_preds']
 
     def process_to_run_model(self, x, is_prng_key=False):
         if self._mesh is None:

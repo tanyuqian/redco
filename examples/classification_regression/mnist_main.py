@@ -30,9 +30,9 @@ class CNN(nn.Module):
 
 def collate_fn(examples):
     images, labels = [], []
-    for image, label in examples:
-        images.append(np.expand_dims(np.array(image), axis=(0, -1)))
-        labels.append(label)
+    for example in examples:
+        images.append(np.expand_dims(np.array(example['image']), axis=(0, -1)))
+        labels.append(example['label'])
 
     return {
         'images': np.concatenate(images, axis=0),
@@ -56,7 +56,7 @@ def pred_fn(pred_rng, batch, params, model):
 
 def eval_metric_fn(eval_results):
     preds = np.array([result['pred'] for result in eval_results])
-    labels = np.array([result['example'][1] for result in eval_results])
+    labels = np.array([result['example']['label'] for result in eval_results])
     return {'acc': np.mean(preds == labels).item()}
 
 
@@ -66,8 +66,10 @@ def main(data_dir='./data/',
          learning_rate=1e-3,
          jax_seed=42):
     dataset = {
-        'train': list(MNIST(data_dir, train=True, download=True)),
-        'test': list(MNIST(data_dir, train=False, download=True))
+        'train': [{'image': t[0], 'label': t[1]} for t in list(
+            MNIST(data_dir, train=True, download=True))],
+        'test': [{'image': t[0], 'label': t[1]} for t in list(
+            MNIST(data_dir, train=False, download=True))],
     }
 
     deployer = Deployer(jax_seed=jax_seed)
