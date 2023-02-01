@@ -78,9 +78,7 @@ def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
         in_axis_resources=(params_spec,),
         out_axis_resources=(opt_state_spec, params_spec))
 
-    with jax.default_device(jax.devices('cpu')[0]):
-        params = get_host_params(
-            params=params, params_spec=params_spec, mesh=mesh)
+    params = get_host_params(params=params, params_spec=params_spec, mesh=mesh)
 
     with mesh:
         opt_state, params = p_get_initial_state(params)
@@ -100,16 +98,18 @@ def get_host_params(params, params_spec, mesh):
     param_shard_idx = \
         get_process_mesh_idx(mesh=mesh, process_idx=jax.process_index())[1]
 
-    def split_param(host_shape, param):
-        param_shape_arr = jnp.array(param.shape, dtype=jnp.int32)
-        host_shape_arr = jnp.array(host_shape.shape, dtype=jnp.int32)
-        mask = (param_shape_arr != host_shape_arr).astype(jnp.int32)
+    def split_param(host_param_shape, param):
+        param_shape = np.array(param.shape)
+        host_param_shape = np.array(host_param_shape)
+        dim_mask = (param_shape != host_param_shape).astype(int)
+
         return jax.lax.dynamic_slice(
             param,
-            start_indices=mask * host_shape_arr * param_shard_idx,
-            slice_sizes=host_shape_arr)
+            start_indices=dim_mask * host_param_shape * param_shard_idx,
+            slice_sizes=host_param_shape)
 
-    return jax.tree_util.tree_map(split_param, host_param_shapes, params)
+    with jax.default_device(jax.devices('cpu')[0]):
+        return jax.tree_util.tree_map(split_param, host_param_shapes, params)
 
 
 def under_attention(flat_param_key):
