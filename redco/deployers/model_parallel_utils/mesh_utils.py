@@ -1,6 +1,7 @@
 import numpy as np
 
 import jax
+import jax.numpy as jnp
 from jax.experimental.maps import Mesh
 from jax.experimental.pjit import pjit
 from jax.experimental.pjit import PartitionSpec as P
@@ -22,6 +23,18 @@ def get_mesh(n_model_shards):
     mesh = Mesh(mesh_devices, ('dp', 'mp'))
 
     return mesh
+
+
+def get_mesh_process_matrix(mesh):
+    return np.asarray(jax.tree_map(lambda x: x.process_index, mesh.devices))
+
+
+def get_process_mesh_idx(mesh, process_idx):
+    process_matrix = get_mesh_process_matrix(mesh)
+    idxes_dp, idxes_mp = np.where(process_matrix == process_idx)
+
+    return [min(idxes_dp) // len(set(idxes_dp)),
+            min(idxes_mp) // len(set(idxes_mp))]
 
 
 def get_host_batch_size(global_batch_size, mesh):
@@ -64,10 +77,38 @@ def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
         in_axis_resources=(params_spec,),
         out_axis_resources=(opt_state_spec, params_spec))
 
+    with jax.default_device(jax.devices('cpu')[0]):
+        params = get_host_params(
+            params=params, params_spec=params_spec, mesh=mesh)
+
     with mesh:
         opt_state, params = p_get_initial_state(params)
 
     return params, opt_state, opt_state_spec
+
+
+def get_host_params(params, params_spec, mesh):
+    p_model_init_fn = pjit(
+        lambda: params,
+        in_axis_resources=(),
+        out_axis_resources=params_spec)
+
+    with mesh:
+        host_param_shapes = jax.eval_shape(p_model_init_fn)
+
+    param_shard_idx = \
+        get_process_mesh_idx(mesh=mesh, process_idx=jax.process_index())[1]
+
+    def split_param(host_shape, param):
+        param_shape_arr = jnp.array(param.shape, dtype=jnp.int32)
+        host_shape_arr = jnp.array(host_shape.shape, dtype=jnp.int32)
+        mask = (param_shape_arr != host_shape_arr).astype(jnp.int32)
+        return jax.lax.dynamic_slice(
+            param,
+            start_indices=mask * host_shape_arr * param_shard_idx,
+            slice_sizes=host_shape_arr)
+
+    return jax.tree_util.tree_map(split_param, host_param_shapes, params)
 
 
 def under_attention(flat_param_key):
@@ -77,8 +118,8 @@ def under_attention(flat_param_key):
 
 def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
     shard_rules = {
-        ('(bias|scale)', ): None,
-        ('embedding', ): P('mp', None),
+        ('(bias|scale)',): None,
+        ('embedding',): P('mp', None),
     }
 
     last_dense_mp_dim = None
@@ -94,7 +135,7 @@ def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
         elif key[-1] == 'embedding':
             assert len(param.shape) == 2
             if param.shape[0] % mesh_model_shards != 0:
-                shard_rules[('embedding', )] = P(None, 'mp')
+                shard_rules[('embedding',)] = P(None, 'mp')
 
         else:
             if len(param.squeeze().shape) == 1:
