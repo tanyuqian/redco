@@ -29,15 +29,13 @@ class CNN(nn.Module):
 
 
 def collate_fn(examples):
-    images, labels = [], []
-    for example in examples:
-        images.append(np.expand_dims(np.array(example['image']), axis=(0, -1)))
-        labels.append(example['label'])
+    images = np.stack([
+        np.expand_dims(np.array(example['image']), axis=-1)
+        for example in examples])
 
-    return {
-        'images': np.concatenate(images, axis=0),
-        'labels': np.array(labels)
-    }
+    labels = np.array([example['label'] for example in examples])
+
+    return {'images': images, 'labels': labels}
 
 
 def loss_fn(train_rng, state, params, batch, is_training):
