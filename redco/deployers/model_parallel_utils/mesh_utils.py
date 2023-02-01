@@ -26,7 +26,8 @@ def get_mesh(n_model_shards):
 
 
 def get_mesh_process_matrix(mesh):
-    return np.asarray(jax.tree_map(lambda x: x.process_index, mesh.devices))
+    return np.asarray(jax.tree_map(
+        lambda x: x.process_index, mesh.devices.tolist()))
 
 
 def get_process_mesh_idx(mesh, process_idx):
