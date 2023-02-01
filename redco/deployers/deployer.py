@@ -14,7 +14,8 @@ from .model_parallel_utils.mesh_utils import (
     get_host_batch_size,
     shard_params_and_opt_state,
     get_param_spec,
-    guess_shard_rules)
+    guess_shard_rules,
+    get_mesh_process_matrix)
 
 
 class Deployer:
@@ -26,7 +27,7 @@ class Deployer:
                  run_tensorboard=False):
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._verbose = verbose
-        self._mesh = get_mesh(n_model_shards=n_model_shards)
+        self._mesh = self.get_mesh(n_model_shards=n_model_shards)
 
         self._workdir = workdir
         os.makedirs(workdir, exist_ok=True)
@@ -38,6 +39,14 @@ class Deployer:
             self._summary_writer = tensorboard.SummaryWriter(workdir)
         else:
             self._summary_writer = None
+
+    def get_mesh(self, n_model_shards):
+        mesh = get_mesh(n_model_shards=n_model_shards)
+
+        self.log_info(
+            get_mesh_process_matrix(mesh=mesh), title='Mesh process matrix')
+
+        return mesh
 
     def process_batch_size(self, per_device_batch_size):
         if self._mesh is None:
@@ -165,17 +174,13 @@ class Deployer:
         return new_rng
 
     def log_info(self, info, title=None, step=None):
-        if step is not None:
-            title = f'{title} (step {step})'
-        else:
-            step = 0
-
-        log_info(
-            info=info,
-            title=title,
-            logger=self._logger,
-            summary_writer=self._summary_writer,
-            step=step)
+        if jax.process_index() == 0:
+            log_info(
+                info=info,
+                title=title,
+                logger=self._logger,
+                summary_writer=self._summary_writer,
+                step=step)
 
     def log_metrics(self, metrics, step):
         if jax.process_index() == 0 and self._summary_writer is not None:

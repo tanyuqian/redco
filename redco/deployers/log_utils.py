@@ -32,21 +32,29 @@ def get_logger(verbose):
     return logger
 
 
-def log_info(info, title, logger, summary_writer, step=0):
+def log_info(info, title, logger, summary_writer, step):
     info = str(info)
 
     if title is not None:
-        max_len = max(max([len(t) for t in info.split('\n')]), len(title) + 4)
+        if step is not None:
+            title_ = f'{title} (step {step})'
+        else:
+            title_ = title
+            step = 0
+
+        if summary_writer is not None:
+            summary_writer.text(title, info.replace('\n', '\n\n'), step=step)
+
+        max_len = max(max([len(t) for t in info.split('\n')]), len(title_) + 4)
 
         logger.info('=' * max_len)
-        logger.info(f'### {title}')
+        logger.info(f'### {title_}')
         logger.info('-' * max_len)
         for t in info.split('\n'):
             logger.info(t)
         logger.info('=' * max_len)
 
-        if summary_writer is not None:
-            summary_writer.text(title, info.replace('\n', '\n\n'), step=step)
+
     else:
         logger.info(info)
 
