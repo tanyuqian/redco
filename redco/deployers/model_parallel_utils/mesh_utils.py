@@ -101,7 +101,7 @@ def get_host_params(params, params_spec, mesh):
     def split_param(host_param_shape, param):
         param_shape = np.array(param.shape)
         host_param_shape = np.array(host_param_shape)
-        dim_mask = (param_shape != host_param_shape).astype(int)
+        dim_mask = (param_shape != host_param_shape).astype(np.int32)
 
         return jax.lax.dynamic_slice(
             param,
