@@ -3,17 +3,16 @@ import json
 import jax
 
 
-def get_logger(verbose):
+def get_logger(verbose, workdir):
     logger = logging.getLogger('redco')
 
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter(
         fmt="[%(asctime)s - %(name)s - %(levelname)s] %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S"))
-
     logger.addHandler(handler)
 
-    handler = logging.FileHandler(filename='./workdir/log.txt')
+    handler = logging.FileHandler(filename=f'{workdir}/log.txt')
     handler.setFormatter(logging.Formatter(
         fmt="[%(asctime)s - %(name)s - %(levelname)s] %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S"))

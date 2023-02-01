@@ -25,20 +25,20 @@ class Deployer:
                  verbose=True,
                  workdir='./workdir',
                  run_tensorboard=False):
-        self._rng = jax.random.PRNGKey(seed=jax_seed)
-        self._verbose = verbose
-        self._mesh = self.get_mesh(n_model_shards=n_model_shards)
-
-        self._workdir = workdir
         os.makedirs(workdir, exist_ok=True)
 
-        self._logger = get_logger(verbose=verbose)
+        self._verbose = verbose
+        self._workdir = workdir
+        self._logger = get_logger(verbose=verbose, workdir=workdir)
 
         if run_tensorboard:
             from flax.metrics import tensorboard
             self._summary_writer = tensorboard.SummaryWriter(workdir)
         else:
             self._summary_writer = None
+
+        self._rng = jax.random.PRNGKey(seed=jax_seed)
+        self._mesh = self.get_mesh(n_model_shards=n_model_shards)
 
     def get_mesh(self, n_model_shards):
         mesh = get_mesh(n_model_shards=n_model_shards)
