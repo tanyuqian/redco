@@ -24,24 +24,6 @@ def get_mesh(n_model_shards):
     return mesh
 
 
-def get_mesh_process_matrix(mesh):
-    return np.asarray(jax.tree_map(
-        lambda x: x.process_index, mesh.devices.tolist()))
-
-
-def get_process_mesh_idx(mesh, process_idx):
-    process_matrix = get_mesh_process_matrix(mesh)
-    idxes_dp, idxes_mp = np.where(process_matrix == process_idx)
-
-    return [min(idxes_dp) // len(set(idxes_dp)),
-            min(idxes_mp) // len(set(idxes_mp))]
-
-
-def get_host_batch_size(global_batch_size, mesh):
-    assert not mesh.is_multi_process
-    return global_batch_size
-
-
 class ShapeDtypeStruct:
     __slots__ = ["shape", "dtype"]
 
@@ -77,43 +59,10 @@ def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
         in_axis_resources=(params_spec,),
         out_axis_resources=(opt_state_spec, params_spec))
 
-    params = get_host_params(params=params, params_spec=params_spec, mesh=mesh)
-
     with mesh:
         opt_state, params = p_get_initial_state(params)
 
     return params, opt_state, opt_state_spec
-
-
-def get_host_params(params, params_spec, mesh):
-    p_model_init_fn = pjit(
-        lambda: params,
-        in_axis_resources=(),
-        out_axis_resources=params_spec)
-
-    with mesh:
-        host_param_shapes = jax.eval_shape(p_model_init_fn)
-
-    param_shard_idx = \
-        get_process_mesh_idx(mesh=mesh, process_idx=jax.process_index())[1]
-
-    def split_param(host_param_shape, param):
-        param_shape = np.array(param.shape)
-        host_param_shape = np.array(host_param_shape.shape)
-        dim_mask = (param_shape != host_param_shape).astype(int)
-
-        return jax.lax.dynamic_slice(
-            param,
-            start_indices=dim_mask * host_param_shape * param_shard_idx,
-            slice_sizes=host_param_shape)
-
-    with jax.default_device(jax.devices('cpu')[0]):
-        return jax.tree_util.tree_map(split_param, host_param_shapes, params)
-
-
-def under_attention(flat_param_key):
-    return any([('attention' in t.lower()
-                 or 'attn' in t.lower()) for t in flat_param_key])
 
 
 def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
@@ -169,3 +118,10 @@ def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
                 shard_rules[rule_key] = P(*rule_tuple)
 
     return list(shard_rules.items())
+
+
+def under_attention(flat_param_key):
+    for key in flat_param_key:
+        if 'attention' in key.lower() or 'attn' in key.lower():
+            return True
+    return False

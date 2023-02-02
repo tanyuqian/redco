@@ -11,11 +11,9 @@ from .log_utils import get_logger, log_info, save_outputs
 
 from .model_parallel_utils.mesh_utils import (
     get_mesh,
-    get_host_batch_size,
     shard_params_and_opt_state,
     get_param_spec,
-    guess_shard_rules,
-    get_mesh_process_matrix)
+    guess_shard_rules)
 
 
 class Deployer:
@@ -38,24 +36,15 @@ class Deployer:
             self._summary_writer = None
 
         self._rng = jax.random.PRNGKey(seed=jax_seed)
-        self._mesh = self.get_mesh(n_model_shards=n_model_shards)
-
-    def get_mesh(self, n_model_shards):
-        mesh = get_mesh(n_model_shards=n_model_shards)
-
-        self.log_info(
-            get_mesh_process_matrix(mesh=mesh), title='Mesh process matrix')
-
-        return mesh
+        self._mesh = get_mesh(n_model_shards=n_model_shards)
 
     def process_batch_size(self, per_device_batch_size):
         if self._mesh is None:
             batch_size = per_device_batch_size * jax.local_device_count()
             global_batch_size = batch_size * jax.process_count()
         else:
-            global_batch_size = per_device_batch_size * self._mesh.shape['dp']
-            batch_size = get_host_batch_size(
-                global_batch_size=global_batch_size, mesh=self._mesh)
+            batch_size = per_device_batch_size * self._mesh.shape['dp']
+            global_batch_size = batch_size
 
         return batch_size, global_batch_size
 

@@ -4,8 +4,6 @@ import jax
 import jax.numpy as jnp
 from flax.training.common_utils import shard
 
-from .model_parallel_utils.mesh_utils import get_process_mesh_idx
-
 
 def get_dataloader(examples, batch_size, collate_fn, do_shard):
     def make_jnp(value):
@@ -38,26 +36,15 @@ def get_data_batches(examples,
         disable=(not verbose))
 
 
-def shuffle_examples(examples, shuffle_rng):
-    shuffled_idxes = jax.random.permutation(key=shuffle_rng, x=len(examples))
-    return [examples[int(idx)] for idx in shuffled_idxes]
-
-
 def get_host_examples(examples, global_batch_size, shuffle, shuffle_rng, mesh):
     if shuffle:
-        examples = shuffle_examples(examples=examples, shuffle_rng=shuffle_rng)
+        shuffled_idxes = jax.random.permutation(
+            key=shuffle_rng, x=len(examples))
+        examples = [examples[int(idx)] for idx in shuffled_idxes]
 
     examples = examples[:len(examples) // global_batch_size * global_batch_size]
 
     if mesh is None:
         return examples[jax.process_index()::jax.process_count()]
     else:
-        dp_size = max([
-            get_process_mesh_idx(mesh=mesh, process_idx=process_idx)[0]
-            for process_idx in range(jax.process_count())
-        ]) + 1
-
-        dp_idx = get_process_mesh_idx(
-            mesh=mesh, process_idx=jax.process_index())[0]
-
-        return examples[dp_idx::dp_size]
+        return examples
