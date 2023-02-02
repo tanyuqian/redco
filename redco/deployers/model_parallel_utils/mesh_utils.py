@@ -1,7 +1,6 @@
 import numpy as np
 
 import jax
-import jax.numpy as jnp
 from jax.experimental.maps import Mesh
 from jax.experimental.pjit import pjit
 from jax.experimental.pjit import PartitionSpec as P

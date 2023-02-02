@@ -4,6 +4,8 @@ import jax
 import jax.numpy as jnp
 from flax.training.common_utils import shard
 
+from .model_parallel_utils.mesh_utils import get_process_mesh_idx
+
 
 def get_dataloader(examples, batch_size, collate_fn, do_shard):
     def make_jnp(value):
@@ -50,4 +52,12 @@ def get_host_examples(examples, global_batch_size, shuffle, shuffle_rng, mesh):
     if mesh is None:
         return examples[jax.process_index()::jax.process_count()]
     else:
-        raise NotImplementedError
+        dp_size = max([
+            get_process_mesh_idx(mesh=mesh, process_idx=process_idx)[0]
+            for process_idx in range(jax.process_count())
+        ]) + 1
+
+        dp_idx = get_process_mesh_idx(
+            mesh=mesh, process_idx=jax.process_index())[0]
+
+        return examples[dp_idx::dp_size]
