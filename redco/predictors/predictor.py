@@ -1,4 +1,5 @@
 from functools import partial
+import numpy as np
 
 import jax
 from jax.experimental.pjit import pjit
@@ -86,6 +87,8 @@ class Predictor:
 
             batch_preds = self._deployer.process_batch_preds(
                 batch_preds_with_idxes=batch_preds_with_idxes)
+            batch_preds = jax.tree_util.tree_map(np.asarray, batch_preds)
+
             batch_preds = self._output_fn(batch_preds)
             preds.extend(batch_preds)
 

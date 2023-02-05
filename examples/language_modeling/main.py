@@ -1,4 +1,6 @@
+import os
 from functools import partial
+from itertools import chain
 import fire
 import datasets
 import numpy as np
@@ -11,6 +13,23 @@ from transformers import \
     AutoTokenizer, FlaxAutoModelForCausalLM, GenerationConfig
 
 from redco import Deployer, Trainer, Predictor
+
+
+def group_texts(examples, block_size):
+    # Concatenate all texts.
+    concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
+    total_length = len(concatenated_examples[list(examples.keys())[0]])
+    # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+    # customize this part to your needs.
+    if total_length >= block_size:
+        total_length = (total_length // block_size) * block_size
+    # Split by chunks of max_len.
+    result = {
+        k: [t[i: i + block_size] for i in range(0, total_length, block_size)]
+        for k, t in concatenated_examples.items()
+    }
+    result["labels"] = result["input_ids"].copy()
+    return result
 
 
 def collate_fn(examples, tokenizer, text_key, max_length):
@@ -61,8 +80,7 @@ def output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
 
 
-def main(dataset_name='xsum',
-         text_key='document',
+def main(text_key='document',
          model_name_or_path='gpt2-large',
          n_model_shards=2,
          n_epochs=2,
@@ -77,16 +95,28 @@ def main(dataset_name='xsum',
          jax_seed=42,
          workdir='./workdir',
          run_tensorboard=False):
-    dataset = {
-        'train': list(datasets.load_dataset(dataset_name, split='train')),
-        'validation': [{text_key: ''} for _ in range(50)]
-    }
-
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     tokenizer.pad_token = tokenizer.eos_token
     with jax.default_device(jax.devices('cpu')[0]):
         model = FlaxAutoModelForCausalLM.from_pretrained(model_name_or_path)
         model.params = model.to_fp32(model.params)
+
+    raw_datasets = datasets.load_dataset('wikitext', 'wikitext-2-raw-v1')
+    tokenized_datasets = raw_datasets.map(
+        lambda example: tokenizer(example[text_key]),
+        batched=True,
+        num_proc=os.cpu_count(),
+        remove_columns=list(raw_datasets['train'][0]).keys(),
+        load_from_cache_file=True,
+        desc="Running tokenizer on dataset")
+    lm_datasets = tokenized_datasets.map(
+        partial(group_texts, block_size=max_length),
+        batched=True,
+        num_proc=os.cpu_count(),
+        load_from_cache_file=True,
+        desc=f"Grouping texts in chunks of {max_length}")
+    print(lm_datasets['train'][0])
+    exit()
 
     try:
         generation_config = GenerationConfig.from_pretrained(model_name_or_path)

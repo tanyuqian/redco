@@ -89,9 +89,6 @@ class Deployer:
 
             return jax.tree_util.tree_map(lambda t: t[idxes_argsort], preds)
         else:
-            idxes = batch_preds_with_idxes['__idx__']
-            assert idxes == jnp.sort(idxes)
-
             return batch_preds_with_idxes['raw_preds']
 
     def process_to_run_model(self, x, is_prng_key=False):
