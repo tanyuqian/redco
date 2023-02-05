@@ -110,6 +110,7 @@ def main(text_key='text',
         num_proc=os.cpu_count(),
         load_from_cache_file=True,
         desc=f"Grouping texts in chunks of {max_length}")
+    dataset = {split: list(dataset[split]) for split in dataset.keys()}
 
     try:
         generation_config = GenerationConfig.from_pretrained(model_name_or_path)
