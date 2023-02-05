@@ -106,7 +106,7 @@ def main(text_key='document',
         lambda example: tokenizer(example[text_key]),
         batched=True,
         num_proc=os.cpu_count(),
-        remove_columns=list(raw_datasets['train'][0]).keys(),
+        remove_columns=list(raw_datasets['train'][0].keys()),
         load_from_cache_file=True,
         desc="Running tokenizer on dataset")
     lm_datasets = tokenized_datasets.map(
