@@ -80,7 +80,7 @@ def output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
 
 
-def main(text_key='document',
+def main(text_key='text',
          model_name_or_path='gpt2-large',
          n_model_shards=2,
          n_epochs=2,
