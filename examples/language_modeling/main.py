@@ -17,9 +17,12 @@ from redco import Deployer, Trainer, Predictor
 
 def group_texts(examples, block_size):
     # Concatenate all texts.
-    concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
+    concatenated_examples = {
+        k: list(chain(*examples[k])) for k in examples.keys()
+    }
     total_length = len(concatenated_examples[list(examples.keys())[0]])
-    # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+    # We drop the small remainder, we could add padding if the model supported
+    # it instead of this drop, you can
     # customize this part to your needs.
     if total_length >= block_size:
         total_length = (total_length // block_size) * block_size
@@ -32,19 +35,11 @@ def group_texts(examples, block_size):
     return result
 
 
-def collate_fn(examples, tokenizer, text_key, max_length):
-    batch = tokenizer(
-        [(example[text_key] + tokenizer.eos_token) for example in examples],
-        max_length=max_length,
-        padding='max_length',
-        truncation=True,
-        add_special_tokens=False,
-        return_tensors='np')
-
-    batch['labels'] = np.copy(batch['input_ids'])
-    batch['input_ids'][:, 1:] = batch['input_ids'][:, :-1]
-    batch['input_ids'][:, 0] = tokenizer.eos_token_id
-
+def collate_fn(examples):
+    batch = {
+        key: np.stack([example[key] for example in examples])
+        for key in examples[0].keys()
+    }
     return batch
 
 
@@ -101,22 +96,20 @@ def main(text_key='text',
         model = FlaxAutoModelForCausalLM.from_pretrained(model_name_or_path)
         model.params = model.to_fp32(model.params)
 
-    raw_datasets = datasets.load_dataset('wikitext', 'wikitext-2-raw-v1')
-    tokenized_datasets = raw_datasets.map(
+    raw_dataset = datasets.load_dataset('wikitext', 'wikitext-2-raw-v1')
+    tokenized_dataset = raw_dataset.map(
         lambda example: tokenizer(example[text_key]),
         batched=True,
         num_proc=os.cpu_count(),
-        remove_columns=list(raw_datasets['train'][0].keys()),
+        remove_columns=list(raw_dataset['train'][0].keys()),
         load_from_cache_file=True,
         desc="Running tokenizer on dataset")
-    lm_datasets = tokenized_datasets.map(
+    dataset = tokenized_dataset.map(
         partial(group_texts, block_size=max_length),
         batched=True,
         num_proc=os.cpu_count(),
         load_from_cache_file=True,
         desc=f"Grouping texts in chunks of {max_length}")
-    print(lm_datasets['train'][0])
-    exit()
 
     try:
         generation_config = GenerationConfig.from_pretrained(model_name_or_path)
@@ -149,25 +142,14 @@ def main(text_key='text',
 
     params_shard_rules = deployer.guess_shard_rules(params=model.params)
 
-    collate_fn_ = partial(collate_fn, tokenizer=tokenizer, text_key=text_key)
-
     trainer = Trainer(
         deployer=deployer,
-        collate_fn=partial(collate_fn_, max_length=max_length),
+        collate_fn=collate_fn,
         apply_fn=model.__call__,
         loss_fn=partial(loss_fn, model_type=model.config.model_type),
         params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
-        params_shard_rules=params_shard_rules)
-
-    predictor = Predictor(
-        deployer=deployer,
-        collate_fn=partial(collate_fn_, max_length=1),
-        pred_fn=partial(
-            pred_fn, model=model, generation_config=generation_config),
-        output_fn=partial(output_fn, tokenizer=tokenizer),
-        params=model.params,
         params_shard_rules=params_shard_rules)
 
     trainer.fit(
@@ -176,8 +158,7 @@ def main(text_key='text',
         per_device_batch_size=per_device_batch_size,
         eval_examples=dataset['validation'],
         eval_per_device_batch_size=eval_per_device_batch_size,
-        eval_loss=False,
-        eval_predictor=predictor)
+        eval_loss=True)
 
 
 if __name__ == '__main__':
