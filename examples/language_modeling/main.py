@@ -12,26 +12,20 @@ import optax
 from transformers import \
     AutoTokenizer, FlaxAutoModelForCausalLM, GenerationConfig
 
-from redco import Deployer, Trainer, Predictor
+from redco import Deployer, Trainer
 
 
 def group_texts(examples, block_size):
-    # Concatenate all texts.
     concatenated_examples = {
         k: list(chain(*examples[k])) for k in examples.keys()
     }
     total_length = len(concatenated_examples[list(examples.keys())[0]])
-    # We drop the small remainder, we could add padding if the model supported
-    # it instead of this drop, you can
-    # customize this part to your needs.
     if total_length >= block_size:
         total_length = (total_length // block_size) * block_size
-    # Split by chunks of max_len.
     result = {
         k: [t[i: i + block_size] for i in range(0, total_length, block_size)]
         for k, t in concatenated_examples.items()
     }
-    result["labels"] = result["input_ids"].copy()
     return result
 
 
@@ -40,6 +34,9 @@ def collate_fn(examples):
         key: np.stack([example[key] for example in examples])
         for key in examples[0].keys()
     }
+    batch['labels'] = batch['input_ids'][..., 1:]
+    batch['input_ids'] = batch['input_ids'][..., :-1]
+    batch['attention_mask'] = batch['attention_mask'][..., :-1]
     return batch
 
 
@@ -53,7 +50,8 @@ def loss_fn(train_rng, state, params, batch, is_training, model_type):
         is_training_kwarg = {'deterministic': not is_training}
 
     logits = state.apply_fn(
-        **batch, params=params, dropout_rng=train_rng, **is_training_kwarg)[0]
+        **batch, params=params, dropout_rng=train_rng, **is_training_kwarg
+    ).logits
 
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
