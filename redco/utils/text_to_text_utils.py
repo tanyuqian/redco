@@ -58,14 +58,13 @@ def text_to_text_default_loss_fn(train_rng, state, params, batch, is_training):
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def text_to_text_default_pred_fn(
-        pred_rng, batch, params, model, generation_config):
+def text_to_text_default_pred_fn(pred_rng, batch, params, model, gen_kwargs):
     output_ids = model.generate(
         input_ids=batch['input_ids'],
         attention_mask=batch['attention_mask'],
-        generation_config=generation_config,
         params=params,
-        prng_key=pred_rng)
+        prng_key=pred_rng,
+        **gen_kwargs)
     return output_ids.sequences
 
 

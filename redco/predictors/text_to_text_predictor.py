@@ -14,7 +14,7 @@ class TextToTextPredictor(Predictor):
                  tokenizer,
                  max_src_len,
                  max_tgt_len,
-                 generation_config,
+                 gen_kwargs,
                  src_key='src',
                  tgt_key='tgt',
                  params=None,
@@ -29,9 +29,7 @@ class TextToTextPredictor(Predictor):
             tgt_key=tgt_key)
 
         pred_fn = partial(
-            text_to_text_default_pred_fn,
-            model=model,
-            generation_config=generation_config)
+            text_to_text_default_pred_fn, model=model, gen_kwargs=gen_kwargs)
 
         output_fn = partial(text_to_text_default_output_fn, tokenizer=tokenizer)
 
@@ -42,6 +40,3 @@ class TextToTextPredictor(Predictor):
             output_fn=output_fn,
             params=params,
             params_shard_rules=params_shard_rules)
-
-        deployer.log_info(
-            generation_config.to_json_string(), title='generation config')

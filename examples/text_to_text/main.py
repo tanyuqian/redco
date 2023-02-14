@@ -4,8 +4,7 @@ import datasets
 import evaluate
 import jax
 
-from transformers import \
-    AutoTokenizer, FlaxAutoModelForSeq2SeqLM, GenerationConfig
+from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 
 from redco import Deployer, TextToTextTrainer
 
@@ -47,11 +46,7 @@ def main(dataset_name='xsum',
             model_name_or_path, from_pt=True)
         model.params = model.to_fp32(model.params)
 
-    try:
-        generation_config = GenerationConfig.from_pretrained(model_name_or_path)
-    except:
-        generation_config = GenerationConfig.from_model_config(model.config)
-    generation_config.update(max_length=max_tgt_len, num_beams=num_beams)
+    gen_kwargs = {'max_length': max_tgt_len, 'num_beams': num_beams}
 
     deployer = Deployer(
         jax_seed=jax_seed,
@@ -81,8 +76,7 @@ def main(dataset_name='xsum',
         tgt_key=tgt_key,
         params_shard_rules=deployer.guess_shard_rules(params=model.params))
 
-    predictor = trainer.get_default_predictor(
-        generation_config=generation_config)
+    predictor = trainer.get_default_predictor(gen_kwargs=gen_kwargs)
 
     trainer.fit(
         train_examples=dataset['train'],
