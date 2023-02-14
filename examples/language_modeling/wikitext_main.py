@@ -9,8 +9,7 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from transformers import \
-    AutoTokenizer, FlaxAutoModelForCausalLM, GenerationConfig
+from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
 
 from redco import Deployer, Trainer
 
@@ -59,20 +58,6 @@ def loss_fn(train_rng, state, params, batch, is_training, model_type):
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def pred_fn(pred_rng, batch, params, model, generation_config):
-    output_ids = model.generate(
-        input_ids=batch['input_ids'],
-        attention_mask=batch['attention_mask'],
-        generation_config=generation_config,
-        params=params,
-        prng_key=pred_rng)
-    return output_ids.sequences
-
-
-def output_fn(batch_preds, tokenizer):
-    return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
-
-
 def main(text_key='text',
          model_name_or_path='gpt2-large',
          n_model_shards=2,
@@ -84,7 +69,6 @@ def main(text_key='text',
          learning_rate=4e-5,
          warmup_rate=0.1,
          weight_decay=0.,
-         top_p=0.96,
          jax_seed=42,
          workdir='./workdir',
          run_tensorboard=False):
@@ -110,25 +94,12 @@ def main(text_key='text',
         desc=f"Grouping texts in chunks of {max_length}")
     dataset = {split: list(dataset[split]) for split in dataset.keys()}
 
-    try:
-        generation_config = GenerationConfig.from_pretrained(model_name_or_path)
-    except:
-        generation_config = GenerationConfig.from_model_config(model.config)
-    generation_config.update(
-        max_length=max_length,
-        do_sample=True,
-        top_p=top_p,
-        pad_token_id=model.config.eos_token_id)
-
     deployer = Deployer(
         jax_seed=jax_seed,
         n_model_shards=n_model_shards,
         workdir=workdir,
         run_tensorboard=run_tensorboard,
         verbose=True)
-
-    deployer.log_info(
-        generation_config.to_json_string(), title='generation config')
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),

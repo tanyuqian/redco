@@ -4,6 +4,7 @@ import numpy as np
 
 import jax.numpy as jnp
 from flax import linen as nn
+from flax.traverse_util import flatten_dict, unflatten_dict
 import optax
 
 from torchvision.datasets import MNIST
@@ -26,7 +27,6 @@ class CNN(nn.Module):
         x = nn.relu(x)
         x = nn.Dense(features=10)(x)
         return x
-
 
 def collate_fn(examples):
     images = np.stack([
@@ -78,13 +78,20 @@ def main(data_dir='./data/',
         deployer.gen_rng(), dummy_batch['images'], training=False)['params']
     optimizer = optax.adam(learning_rate=learning_rate)
 
+    params_grad_weights = None
+    # params_grad_weights = {}
+    # for key, value in flatten_dict(params).items():
+    #     params_grad_weights[key] = float(key[0] == 'Conv_0')
+    # params_grad_weights = unflatten_dict(params_grad_weights)
+
     trainer = Trainer(
         deployer=deployer,
         collate_fn=collate_fn,
         apply_fn=model.apply,
         loss_fn=loss_fn,
         params=params,
-        optimizer=optimizer)
+        optimizer=optimizer,
+        params_grad_weights=params_grad_weights)
 
     predictor = Predictor(
         deployer=deployer,

@@ -19,13 +19,19 @@ def default_train_step(train_rng,
                        batch,
                        loss_fn,
                        lr_schedule_fn,
+                       params_grad_weights,
                        under_pmap):
-    loss, grad = default_loss_and_grads(
+    loss, grads = default_loss_and_grads(
         train_rng=train_rng, state=state, batch=batch, loss_fn=loss_fn)
-    if under_pmap:
-        grad = jax.lax.pmean(grad, 'batch')
 
-    new_state = state.apply_gradients(grads=grad)
+    if params_grad_weights is not None:
+        grads = jax.tree_util.tree_map(
+            lambda x, y: x * y, grads, params_grad_weights)
+
+    if under_pmap:
+        grads = jax.lax.pmean(grads, 'batch')
+
+    new_state = state.apply_gradients(grads=grads)
 
     metrics = {'loss': loss, 'step': state.step}
     if lr_schedule_fn is not None:
