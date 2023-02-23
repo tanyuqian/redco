@@ -54,23 +54,23 @@ class PPOAgent:
         self._train_examples = []
 
     def predict_values(self, states):
-        batch_size = 1
-        while batch_size < len(states):
-            batch_size *= 2
+        per_device_batch_size = 1
+        while per_device_batch_size * jax.device_count() < len(states):
+            per_device_batch_size *= 2
 
         return self._critic_predictor.predict(
             examples=[{'states': state} for state in states],
-            per_device_batch_size=batch_size,
+            per_device_batch_size=per_device_batch_size,
             params=self._critic_trainer.params)
 
     def get_actor_logits(self, states):
-        batch_size = 1
-        while batch_size < len(states):
-            batch_size *= 2
+        per_device_batch_size = 1
+        while per_device_batch_size * jax.device_count() < len(states):
+            per_device_batch_size *= 2
 
         return self._actor_predictor.predict(
             examples=[{'states': np.asarray(state)} for state in states],
-            per_device_batch_size=batch_size,
+            per_device_batch_size=per_device_batch_size,
             params=self._actor_trainer.params)
 
     def predict_action(self, state):
@@ -111,18 +111,18 @@ class PPOAgent:
             })
 
     def train(self, n_epochs):
-        batch_size = 1
-        while batch_size * 2 <= len(self._train_examples):
-            batch_size *= 2
+        per_device_batch_size = 1
+        while per_device_batch_size * 2 * jax.device_count() < len(states):
+            per_device_batch_size *= 2
 
         self._actor_trainer.fit(
             train_examples=self._train_examples,
-            per_device_batch_size=batch_size,
+            per_device_batch_size=per_device_batch_size,
             n_epochs=n_epochs)
 
         self._critic_trainer.fit(
             train_examples=self._train_examples,
-            per_device_batch_size=batch_size,
+            per_device_batch_size=per_device_batch_size,
             n_epochs=n_epochs)
 
         self._train_examples = []
