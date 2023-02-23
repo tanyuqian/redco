@@ -112,7 +112,8 @@ class PPOAgent:
 
     def train(self, n_epochs):
         per_device_batch_size = 1
-        while per_device_batch_size * 2 * jax.device_count() < len(states):
+        while per_device_batch_size * 2 * jax.device_count() < \
+                len(self._train_examples):
             per_device_batch_size *= 2
 
         self._actor_trainer.fit(
