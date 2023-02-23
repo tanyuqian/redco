@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import gymnasium as gym
 
-from ppo_utils import PPOAgent, Transition
+from ppo_agent import PPOAgent, Transition
 
 
 def main(env_name='Acrobot-v1',
