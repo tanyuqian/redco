@@ -4,7 +4,6 @@ import numpy as np
 
 import jax.numpy as jnp
 from flax import linen as nn
-from flax.traverse_util import flatten_dict, unflatten_dict
 import optax
 
 from torchvision.datasets import MNIST
@@ -52,9 +51,9 @@ def pred_fn(pred_rng, batch, params, model):
         {'params': params}, batch['images'], training=False).argmax(axis=-1)
 
 
-def eval_metric_fn(eval_results):
-    preds = np.array([result['pred'] for result in eval_results])
-    labels = np.array([result['example']['label'] for result in eval_results])
+def eval_metric_fn(examples, preds):
+    preds = np.array(preds)
+    labels = np.array([example['label'] for example in examples])
     return {'acc': np.mean(preds == labels).item()}
 
 

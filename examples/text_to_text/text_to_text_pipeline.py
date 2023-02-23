@@ -1,16 +1,16 @@
 import numpy as np
-
 import jax.numpy as jnp
 import optax
+import evaluate
 
 
-def text_to_text_default_collate_fn(examples,
-                                    tokenizer,
-                                    decoder_start_token_id,
-                                    max_src_len,
-                                    max_tgt_len,
-                                    src_key='src',
-                                    tgt_key='tgt'):
+def text_to_text_collate_fn(examples,
+                            tokenizer,
+                            decoder_start_token_id,
+                            max_src_len,
+                            max_tgt_len,
+                            src_key='src',
+                            tgt_key='tgt'):
     model_inputs = tokenizer(
         [example[src_key] for example in examples],
         max_length=max_src_len,
@@ -45,7 +45,7 @@ def text_to_text_default_collate_fn(examples,
     return model_inputs
 
 
-def text_to_text_default_loss_fn(train_rng, state, params, batch, is_training):
+def text_to_text_loss_fn(train_rng, state, params, batch, is_training):
     labels = batch.pop("labels")
     label_weights = batch['decoder_attention_mask']
 
@@ -58,7 +58,7 @@ def text_to_text_default_loss_fn(train_rng, state, params, batch, is_training):
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def text_to_text_default_pred_fn(pred_rng, batch, params, model, gen_kwargs):
+def text_to_text_pred_fn(pred_rng, batch, params, model, gen_kwargs):
     output_ids = model.generate(
         input_ids=batch['input_ids'],
         attention_mask=batch['attention_mask'],
@@ -68,5 +68,15 @@ def text_to_text_default_pred_fn(pred_rng, batch, params, model, gen_kwargs):
     return output_ids.sequences
 
 
-def text_to_text_default_output_fn(batch_preds, tokenizer):
+def text_to_text_output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
+
+
+def eval_rouge(examples, preds, tgt_key):
+    rouge_scorer = evaluate.load('rouge')
+
+    return rouge_scorer.compute(
+        predictions=preds,
+        references=[example[tgt_key] for example in examples],
+        rouge_types=['rouge1', 'rouge2', 'rougeL'],
+        use_stemmer=True)

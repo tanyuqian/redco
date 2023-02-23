@@ -1,22 +1,17 @@
 from functools import partial
 import fire
-import datasets
-import evaluate
-import jax
 
+import jax
+import datasets
 from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 
-from redco import Deployer, TextToTextTrainer
-
-
-def eval_rouge(eval_outputs, tgt_key):
-    rouge_scorer = evaluate.load('rouge')
-
-    return rouge_scorer.compute(
-        predictions=[result['pred'] for result in eval_outputs],
-        references=[result['example'][tgt_key] for result in eval_outputs],
-        rouge_types=['rouge1', 'rouge2', 'rougeL'],
-        use_stemmer=True)
+from redco import Deployer, Trainer
+from text_to_text_pipeline import (
+    text_to_text_collate_fn,
+    text_to_text_loss_fn,
+    text_to_text_pred_fn,
+    text_to_text_output_fn,
+    eval_rouge)
 
 
 def main(dataset_name='xsum',
@@ -64,19 +59,30 @@ def main(dataset_name='xsum',
         warmup_rate=warmup_rate,
         weight_decay=weight_decay)
 
-    trainer = TextToTextTrainer(
-        deployer=deployer,
-        model=model,
-        optimizer=optimizer,
-        lr_schedule_fn=lr_schedule_fn,
+    collate_fn = partial(
+        text_to_text_collate_fn,
         tokenizer=tokenizer,
+        decoder_start_token_id=model.config.decoder_start_token_id,
         max_src_len=max_src_len,
         max_tgt_len=max_tgt_len,
         src_key=src_key,
-        tgt_key=tgt_key,
+        tgt_key=tgt_key)
+
+    pred_fn = partial(text_to_text_pred_fn, model=model, gen_kwargs=gen_kwargs)
+    output_fn = partial(text_to_text_output_fn, tokenizer=tokenizer)
+
+    trainer = Trainer(
+        deployer=deployer,
+        collate_fn=collate_fn,
+        apply_fn=model,
+        loss_fn=text_to_text_loss_fn,
+        params=model.params,
+        optimizer=optimizer,
+        lr_schedule_fn=lr_schedule_fn,
         params_shard_rules=deployer.guess_shard_rules(params=model.params))
 
-    predictor = trainer.get_default_predictor(gen_kwargs=gen_kwargs)
+    predictor = trainer.get_default_predictor(
+        pred_fn=pred_fn, output_fn=output_fn)
 
     trainer.fit(
         train_examples=dataset['train'],

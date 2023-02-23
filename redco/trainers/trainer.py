@@ -208,12 +208,13 @@ class Trainer:
                         params=self.params,
                         per_device_batch_size=eval_per_device_batch_size)
 
+                    if eval_metric_fn is not None:
+                        eval_metrics.update(eval_metric_fn(
+                            examples=eval_examples, preds=preds))
+
                     eval_outputs = [
                         {'example': example, 'pred': pred}
                         for example, pred in zip(eval_examples, preds)]
-
-                    if eval_metric_fn is not None:
-                        eval_metrics.update(eval_metric_fn(eval_outputs))
 
                     self._deployer.save_outputs(
                         outputs=eval_outputs,
