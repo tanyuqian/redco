@@ -1,35 +1,21 @@
 import os
 from functools import partial
 import fire
-
 import datasets
-import evaluate
-from transformers import (
-    AutoImageProcessor,
-    AutoTokenizer,
-    FlaxVisionEncoderDecoderModel,
-    GenerationConfig)
+from transformers import \
+    AutoImageProcessor, AutoTokenizer, FlaxVisionEncoderDecoderModel
 
-from redco import Deployer, ImageToTextTrainer
-
-
-def images_to_pixel_values_fn(images, image_processor):
-    return image_processor(images, return_tensors='np').pixel_values
-
-
-def eval_rouge(eval_results, text_key):
-    rouge_scorer = evaluate.load('rouge')
-
-    return rouge_scorer.compute(
-        predictions=[result['pred'] for result in eval_results],
-        references=[result['example'][text_key] for result in eval_results],
-        rouge_types=['rouge1', 'rouge2', 'rougeL'],
-        use_stemmer=True)
+from redco import Deployer, Trainer
+from image_to_text_pipeline import (
+    image_to_text_collate_fn,
+    image_to_text_default_loss_fn,
+    image_to_text_default_pred_fn,
+    image_to_text_default_output_fn,
+    eval_rouge)
 
 
 def main(data_dir='./mscoco_data',
          image_path_key='image_path',
-         image_key=None,
          text_key='caption',
          model_name_or_path='nlpconnect/vit-gpt2-image-captioning',
          n_epochs=2,
@@ -52,11 +38,7 @@ def main(data_dir='./mscoco_data',
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = FlaxVisionEncoderDecoderModel.from_pretrained(
         model_name_or_path, from_pt=True)
-    try:
-        generation_config = GenerationConfig.from_pretrained(model_name_or_path)
-    except:
-        generation_config = GenerationConfig.from_model_config(model.config)
-    generation_config.update(max_length=max_tgt_len, num_beams=num_beams)
+    gen_kwargs = {'max_length': max_tgt_len, 'num_beams': num_beams}
 
     deployer = Deployer(jax_seed=jax_seed)
 
@@ -69,21 +51,31 @@ def main(data_dir='./mscoco_data',
         warmup_rate=warmup_rate,
         weight_decay=weight_decay)
 
-    trainer = ImageToTextTrainer(
-        deployer=deployer,
-        model=model,
-        optimizer=optimizer,
-        lr_schedule_fn=lr_schedule_fn,
+    collate_fn = partial(
+        image_to_text_collate_fn,
+        image_processor=image_processor,
         tokenizer=tokenizer,
-        images_to_pixel_values_fn=partial(
-            images_to_pixel_values_fn, image_processor=image_processor),
+        decoder_start_token_id=model.config.decoder_start_token_id,
         max_tgt_len=max_tgt_len,
         image_path_key=image_path_key,
-        image_key=image_key,
         text_key=text_key)
 
+    pred_fn = partial(
+        image_to_text_default_pred_fn, model=model, gen_kwargs=gen_kwargs)
+
+    output_fn = partial(image_to_text_default_output_fn, tokenizer=tokenizer)
+
+    trainer = Trainer(
+        deployer=deployer,
+        collate_fn=collate_fn,
+        apply_fn=model,
+        loss_fn=image_to_text_default_loss_fn,
+        params=model.params,
+        optimizer=optimizer,
+        lr_schedule_fn=lr_schedule_fn)
+
     predictor = trainer.get_default_predictor(
-        generation_config=generation_config)
+        pred_fn=pred_fn, output_fn=output_fn)
 
     trainer.fit(
         train_examples=dataset['train'],

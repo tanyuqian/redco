@@ -1,25 +1,25 @@
-import numpy as np
 from PIL import Image
-
+import numpy as np
 import jax.numpy as jnp
 import optax
+import evaluate
 
 
-def image_to_text_default_collate_fn(examples,
-                                     images_to_pixel_values_fn,
-                                     tokenizer,
-                                     decoder_start_token_id,
-                                     max_tgt_len,
-                                     image_path_key='image_path',
-                                     image_key=None,
-                                     text_key='caption'):
-    if image_key is not None:
-        images = [example[image_key].convert('RGB') for example in examples]
-    else:
-        images = [
-            Image.open(example[image_path_key]).convert('RGB')
-            for example in examples]
-    model_inputs = {'pixel_values': images_to_pixel_values_fn(images)}
+def image_to_text_collate_fn(examples,
+                             image_processor,
+                             tokenizer,
+                             decoder_start_token_id,
+                             max_tgt_len,
+                             image_path_key='image_path',
+                             text_key='caption'):
+
+    images = [
+        Image.open(example[image_path_key]).convert('RGB')
+        for example in examples]
+    model_inputs = {
+        'pixel_values': image_processor(
+            images, return_tensors='np').pixel_values
+    }
 
     decoder_inputs = tokenizer(
         [example[text_key] for example in examples],
@@ -61,14 +61,21 @@ def image_to_text_default_loss_fn(train_rng, state, params, batch, is_training):
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def image_to_text_default_pred_fn(
-        pred_rng, batch, params, model, generation_config):
+def image_to_text_default_pred_fn(pred_rng, batch, params, model, gen_kwargs):
     return model.generate(
-        batch["pixel_values"],
-        params=params,
-        prng_key=pred_rng,
-        generation_config=generation_config).sequences
+        batch["pixel_values"], params=params, prng_key=pred_rng, **gen_kwargs
+    ).sequences
 
 
 def image_to_text_default_output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
+
+
+def eval_rouge(eval_results, text_key):
+    rouge_scorer = evaluate.load('rouge')
+
+    return rouge_scorer.compute(
+        predictions=[result['pred'] for result in eval_results],
+        references=[result['example'][text_key] for result in eval_results],
+        rouge_types=['rouge1', 'rouge2', 'rougeL'],
+        use_stemmer=True)
