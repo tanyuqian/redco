@@ -1,4 +1,3 @@
 from .predictor import Predictor
-from .image_to_text_predictor import ImageToTextPredictor
 from .text_to_image_predictor import TextToImagePredictor
 from .maml_predictor import MAMLPredictor
