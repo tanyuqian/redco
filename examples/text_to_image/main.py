@@ -3,19 +3,16 @@ import os
 import fire
 import jax
 import optax
-import numpy as np
-
-from torchvision import transforms
 from diffusers import FlaxStableDiffusionPipeline
 
-from redco import Deployer, TextToImageTrainer
+from redco import Deployer, Trainer
+from text_to_image_pipeline import (
+    text_to_image_collate_fn,
+    text_to_image_loss_fn,
+    text_to_image_pred_fn,
+    text_to_image_output_fn)
 
 from dreambooth_utils import get_dreambooth_dataset
-
-
-def images_to_pixel_values_fn(images, image_transforms):
-    return np.stack(
-        [image_transforms(image) for image in images]).astype(np.float16)
 
 
 def main(instance_dir='./skr_dog_images',
@@ -25,7 +22,6 @@ def main(instance_dir='./skr_dog_images',
          n_instance_samples_per_epoch=400,
          n_class_samples_per_epoch=200,
          image_key='image',
-         image_path_key=None,
          text_key='text',
          model_name_or_path='flax/stable-diffusion-2-1-base',
          resolution=512,
@@ -56,29 +52,40 @@ def main(instance_dir='./skr_dog_images',
         optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay),
         every_k_schedule=accumulate_grad_batches)
 
-    image_transforms = transforms.Compose([
-        transforms.Resize(resolution),
-        transforms.RandomCrop(resolution),
-        transforms.ToTensor(),
-        transforms.Normalize([0.5], [0.5])])
-
     deployer = Deployer(jax_seed=jax_seed)
 
-    trainer = TextToImageTrainer(
-        deployer=deployer,
+    collate_fn = partial(
+        text_to_image_collate_fn,
+        resolution=resolution,
         pipeline=pipeline,
-        params=params,
-        freezed_params=pipeline_params,
-        optimizer=optimizer,
-        images_to_pixel_values_fn=partial(
-            images_to_pixel_values_fn, image_transforms=image_transforms),
         image_key=image_key,
-        image_path_key=image_path_key,
-        text_key=text_key,
-        params_shard_rules=None)
+        text_key=text_key)
+
+    loss_fn = partial(
+        text_to_image_loss_fn,
+        pipeline=pipeline,
+        freezed_params=pipeline_params,
+        noise_scheduler_state=pipeline.scheduler.create_state())
+
+    pred_fn = partial(
+        text_to_image_pred_fn,
+        pipeline=pipeline,
+        freezed_params=pipeline_params,
+        n_infer_steps=n_infer_steps,
+        resolution=resolution)
+
+    output_fn = partial(text_to_image_output_fn, pipeline=pipeline)
+
+    trainer = Trainer(
+        deployer=deployer,
+        collate_fn=collate_fn,
+        apply_fn=lambda x: None,
+        loss_fn=loss_fn,
+        params=params,
+        optimizer=optimizer)
 
     predictor = trainer.get_default_predictor(
-        resolution=resolution, n_infer_steps=n_infer_steps)
+        pred_fn=pred_fn, output_fn=output_fn)
 
     dataset = get_dreambooth_dataset(
         predictor=predictor,
