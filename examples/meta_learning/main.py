@@ -40,10 +40,9 @@ def inner_pred_fn(batch, params, model):
     return model.apply({'params': params}, batch['inputs']).argmax(axis=-1)
 
 
-def eval_metric_fn(eval_results):
-    preds = np.array([result['pred'] for result in eval_results])
-    labels = np.array(
-        [result['example']['test']['labels'] for result in eval_results])
+def eval_metric_fn(preds, examples):
+    preds = np.array(preds)
+    labels = np.array([example['test']['labels'] for example in examples])
     return {'acc': np.mean(preds == labels).item()}
 
 
