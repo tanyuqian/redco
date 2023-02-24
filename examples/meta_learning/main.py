@@ -3,10 +3,31 @@ import fire
 import jax.numpy as jnp
 import optax
 import numpy as np
+import flax.linen as nn
 
-from redco import Deployer, MAMLTrainer
+from redco import Deployer, Trainer
 
-from utils import CNN, get_torchmeta_dataset, sample_tasks
+from data_utils import get_torchmeta_dataset, sample_tasks
+from maml_pipeline import maml_collate_fn, maml_loss_fn, maml_pred_fn
+
+
+class CNN(nn.Module):
+    """A simple CNN model."""
+    n_classes: int = 1
+
+    @nn.compact
+    def __call__(self, x):
+        x = nn.Conv(features=32, kernel_size=(3, 3))(x)
+        x = nn.relu(x)
+        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
+        x = nn.Conv(features=64, kernel_size=(3, 3))(x)
+        x = nn.relu(x)
+        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
+        x = x.reshape((x.shape[0], -1))  # flatten
+        x = nn.Dense(features=256)(x)
+        x = nn.relu(x)
+        x = nn.Dense(features=self.n_classes)(x)
+        return x
 
 
 def inner_loss_fn(params, batch, model):
@@ -53,19 +74,30 @@ def main(dataset_name='omniglot',
         dummy_example['train']['inputs']))['params']
     optimizer = optax.adam(learning_rate=learning_rate)
 
-    trainer = MAMLTrainer(
-        deployer=deployer,
-        apply_fn=model.apply,
-        params=params,
-        optimizer=optimizer,
-        inner_loss_fn=partial(inner_loss_fn, model=model),
+    collate_fn = partial(maml_collate_fn, train_key=train_key, val_key=val_key)
+
+    loss_fn = partial(
+        maml_loss_fn,
+        inner_loss_fn=inner_loss_fn,
+        inner_learning_rate=inner_learning_rate,
+        inner_n_steps=inner_n_steps)
+
+    pred_fn = partial(
+        maml_pred_fn,
+        inner_loss_fn=inner_loss_fn,
         inner_learning_rate=inner_learning_rate,
         inner_n_steps=inner_n_steps,
-        train_key=train_key,
-        val_key=val_key)
+        inner_pred_fn=inner_pred_fn)
 
-    predictor = trainer.get_default_predictor(
-        inner_pred_fn=partial(inner_pred_fn, model=model))
+    trainer = Trainer(
+        deployer=deployer,
+        collate_fn=collate_fn,
+        apply_fn=model.apply,
+        loss_fn=loss_fn,
+        params=params,
+        optimizer=optimizer)
+
+    predictor = trainer.get_default_predictor(pred_fn=pred_fn)
 
     eval_examples = sample_tasks(
         tm_dataset=tm_dataset['val'], n_tasks=n_tasks_per_epoch)
