@@ -71,11 +71,11 @@ def image_to_text_default_output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
 
 
-def eval_rouge(eval_results, text_key):
+def eval_rouge(examples, preds, text_key):
     rouge_scorer = evaluate.load('rouge')
 
     return rouge_scorer.compute(
-        predictions=[result['pred'] for result in eval_results],
-        references=[result['example'][text_key] for result in eval_results],
+        predictions=preds,
+        references=[result['example'][text_key] for result in examples],
         rouge_types=['rouge1', 'rouge2', 'rougeL'],
         use_stemmer=True)
