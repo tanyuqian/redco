@@ -12,22 +12,20 @@ from text_to_image_pipeline import (
     text_to_image_pred_fn,
     text_to_image_output_fn)
 
-from dreambooth_utils import get_dreambooth_dataset
+from data_utils import get_dreambooth_dataset
 
 
-def main(instance_dir='./skr_dog_images',
-         instance_desc='skr dog',
-         class_dir='./normal_dog_images',
+def main(instance_desc='skr dog',
          class_desc='dog',
          n_instance_samples_per_epoch=400,
          n_class_samples_per_epoch=200,
          image_key='image',
          text_key='text',
-         model_name_or_path='flax/stable-diffusion-2-1-base',
+         model_name_or_path='runwayml/stable-diffusion-v1-5',
          resolution=512,
          n_infer_steps=50,
          n_epochs=8,
-         with_prior_preservation=False,
+         with_prior_preservation=True,
          train_text_encoder=False,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
@@ -38,7 +36,7 @@ def main(instance_dir='./skr_dog_images',
          jax_seed=42):
     with jax.default_device(jax.devices('cpu')[0]):
         pipeline, pipeline_params = FlaxStableDiffusionPipeline.from_pretrained(
-            model_name_or_path)
+            model_name_or_path, revision="flax")
 
         params = {}
         for key in list(pipeline_params.keys()):
@@ -90,9 +88,7 @@ def main(instance_dir='./skr_dog_images',
     dataset = get_dreambooth_dataset(
         predictor=predictor,
         per_device_batch_size=eval_per_device_batch_size,
-        instance_dir=instance_dir,
         instance_desc=instance_desc,
-        class_dir=class_dir,
         class_desc=class_desc,
         n_instance_samples_per_epoch=n_instance_samples_per_epoch,
         n_class_samples_per_epoch=n_class_samples_per_epoch,
