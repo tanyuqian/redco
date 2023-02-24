@@ -76,6 +76,6 @@ def eval_rouge(examples, preds, text_key):
 
     return rouge_scorer.compute(
         predictions=preds,
-        references=[result['example'][text_key] for result in examples],
+        references=[example[text_key] for example in examples],
         rouge_types=['rouge1', 'rouge2', 'rougeL'],
         use_stemmer=True)
