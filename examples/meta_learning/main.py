@@ -87,7 +87,7 @@ def main(dataset_name='omniglot',
         inner_loss_fn=partial(inner_loss_fn, model=model),
         inner_learning_rate=inner_learning_rate,
         inner_n_steps=inner_n_steps,
-        inner_pred_fn=inner_pred_fn)
+        inner_pred_fn=partial(inner_pred_fn, model=model))
 
     trainer = Trainer(
         deployer=deployer,
