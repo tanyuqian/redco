@@ -1,0 +1,27 @@
+{
+    "train": "photo of {instance_or_class_desc}",
+    "test": [
+        "a {instance_desc} in the Acropolis",
+        "a {instance_desc} is swimming",
+        "a {instance_desc} in a doghouse",
+        "a {instance_desc} is sleeping",
+        "a {instance_desc} in a bucket",
+        "a {instance_desc} getting a haircut",
+        "a {instance_desc} seen from the top",
+        "a {instance_desc} seen from the bottom",
+        "a {instance_desc} seen from the side",
+        "a {instance_desc} seen from the back",
+        "a depressed {instance_desc}",
+        "a sleeping {instance_desc}",
+        "a sad {instance_desc}",
+        "a joyous {instance_desc}",
+        "a barking {instance_desc}",
+        "a crying {instance_desc}",
+        "a frowning {instance_desc}",
+        "a screaming {instance_desc}",
+        "{instance_desc} as an anime character in overwatch",
+        "{instance_desc} wearing a tuxedo at a wedding",
+        "{instance_desc} swimming underwater",
+        "{instance_desc} in a spacesuit"
+    ]
+}

@@ -186,3 +186,7 @@ class Deployer:
     @property
     def mesh(self):
         return self._mesh
+
+    @property
+    def workdir(self):
+        return self._workdir
