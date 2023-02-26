@@ -29,6 +29,7 @@ class Trainer:
         self._collate_fn = collate_fn
         self._loss_fn = loss_fn
         self._lr_schedule_fn = lr_schedule_fn
+        self._params_shard_rules = params_shard_rules
         self._params_grad_weights = freeze(params_grad_weights) \
             if params_grad_weights is not None else None
 
@@ -38,10 +39,7 @@ class Trainer:
         self._p_eval_step = None
 
         self.create_train_state(
-            apply_fn=apply_fn,
-            params=freeze(params),
-            params_shard_rules=params_shard_rules,
-            optimizer=optimizer)
+            apply_fn=apply_fn, params=freeze(params), optimizer=optimizer)
 
         n_params = \
             sum(np.prod(param.shape) for param in flatten_dict(params).values())
@@ -54,18 +52,14 @@ class Trainer:
             params=params,
             params_shard_rules=params_shard_rules)
 
-    def create_train_state(self,
-                           apply_fn,
-                           params,
-                           params_shard_rules,
-                           optimizer):
+    def create_train_state(self, apply_fn, params, optimizer):
         if self._deployer.mesh is None:
             self._state = TrainState.create(
                 apply_fn=apply_fn, params=params, tx=optimizer)
             self._state = replicate(self._state)
         else:
             params_spec = self._deployer.get_params_spec(
-                params=params, shard_rules=params_shard_rules)
+                params=params, shard_rules=self._params_shard_rules)
 
             params, opt_state, opt_state_spec = \
                 self._deployer.shard_params_and_opt_state(

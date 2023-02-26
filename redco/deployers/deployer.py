@@ -14,6 +14,7 @@ from .log_utils import get_logger, log_info, save_outputs
 from .model_parallel_utils.mesh_utils import (
     get_mesh,
     shard_params_and_opt_state,
+    gather_params,
     get_param_spec,
     guess_shard_rules)
 
@@ -191,14 +192,19 @@ class Deployer:
 
         return params
 
-    def save_params(self, params, filepath):
+    def save_params(self, params, filepath, params_shard_rules):
+        if self._mesh is not None:
+            params_spec = self.get_params_spec(
+                params=params, shard_rules=params_shard_rules)
+            with jax.default_device(jax.devices('cpu')[0]):
+                params = gather_params(
+                    params=params, params_spec=params_spec, mesh=self._mesh)
+
         if jax.process_index() == 0:
             save_dir = '/'.join(filepath.split('/')[:-1])
             os.makedirs(save_dir, exist_ok=True)
 
-            params = jax.tree_map(np.asarray, unfreeze(params))
-
-            open(filepath, "wb").write(msgpack_serialize(params))
+            open(filepath, "wb").write(msgpack_serialize(unfreeze(params)))
             self.log_info(f'params saved into {filepath}')
 
     @property

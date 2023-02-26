@@ -65,6 +65,14 @@ def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
     return params, opt_state, opt_state_spec
 
 
+def gather_params(params, params_spec, mesh):
+    gather_fn = pjit(
+        lambda x: x, in_axis_resources=params_spec, out_axis_resources=None)
+
+    with mesh:
+        return gather_fn(params)
+
+
 def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
     shard_rules = {
         ('(bias|scale)',): None,
