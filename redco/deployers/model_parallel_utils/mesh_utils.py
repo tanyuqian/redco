@@ -80,7 +80,9 @@ def gather_params(params, params_spec, mesh):
     with mesh:
         with jax.default_device(jax.devices('cpu')[0]):
             return jax.tree_util.tree_map(
-                lambda gather_fn, param: gather_fn(param), gather_fns, params)
+                lambda gather_fn, param: np.asarray(gather_fn(param)),
+                gather_fns,
+                params)
 
 
 def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
