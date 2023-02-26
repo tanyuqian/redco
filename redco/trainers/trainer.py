@@ -238,13 +238,17 @@ class Trainer:
                     path_to_save = f'{self._deployer.workdir}/ckpts/' \
                                    f'epoch_{epoch_idx}.msgpack'
                     self._deployer.save_params(
-                        params=self.params, filepath=path_to_save)
+                        params=self.params,
+                        params_shard_rules=self._params_shard_rules,
+                        filepath=path_to_save)
 
                 if save_last_ckpt:
                     path_to_save = f'{self._deployer.workdir}/ckpts/'\
                                    f'last.msgpack'
                     self._deployer.save_params(
-                        params=self.params, filepath=path_to_save)
+                        params=self.params,
+                        params_shard_rules=self._params_shard_rules,
+                        filepath=path_to_save)
 
                 for key in save_argmin_ckpt_by_metrics:
                     if eval_metrics[key] < min_metrics.get(key, float('inf')):
@@ -255,7 +259,9 @@ class Trainer:
                         path_to_save = f'{self._deployer.workdir}/ckpts/'\
                                        f'min_{key}.msgpack'
                         self._deployer.save_params(
-                            params=self.params, filepath=path_to_save)
+                            params=self.params,
+                            params_shard_rules=self._params_shard_rules,
+                            filepath=path_to_save)
 
                 for key in save_argmax_ckpt_by_metrics:
                     if eval_metrics[key] > max_metrics.get(key, float('-inf')):
@@ -266,7 +272,9 @@ class Trainer:
                         path_to_save = f'{self._deployer.workdir}/ckpts/'\
                                        f'max_{key}.msgpack'
                         self._deployer.save_params(
-                            params=self.params, filepath=path_to_save)
+                            params=self.params,
+                            params_shard_rules=self._params_shard_rules,
+                            filepath=path_to_save)
 
     def get_default_predictor(self, pred_fn, output_fn=None):
         return self._default_predictor_fn(pred_fn=pred_fn, output_fn=output_fn)
