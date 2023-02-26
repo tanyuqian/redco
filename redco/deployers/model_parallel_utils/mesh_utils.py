@@ -67,7 +67,7 @@ def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
 
 def gather_params(params, params_spec, mesh):
     gather_fn = pjit(
-        lambda x: x, in_axis_resources=params_spec, out_axis_resources=None)
+        lambda x: x, in_axis_resources=(params_spec, ), out_axis_resources=None)
 
     with mesh:
         return gather_fn(params)
