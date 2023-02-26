@@ -17,7 +17,7 @@ class MLP(nn.Module):
         return nn.Dense(features=self.output_dim)(x)
 
 
-def actor_critic_collate_fn(examples):
+def collate_fn(examples):
     batch = {}
     for key in ['states', 'actions', 'td_targets', 'advantages', 'log_probs0']:
         if key in examples[0]:
@@ -43,5 +43,5 @@ def critic_loss_fn(train_rng, state, params, batch, is_training):
         {'params': params}, batch['states'])[:, 0] - batch['td_targets']))
 
 
-def actor_critic_pred_fn(pred_rng, batch, params, model):
+def pred_fn(pred_rng, batch, params, model):
     return model.apply({'params': params}, batch['states'])

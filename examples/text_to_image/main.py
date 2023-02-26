@@ -8,11 +8,7 @@ from diffusers import FlaxStableDiffusionPipeline
 from datasets import load_dataset
 
 from redco import Deployer, Trainer
-from text_to_image_pipeline import (
-    text_to_image_collate_fn,
-    text_to_image_loss_fn,
-    text_to_image_pred_fn,
-    text_to_image_output_fn)
+from text_to_image_pipeline import collate_fn, loss_fn, pred_fn, output_fn
 
 
 def get_dreambooth_dataset(dataset_name_or_path,
@@ -91,38 +87,27 @@ def main(dataset_name_or_path='Vincent-luo/dreambooth-cat',
 
     deployer = Deployer(jax_seed=jax_seed)
 
-    collate_fn = partial(
-        text_to_image_collate_fn,
-        resolution=resolution,
-        pipeline=pipeline,
-        image_key='image',
-        text_key='text')
-
-    loss_fn = partial(
-        text_to_image_loss_fn,
-        pipeline=pipeline,
-        freezed_params=pipeline_params,
-        noise_scheduler_state=pipeline.scheduler.create_state())
-
-    pred_fn = partial(
-        text_to_image_pred_fn,
-        pipeline=pipeline,
-        freezed_params=pipeline_params,
-        n_infer_steps=n_infer_steps,
-        resolution=resolution)
-
-    output_fn = partial(text_to_image_output_fn, pipeline=pipeline)
-
     trainer = Trainer(
         deployer=deployer,
-        collate_fn=collate_fn,
+        collate_fn=partial(
+            collate_fn, resolution=resolution, pipeline=pipeline),
         apply_fn=lambda x: None,
-        loss_fn=loss_fn,
+        loss_fn=partial(
+            loss_fn,
+            pipeline=pipeline,
+            freezed_params=pipeline_params,
+            noise_scheduler_state=pipeline.scheduler.create_state()),
         params=params,
         optimizer=optimizer)
 
     predictor = trainer.get_default_predictor(
-        pred_fn=pred_fn, output_fn=output_fn)
+        pred_fn=partial(
+            pred_fn,
+            pipeline=pipeline,
+            freezed_params=pipeline_params,
+            n_infer_steps=n_infer_steps,
+            resolution=resolution),
+        output_fn=partial(output_fn, pipeline=pipeline))
 
     dataset = get_dreambooth_dataset(
         dataset_name_or_path=dataset_name_or_path,

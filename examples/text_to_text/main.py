@@ -6,12 +6,8 @@ import datasets
 from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 
 from redco import Deployer, Trainer
-from text_to_text_pipeline import (
-    text_to_text_collate_fn,
-    text_to_text_loss_fn,
-    text_to_text_pred_fn,
-    text_to_text_output_fn,
-    eval_rouge)
+from text_to_text_pipeline import \
+    collate_fn, loss_fn, pred_fn, output_fn, eval_rouge
 
 
 def main(dataset_name='xsum',
@@ -59,30 +55,26 @@ def main(dataset_name='xsum',
         warmup_rate=warmup_rate,
         weight_decay=weight_decay)
 
-    collate_fn = partial(
-        text_to_text_collate_fn,
-        tokenizer=tokenizer,
-        decoder_start_token_id=model.config.decoder_start_token_id,
-        max_src_len=max_src_len,
-        max_tgt_len=max_tgt_len,
-        src_key=src_key,
-        tgt_key=tgt_key)
-
-    pred_fn = partial(text_to_text_pred_fn, model=model, gen_kwargs=gen_kwargs)
-    output_fn = partial(text_to_text_output_fn, tokenizer=tokenizer)
-
     trainer = Trainer(
         deployer=deployer,
-        collate_fn=collate_fn,
+        collate_fn=partial(
+            collate_fn,
+            tokenizer=tokenizer,
+            decoder_start_token_id=model.config.decoder_start_token_id,
+            max_src_len=max_src_len,
+            max_tgt_len=max_tgt_len,
+            src_key=src_key,
+            tgt_key=tgt_key),
         apply_fn=model,
-        loss_fn=text_to_text_loss_fn,
+        loss_fn=loss_fn,
         params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
         params_shard_rules=deployer.guess_shard_rules(params=model.params))
 
     predictor = trainer.get_default_predictor(
-        pred_fn=pred_fn, output_fn=output_fn)
+        pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
+        output_fn=partial(output_fn, tokenizer=tokenizer))
 
     trainer.fit(
         train_examples=dataset['train'],

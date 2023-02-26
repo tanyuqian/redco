@@ -8,7 +8,7 @@ import flax.linen as nn
 from redco import Deployer, Trainer
 
 from data_utils import get_torchmeta_dataset, sample_tasks
-from maml_pipeline import maml_collate_fn, maml_loss_fn, maml_pred_fn
+from maml_pipeline import collate_fn, loss_fn, pred_fn
 
 
 class CNN(nn.Module):
@@ -73,30 +73,25 @@ def main(dataset_name='omniglot',
         dummy_example['train']['inputs']))['params']
     optimizer = optax.adam(learning_rate=learning_rate)
 
-    collate_fn = partial(maml_collate_fn, train_key=train_key, val_key=val_key)
-
-    loss_fn = partial(
-        maml_loss_fn,
-        inner_loss_fn=partial(inner_loss_fn, model=model),
-        inner_learning_rate=inner_learning_rate,
-        inner_n_steps=inner_n_steps)
-
-    pred_fn = partial(
-        maml_pred_fn,
-        inner_loss_fn=partial(inner_loss_fn, model=model),
-        inner_learning_rate=inner_learning_rate,
-        inner_n_steps=inner_n_steps,
-        inner_pred_fn=partial(inner_pred_fn, model=model))
-
     trainer = Trainer(
         deployer=deployer,
-        collate_fn=collate_fn,
+        collate_fn=partial(collate_fn, train_key=train_key, val_key=val_key),
         apply_fn=model.apply,
-        loss_fn=loss_fn,
+        loss_fn=partial(
+            loss_fn,
+            inner_loss_fn=partial(inner_loss_fn, model=model),
+            inner_learning_rate=inner_learning_rate,
+            inner_n_steps=inner_n_steps),
         params=params,
         optimizer=optimizer)
 
-    predictor = trainer.get_default_predictor(pred_fn=pred_fn)
+    predictor = trainer.get_default_predictor(
+        pred_fn=partial(
+            pred_fn,
+            inner_loss_fn=partial(inner_loss_fn, model=model),
+            inner_learning_rate=inner_learning_rate,
+            inner_n_steps=inner_n_steps,
+            inner_pred_fn=partial(inner_pred_fn, model=model)))
 
     eval_examples = sample_tasks(
         tm_dataset=tm_dataset['val'], n_tasks=n_tasks_per_epoch)

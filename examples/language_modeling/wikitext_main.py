@@ -4,14 +4,11 @@ from itertools import chain
 import fire
 import datasets
 import numpy as np
-
 import jax
-import jax.numpy as jnp
-import optax
-
 from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
 
 from redco import Deployer, Trainer
+from language_modeling_pipeline import loss_fn
 
 
 def group_texts(examples, block_size):
@@ -37,25 +34,6 @@ def collate_fn(examples):
     batch['input_ids'] = batch['input_ids'][..., :-1]
     batch['attention_mask'] = batch['attention_mask'][..., :-1]
     return batch
-
-
-def loss_fn(train_rng, state, params, batch, is_training, model_type):
-    labels = batch.pop("labels")
-    label_weights = batch['attention_mask']
-
-    if model_type != 'opt':
-        is_training_kwarg = {'train': is_training}
-    else:
-        is_training_kwarg = {'deterministic': not is_training}
-
-    logits = state.apply_fn(
-        **batch, params=params, dropout_rng=train_rng, **is_training_kwarg
-    ).logits
-
-    loss = optax.softmax_cross_entropy_with_integer_labels(
-        logits=logits, labels=labels)
-
-    return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
 def main(text_key='text',
@@ -110,8 +88,6 @@ def main(text_key='text',
         warmup_rate=warmup_rate,
         weight_decay=weight_decay)
 
-    params_shard_rules = deployer.guess_shard_rules(params=model.params)
-
     trainer = Trainer(
         deployer=deployer,
         collate_fn=collate_fn,
@@ -120,7 +96,7 @@ def main(text_key='text',
         params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
-        params_shard_rules=params_shard_rules)
+        params_shard_rules=deployer.guess_shard_rules(params=model.params))
 
     trainer.fit(
         train_examples=dataset['train'],

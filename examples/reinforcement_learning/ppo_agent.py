@@ -8,12 +8,7 @@ import flax.linen as nn
 import optax
 
 from redco import Deployer, Trainer, Predictor
-from ppo_pipeline import (
-    MLP,
-    actor_critic_collate_fn,
-    actor_loss_fn,
-    critic_loss_fn,
-    actor_critic_pred_fn)
+from ppo_pipeline import MLP, collate_fn, actor_loss_fn, critic_loss_fn, pred_fn
 
 
 Transition = namedtuple('Transition', [
@@ -44,7 +39,7 @@ class PPOAgent:
                 learning_rate=actor_lr,
                 input_dim=state_dim,
                 loss_fn=partial(actor_loss_fn, epsilon=epsilon),
-                pred_fn=partial(actor_critic_pred_fn, model=actor_model),
+                pred_fn=partial(pred_fn, model=actor_model),
                 output_fn=None)
 
         critic_model = MLP(output_dim=1)
@@ -54,7 +49,7 @@ class PPOAgent:
                 learning_rate=critic_lr,
                 input_dim=state_dim,
                 loss_fn=critic_loss_fn,
-                pred_fn=partial(actor_critic_pred_fn, model=critic_model),
+                pred_fn=partial(pred_fn, model=critic_model),
                 output_fn=lambda model_output: model_output[:, 0].tolist())
 
         self._gamma = gamma
@@ -74,7 +69,7 @@ class PPOAgent:
 
         trainer = Trainer(
             deployer=self._deployer,
-            collate_fn=actor_critic_collate_fn,
+            collate_fn=collate_fn,
             apply_fn=model.apply,
             loss_fn=loss_fn,
             params=params,
@@ -82,7 +77,7 @@ class PPOAgent:
 
         predictor = Predictor(
             deployer=self._deployer,
-            collate_fn=actor_critic_collate_fn,
+            collate_fn=collate_fn,
             pred_fn=pred_fn,
             output_fn=output_fn)
 

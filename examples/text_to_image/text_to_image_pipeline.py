@@ -4,20 +4,16 @@ import jax.numpy as jnp
 from torchvision import transforms
 
 
-def text_to_image_collate_fn(examples,
-                             pipeline,
-                             resolution,
-                             image_key='image',
-                             text_key='text'):
+def collate_fn(examples, pipeline, resolution):
     batch = pipeline.tokenizer(
-        [example[text_key] for example in examples],
+        [example['text'] for example in examples],
         max_length=pipeline.tokenizer.model_max_length,
         padding='max_length',
         truncation=True,
         return_tensors='np')
 
-    if image_key in examples[0]:
-        images = [example[image_key].convert('RGB') for example in examples]
+    if 'image' in examples[0]:
+        images = [example['image'].convert('RGB') for example in examples]
 
         image_transforms = transforms.Compose([
             transforms.Resize(resolution),
@@ -31,14 +27,14 @@ def text_to_image_collate_fn(examples,
     return batch
 
 
-def text_to_image_loss_fn(train_rng,
-                          state,
-                          params,
-                          batch,
-                          is_training,
-                          pipeline,
-                          freezed_params,
-                          noise_scheduler_state):
+def loss_fn(train_rng,
+            state,
+            params,
+            batch,
+            is_training,
+            pipeline,
+            freezed_params,
+            noise_scheduler_state):
     dropout_rng, sample_rng, noise_rng, timestep_rng = \
         jax.random.split(train_rng, num=4)
 
@@ -110,14 +106,14 @@ def text_to_image_loss_fn(train_rng,
     return jnp.mean(jnp.square(target - model_pred))
 
 
-def text_to_image_pred_fn(pred_rng,
-                          batch,
-                          params,
-                          pipeline,
-                          freezed_params,
-                          n_infer_steps,
-                          resolution,
-                          guidance_scale=7.5):
+def pred_fn(pred_rng,
+            batch,
+            params,
+            pipeline,
+            freezed_params,
+            n_infer_steps,
+            resolution,
+            guidance_scale=7.5):
     if 'text_encoder' in params:
         text_encoder_params = params['text_encoder']
     else:
@@ -140,5 +136,5 @@ def text_to_image_pred_fn(pred_rng,
         width=resolution)
 
 
-def text_to_image_output_fn(batch_preds, pipeline):
+def output_fn(batch_preds, pipeline):
     return pipeline.numpy_to_pil(np.asarray(batch_preds))

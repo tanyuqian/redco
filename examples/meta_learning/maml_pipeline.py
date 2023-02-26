@@ -3,7 +3,7 @@ import jax
 import optax
 
 
-def maml_collate_fn(examples, train_key='train', val_key='test'):
+def collate_fn(examples, train_key='train', val_key='test'):
     return {
         'train': {
             key: np.stack([example[train_key][key] for example in examples])
@@ -34,14 +34,14 @@ def inner_step(params,
     return params
 
 
-def maml_loss_fn(train_rng,
-                 state,
-                 params,
-                 batch,
-                 is_training,
-                 inner_loss_fn,
-                 inner_learning_rate,
-                 inner_n_steps):
+def loss_fn(train_rng,
+            state,
+            params,
+            batch,
+            is_training,
+            inner_loss_fn,
+            inner_learning_rate,
+            inner_n_steps):
     def inner_maml_loss_fn(inner_batch_train, inner_batch_val):
         params_upd = inner_step(
             params=params,
@@ -55,13 +55,13 @@ def maml_loss_fn(train_rng,
     return jax.vmap(inner_maml_loss_fn)(batch['train'], batch['val']).mean()
 
 
-def maml_pred_fn(pred_rng,
-                 batch,
-                 params,
-                 inner_loss_fn,
-                 inner_learning_rate,
-                 inner_n_steps,
-                 inner_pred_fn):
+def pred_fn(pred_rng,
+            batch,
+            params,
+            inner_loss_fn,
+            inner_learning_rate,
+            inner_n_steps,
+            inner_pred_fn):
     def inner_maml_pred_fn(inner_batch_train, inner_batch_val):
         params_upd = inner_step(
             params=params,
