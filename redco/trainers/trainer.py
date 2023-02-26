@@ -175,7 +175,17 @@ class Trainer:
             eval_per_device_batch_size=None,
             eval_loss=True,
             eval_predictor=None,
-            eval_metric_fn=None):
+            eval_metric_fn=None,
+            save_every_ckpt=False,
+            save_argmin_ckpt_by_metrics=None,
+            save_argmax_ckpt_by_metrics=None,
+            save_last_ckpt=False):
+        if save_argmax_ckpt_by_metrics is None:
+            save_argmax_ckpt_by_metrics = []
+        if save_argmin_ckpt_by_metrics is None:
+            save_argmin_ckpt_by_metrics = []
+        min_metrics, max_metrics = {}, {}
+
         for epoch_idx in range(n_epochs):
             if isinstance(train_examples, list):
                 epoch_train_examples = train_examples
@@ -229,6 +239,40 @@ class Trainer:
                     f'eval_{key}': value
                     for key, value in eval_metrics.items()
                 }, step=self.step)
+
+                if save_every_ckpt:
+                    path_to_save = f'{self._deployer.workdir}/ckpts/' \
+                                   f'epoch_{epoch_idx}.msgpack'
+                    self._deployer.save_params(
+                        params=self.params, filepath=path_to_save)
+
+                if save_last_ckpt:
+                    path_to_save = f'{self._deployer.workdir}/ckpts/'\
+                                   f'last.msgpack'
+                    self._deployer.save_params(
+                        params=self.params, filepath=path_to_save)
+
+                for key in save_argmin_ckpt_by_metrics:
+                    if eval_metrics[key] < min_metrics.get(key, float('inf')):
+                        min_metrics[key] = eval_metrics[key]
+                        self._deployer.log_info(
+                            f'minimal {key} updated to {min_metrics[key]}')
+
+                        path_to_save = f'{self._deployer.workdir}/ckpts/'\
+                                       f'min_{key}.msgpack'
+                        self._deployer.save_params(
+                            params=self.params, filepath=path_to_save)
+
+                for key in save_argmax_ckpt_by_metrics:
+                    if eval_metrics[key] > max_metrics.get(key, float('-inf')):
+                        max_metrics[key] = eval_metrics[key]
+                        self._deployer.log_info(
+                            f'minimal {key} updated to {max_metrics[key]}')
+
+                        path_to_save = f'{self._deployer.workdir}/ckpts/'\
+                                       f'max_{key}.msgpack'
+                        self._deployer.save_params(
+                            params=self.params, filepath=path_to_save)
 
     def get_default_predictor(self, pred_fn, output_fn=None):
         return self._default_predictor_fn(pred_fn=pred_fn, output_fn=output_fn)

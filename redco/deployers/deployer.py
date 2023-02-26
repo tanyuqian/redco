@@ -1,9 +1,11 @@
 import os
-
+import numpy as np
 import jax
 import jax.numpy as jnp
 from flax.jax_utils import replicate, unreplicate
 from flax.training.common_utils import shard_prng_key
+from flax.core.frozen_dict import unfreeze
+from flax.serialization import msgpack_serialize, msgpack_restore
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_multistep_adamw_optimizer
@@ -182,6 +184,22 @@ class Deployer:
                 step=step,
                 logger=self._logger,
                 summary_writer=self._summary_writer)
+
+    def load_params(self, filepath):
+        params = msgpack_restore(open(filepath, 'rb').read())
+        self.log_info(f'params loaded from {filepath}')
+
+        return params
+
+    def save_params(self, params, filepath):
+        if jax.process_index() == 0:
+            save_dir = '/'.join(filepath.split('/')[:-1])
+            os.makedirs(save_dir, exist_ok=True)
+
+            params = jax.tree_map(np.asarray, unfreeze(params))
+
+            open(filepath, "wb").write(msgpack_serialize(params))
+            self.log_info(f'params saved into {filepath}')
 
     @property
     def mesh(self):

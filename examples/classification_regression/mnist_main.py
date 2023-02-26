@@ -72,9 +72,11 @@ def main(data_dir='./data/',
     deployer = Deployer(jax_seed=jax_seed)
 
     model = CNN()
-    dummy_batch = collate_fn([dataset['train'][0]])
-    params = model.init(
-        deployer.gen_rng(), dummy_batch['images'], training=False)['params']
+    # dummy_batch = collate_fn([dataset['train'][0]])
+    # params = model.init(
+    #     deployer.gen_rng(), dummy_batch['images'], training=False)['params']
+    params = deployer.load_params('workdir/ckpts/max_acc.msgpack')
+
     optimizer = optax.adam(learning_rate=learning_rate)
 
     params_grad_weights = None
@@ -105,7 +107,8 @@ def main(data_dir='./data/',
         eval_per_device_batch_size=per_device_batch_size,
         eval_loss=True,
         eval_predictor=predictor,
-        eval_metric_fn=eval_metric_fn)
+        eval_metric_fn=eval_metric_fn,
+        save_argmax_ckpt_by_metrics=['acc'])
 
 
 if __name__ == '__main__':
