@@ -199,6 +199,8 @@ class Deployer:
             with jax.default_device(jax.devices('cpu')[0]):
                 params = gather_params(
                     params=params, params_spec=params_spec, mesh=self._mesh)
+        else:
+            params = jax.tree_util.tree_map(np.asarray, params)
 
         if jax.process_index() == 0:
             save_dir = '/'.join(filepath.split('/')[:-1])
