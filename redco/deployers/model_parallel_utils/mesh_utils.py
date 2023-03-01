@@ -75,7 +75,8 @@ def gather_params(params, params_spec, mesh):
     gather_fns = jax.tree_util.tree_map(
         lambda param_spec: param_gather_fn(param_spec),
         params_spec,
-        is_leaf=lambda param_spec: isinstance(param_spec, P))
+        is_leaf=lambda param_spec: param_spec is None or
+                                   isinstance(param_spec, P))
 
     with mesh:
         with jax.default_device(jax.devices('cpu')[0]):
