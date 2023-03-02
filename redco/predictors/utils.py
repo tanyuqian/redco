@@ -35,3 +35,16 @@ def pred_fn_wrapper(pred_rng, params, batch, pred_fn, under_pmap):
         return jax.lax.all_gather(preds, axis_name='batch')
     else:
         return preds
+
+
+def default_output_fn(preds):
+    batch_size = jax.tree_util.tree_leaves(preds)[0].shape[0]
+
+    assert jax.tree_util.tree_all(
+        jax.tree_util.tree_map(lambda x: x.shape[0] == batch_size, preds))
+
+    outputs = []
+    for i in range(batch_size):
+        outputs.append(jax.tree_util.tree_map(lambda x: x[i], preds))
+
+    return outputs

@@ -6,7 +6,8 @@ from jax.experimental.pjit import pjit
 from jax.experimental.pjit import PartitionSpec as P
 from flax.core.frozen_dict import freeze
 
-from .utils import add_idxes, collate_fn_wrapper, pred_fn_wrapper
+from .utils import \
+    add_idxes, collate_fn_wrapper, pred_fn_wrapper, default_output_fn
 
 
 class Predictor:
@@ -29,7 +30,7 @@ class Predictor:
         self._p_pred_step = None
 
         if output_fn is None:
-            self._output_fn = lambda x: x.tolist()
+            self._output_fn = default_output_fn
         else:
             self._output_fn = output_fn
 
@@ -90,6 +91,8 @@ class Predictor:
             batch_preds = jax.tree_util.tree_map(np.asarray, batch_preds)
 
             batch_preds = self._output_fn(batch_preds)
+            assert isinstance(batch_preds, list) and \
+                   len(batch_preds) == global_batch_size
             preds.extend(batch_preds)
 
         return preds[:raw_n_inputs]

@@ -56,9 +56,9 @@ def pred_fn(pred_rng, batch, params, model, is_regression):
         return logits.argmax(axis=-1)
 
 
-def eval_metric_fn(eval_outputs, label_key, is_regression):
-    preds = np.array([result['pred'] for result in eval_outputs])
-    labels = np.array([result['example'][label_key] for result in eval_outputs])
+def eval_metric_fn(examples, preds, label_key, is_regression):
+    preds = np.array(preds)
+    labels = np.array([example[label_key] for example in examples])
 
     if is_regression:
         return {'square error': np.mean(np.square(preds - labels))}
