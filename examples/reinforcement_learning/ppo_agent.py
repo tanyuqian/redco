@@ -21,16 +21,11 @@ class PPOAgent:
                  action_dim,
                  actor_lr,
                  critic_lr,
-                 per_device_batch_size,
                  gamma,
                  gae_lambda,
                  epsilon,
                  jax_seed=42):
         self._deployer = Deployer(jax_seed=jax_seed, verbose=False)
-
-        self._per_device_batch_size = per_device_batch_size
-        _, self._global_batch_size = self._deployer.process_batch_size(
-            per_device_batch_size=per_device_batch_size)
 
         actor_model = MLP(output_dim=action_dim)
         self._actor_trainer, self._actor_predictor = \
