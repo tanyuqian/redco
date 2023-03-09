@@ -27,24 +27,20 @@ class PPOAgent:
                  jax_seed=42):
         self._deployer = Deployer(jax_seed=jax_seed, verbose=False)
 
-        actor_model = MLP(output_dim=action_dim)
         self._actor_trainer, self._actor_predictor = \
             self.get_trainer_and_predictor(
-                model=actor_model,
+                model=MLP(output_dim=action_dim),
                 learning_rate=actor_lr,
                 input_dim=state_dim,
                 loss_fn=partial(actor_loss_fn, epsilon=epsilon),
-                pred_fn=partial(pred_fn, model=actor_model),
                 output_fn=None)
 
-        critic_model = MLP(output_dim=1)
         self._critic_trainer, self._critic_predictor = \
             self.get_trainer_and_predictor(
-                model=critic_model,
+                model=MLP(output_dim=1),
                 learning_rate=critic_lr,
                 input_dim=state_dim,
                 loss_fn=critic_loss_fn,
-                pred_fn=partial(pred_fn, model=critic_model),
                 output_fn=lambda model_output: model_output[:, 0].tolist())
 
         self._gamma = gamma
@@ -55,7 +51,6 @@ class PPOAgent:
                                   model,
                                   input_dim,
                                   loss_fn,
-                                  pred_fn,
                                   output_fn,
                                   learning_rate):
         params = model.init(
@@ -73,7 +68,7 @@ class PPOAgent:
         predictor = Predictor(
             deployer=self._deployer,
             collate_fn=collate_fn,
-            pred_fn=pred_fn,
+            pred_fn=partial(pred_fn, model=model),
             output_fn=output_fn)
 
         return trainer, predictor
