@@ -1,12 +1,13 @@
 import fire
 import matplotlib.pyplot as plt
 import numpy as np
-from pettingzoo.mpe import simple_adversary_v2
+from pettingzoo import sisl
 
 from maddpg_agent import MADDPGAgent, Transition
 
 
-def main(n_episodes=5000,
+def main(env_name='simple_adversary_v2',
+         n_episodes=2000,
          learning_rate=1e-2,
          critic_loss_weight=1.,
          gamma=0.95,
@@ -19,8 +20,7 @@ def main(n_episodes=5000,
          per_device_batch_size=1024,
          jax_seed=42):
 
-    env = simple_adversary_v2.parallel_env(
-        N=2, max_cycles=25, continuous_actions=False)
+    env = getattr(sisl, env_name).parallel_env()
     env.reset()
 
     maddpg = MADDPGAgent(
@@ -69,14 +69,18 @@ def main(n_episodes=5000,
             state = next_state
 
         episode_rewards.append(sum_rewards)
-        print(episode_idx, sum_rewards)
+        print(episode_idx, sum_rewards, sum(sum_rewards.values()))
 
     env.close()
 
-    plt.plot(np.arange(len(episode_rewards)), episode_rewards, label='ddpg')
+    for agent in episode_rewards[0].keys():
+        plt.plot(
+            np.arange(len(episode_rewards)),
+            [r[agent] for r in episode_rewards],
+            label=agent)
     plt.xlabel('Episode')
     plt.ylabel('Reward')
-    plt.title('')
+    plt.title(env_name)
     plt.legend()
     plt.show()
 
