@@ -52,7 +52,7 @@ def main(n_episodes=5000,
                     agent=agent, agent_state=state[agent])
                 for agent in env.agents
             }
-            next_state, reward, done, info = env.step(action)
+            next_state, reward, done, _, info = env.step(action)
 
             sum_rewards = {
                 agent: sum_rewards[agent] + reward[agent]
