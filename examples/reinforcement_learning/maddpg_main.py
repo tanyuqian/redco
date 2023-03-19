@@ -1,7 +1,9 @@
+import time
+
 import fire
 import matplotlib.pyplot as plt
 import numpy as np
-from pettingzoo import sisl
+from pettingzoo import mpe
 
 from maddpg_agent import MADDPGAgent, Transition
 
@@ -11,16 +13,17 @@ def main(env_name='simple_adversary_v2',
          learning_rate=1e-2,
          critic_loss_weight=1.,
          gamma=0.95,
-         tau=1e-2,
+         tau=1e-3,
+         explore_eps=0.01,
          replay_buffer_size=100000,
          warmup_steps=4000,
-         update_interval_steps=100,
+         update_interval_steps=10,
          temperature=1.,
          action_reg=1e-3,
-         per_device_batch_size=1024,
+         per_device_batch_size=256,
          jax_seed=42):
 
-    env = getattr(sisl, env_name).parallel_env()
+    env = getattr(mpe, env_name).parallel_env()
     env.reset()
 
     maddpg = MADDPGAgent(
@@ -49,7 +52,9 @@ def main(env_name='simple_adversary_v2',
         while env.agents:
             action = {
                 agent: maddpg.predict_action(
-                    agent=agent, agent_state=state[agent])
+                    agent=agent,
+                    agent_state=state[agent],
+                    explore_eps=explore_eps)
                 for agent in env.agents
             }
             next_state, reward, done, _, info = env.step(action)
@@ -71,8 +76,6 @@ def main(env_name='simple_adversary_v2',
         episode_rewards.append(sum_rewards)
         print(episode_idx, sum_rewards, sum(sum_rewards.values()))
 
-    env.close()
-
     for agent in episode_rewards[0].keys():
         plt.plot(
             np.arange(len(episode_rewards)),
@@ -83,6 +86,36 @@ def main(env_name='simple_adversary_v2',
     plt.title(env_name)
     plt.legend()
     plt.show()
+
+    env.close()
+
+    env = getattr(mpe, env_name).parallel_env(render_mode='human')
+    env.reset()
+
+    for episode_idx in range(10000):
+        state = env.reset()
+        sum_rewards = {agent: 0. for agent in env.agents}
+
+        while env.agents:
+            action = {
+                agent: maddpg.predict_action(
+                    agent=agent, agent_state=state[agent], explore_eps=0)
+                for agent in env.agents
+            }
+            next_state, reward, done, _, info = env.step(action)
+            env.render()
+            time.sleep(0.05)
+
+            sum_rewards = {
+                agent: sum_rewards[agent] + reward[agent]
+                for agent in sum_rewards.keys()
+            }
+
+            state = next_state
+
+        print(episode_idx, sum_rewards)
+
+    env.close()
 
 
 if __name__ == '__main__':

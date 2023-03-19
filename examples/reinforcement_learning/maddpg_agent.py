@@ -109,7 +109,10 @@ class MADDPGAgent:
         self._per_device_batch_size = per_device_batch_size
         self._total_steps = 0
 
-    def predict_action(self, agent, agent_state):
+    def predict_action(self, agent, agent_state, explore_eps):
+        if random.random() < explore_eps:
+            return random.randint(0, self._action_dims[agent] - 1)
+
         action_logits = self._actor_predictor[agent].predict(
             examples=[{'states': agent_state}],
             params=self._trainer[agent].params['actor'],
