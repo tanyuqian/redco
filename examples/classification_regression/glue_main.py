@@ -19,7 +19,6 @@ def collate_fn(
             [example['tokenization'] for example in examples],
             max_length=max_length,
             padding='max_length',
-            truncation=True,
             return_tensors='np')
     else:
         texts = []
