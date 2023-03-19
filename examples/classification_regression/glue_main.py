@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import tqdm
 
 from datasets import load_dataset
 from transformers import AutoTokenizer, FlaxAutoModelForSequenceClassification
@@ -109,7 +110,8 @@ def main(dataset_name='sst2',
 
     if tokenize_before_train:
         for split in dataset:
-            for example in dataset[split]:
+            for example in tqdm.tqdm(
+                    dataset[split], desc=f'tokenize {split} set'):
                 if sent1_key is None:
                     example['tokenization'] = tokenizer(example[sent0_key])
                 else:
