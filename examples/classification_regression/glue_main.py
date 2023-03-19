@@ -15,7 +15,12 @@ from redco import Deployer, Trainer
 def collate_fn(
         examples, sent0_key, sent1_key, label_key, tokenizer, max_length):
     if 'tokenization' in examples[0]:
-        batch = tokenizer.pad([example['tokenization'] for example in examples])
+        batch = tokenizer.pad(
+            [example['tokenization'] for example in examples],
+            max_length=max_length,
+            padding='max_length',
+            truncation=True,
+            return_tensors='np')
     else:
         texts = []
         for example in examples:
