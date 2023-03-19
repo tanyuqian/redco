@@ -117,10 +117,10 @@ def main(dataset_name='sst2',
             for example in tqdm.tqdm(
                     dataset[split], desc=f'tokenize {split} set'):
                 if sent1_key is None:
-                    example['tokenization'] = tokenizer(example[sent0_key])
+                    example['tokenization'] = dict(tokenizer(example[sent0_key]))
                 else:
-                    example['tokenization'] = tokenizer(
-                        (example[sent0_key], example[sent1_key]))
+                    example['tokenization'] = dict(tokenizer(
+                        (example[sent0_key], example[sent1_key])))
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),
