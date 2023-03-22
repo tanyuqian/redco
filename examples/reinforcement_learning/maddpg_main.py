@@ -1,5 +1,5 @@
 import time
-
+import tqdm
 import fire
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,18 +9,18 @@ from maddpg_agent import MADDPGAgent, Transition
 
 
 def main(env_name='simple_adversary_v2',
-         n_episodes=2000,
+         n_episodes=5000,
          learning_rate=1e-2,
          critic_loss_weight=1.,
          gamma=0.95,
-         tau=1e-3,
+         tau=1e-2,
          explore_eps=0.01,
-         replay_buffer_size=100000,
-         warmup_steps=4000,
-         update_interval_steps=10,
+         replay_buffer_size=1000000,
+         warmup_steps=50000,
+         update_interval_steps=100,
          temperature=1.,
          action_reg=1e-3,
-         per_device_batch_size=256,
+         per_device_batch_size=1024,
          jax_seed=42):
 
     env = getattr(mpe, env_name).parallel_env()
@@ -57,7 +57,7 @@ def main(env_name='simple_adversary_v2',
                     explore_eps=explore_eps)
                 for agent in env.agents
             }
-            next_state, reward, done, _, info = env.step(action)
+            next_state, reward, done, _, _ = env.step(action)
 
             sum_rewards = {
                 agent: sum_rewards[agent] + reward[agent]

@@ -23,7 +23,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     hidden_dim: int = 64
     action_dim: int = 1
-    n_layers: int = 2
+    n_layers: int = 3
 
     @nn.compact
     def __call__(self, states, actions):

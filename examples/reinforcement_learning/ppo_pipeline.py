@@ -1,12 +1,14 @@
+from typing import Any
+
 import numpy as np
 import jax.numpy as jnp
 import flax.linen as nn
 
 
 class MLP(nn.Module):
-    hidden_dim: int = 128
-    n_layers: int = 2
-    output_dim: int = None
+    hidden_dim: Any = 128
+    n_layers: Any = 2
+    output_dim: Any = None
 
     @nn.compact
     def __call__(self, x):

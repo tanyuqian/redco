@@ -5,6 +5,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import optax
+import time
 
 from redco import Deployer, Trainer, Predictor
 from maddpg_pipeline import (
@@ -135,11 +136,11 @@ class MADDPGAgent:
 
         return actions
 
-    def get_target_q_values(self, agent, states, actions):
+    def get_target_q_values(self, agent, state_vecs, action_vecs):
         examples = [{
-            'states': self.get_state_input(state),
-            'actions': self.get_action_input(action)
-        } for state, action in zip(states, actions)]
+            'states': state_vec,
+            'actions': action_vec
+        } for state_vec, action_vec in zip(state_vecs, action_vecs)]
 
         return self._critic_predictor[agent].predict(
             examples=examples,
@@ -154,7 +155,11 @@ class MADDPGAgent:
                 self._total_steps % self._update_interval_steps == 0:
             batch_transitions = random.sample(
                 self._replay_buffer, self._global_batch_size)
+
+            t0 = time.time()
             self.train(transitions=batch_transitions)
+            print(f'time: {time.time() - t0}')
+
 
     def update_target(self, agent):
         self._target_actor_params[agent] = jax.tree_util.tree_map(
@@ -168,14 +173,17 @@ class MADDPGAgent:
             self._trainer[agent].params['critic'])
 
     def train(self, transitions):
-        for agent in self._agents:
-            states = [trans.state for trans in transitions]
-            next_states = [trans.next_state for trans in transitions]
-            actions = [trans.action for trans in transitions]
+        states = [trans.state for trans in transitions]
+        next_states = [trans.next_state for trans in transitions]
+        actions = [trans.action for trans in transitions]
+        next_actions = self.get_target_actions(states=next_states)
 
-            next_actions = self.get_target_actions(states=next_states)
+        state_vecs = [self.get_state_input(state) for state in states]
+        action_vecs = [self.get_action_input(action) for action in actions]
+
+        for agent in self._agents:
             next_q_values = self.get_target_q_values(
-                agent=agent, states=next_states, actions=next_actions)
+                agent=agent, state_vecs=state_vecs, action_vecs=action_vecs)
 
             rewards = np.array(
                 [trans.reward[agent] for trans in transitions])
@@ -185,11 +193,12 @@ class MADDPGAgent:
                 rewards + self._gamma * np.array(next_q_values) * (1. - dones)
 
             examples = [{
-                'states': self.get_state_input(state),
-                'actions': self.get_action_input(action),
+                'states': state_vec,
+                'actions': action_vec,
                 'td_targets': td_target,
                 'actor_states': state[agent]
-            } for state, action, td_target in zip(states, actions, td_targets)]
+            } for state_vec, action_vec, td_target, state in zip(
+                state_vecs, action_vecs, td_targets, states)]
 
             self._trainer[agent].train(
                 examples=examples,

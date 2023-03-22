@@ -1,3 +1,5 @@
+import glob
+from PIL import Image
 from functools import partial
 import os
 import fire
@@ -5,13 +7,12 @@ import json
 import jax
 import optax
 from diffusers import FlaxStableDiffusionPipeline
-from datasets import load_dataset
 
 from redco import Deployer, Trainer
 from text_to_image_pipeline import collate_fn, loss_fn, pred_fn, output_fn
 
 
-def get_dreambooth_dataset(dataset_name_or_path,
+def get_dreambooth_dataset(data_dir,
                            instance_desc,
                            class_desc,
                            prompts,
@@ -20,8 +21,10 @@ def get_dreambooth_dataset(dataset_name_or_path,
                            n_instance_samples_per_epoch,
                            n_class_samples_per_epoch,
                            with_prior_preservation):
-    train_dataset = load_dataset(dataset_name_or_path, split='train')
-    instance_images = [example['image'] for example in train_dataset]
+    instance_images = []
+    for filename in glob.glob(f'{data_dir}/*'):
+        instance_images.append(Image.open(filename))
+
     instance_prompt = \
         prompts['train'].format(instance_or_class_desc=instance_desc)
 
@@ -52,9 +55,9 @@ def get_dreambooth_dataset(dataset_name_or_path,
     return dataset
 
 
-def main(dataset_name_or_path='Vincent-luo/dreambooth-cat',
-         instance_desc='azzy cat',
-         class_desc='cat',
+def main(data_dir='data/dataset/dog6',
+         instance_desc='skr dog',
+         class_desc='dog',
          n_instance_samples_per_epoch=400,
          n_class_samples_per_epoch=200,
          model_name_or_path='runwayml/stable-diffusion-v1-5',
