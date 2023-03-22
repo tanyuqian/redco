@@ -62,7 +62,7 @@ def main(env_name='simple_adversary_v2',
                     explore_eps=explore_eps)
                 for agent in env.agents
             }
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, _, _ = env.step(action)
 
             sum_rewards = {
                 agent: sum_rewards[agent] + reward[agent]
@@ -108,7 +108,7 @@ def main(env_name='simple_adversary_v2',
                     agent=agent, agent_state=state[agent], explore_eps=0)
                 for agent in env.agents
             }
-            next_state, reward, done, info = env.step(action)
+            next_state, reward, done, _, _ = env.step(action)
             env.render()
             time.sleep(0.05)
 
