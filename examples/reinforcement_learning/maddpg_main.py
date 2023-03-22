@@ -9,7 +9,7 @@ from maddpg_agent import MADDPGAgent, Transition
 
 
 def main(env_name='simple_adversary_v2',
-         n_episodes=30000,
+         n_episodes=5000,
          learning_rate=1e-2,
          critic_loss_weight=1.,
          gamma=0.95,
@@ -62,7 +62,7 @@ def main(env_name='simple_adversary_v2',
                     explore_eps=explore_eps)
                 for agent in env.agents
             }
-            next_state, reward, done, _, _ = env.step(action)
+            next_state, reward, done, _ = env.step(action)
 
             sum_rewards = {
                 agent: sum_rewards[agent] + reward[agent]
@@ -79,7 +79,8 @@ def main(env_name='simple_adversary_v2',
             state = next_state
 
         episode_rewards.append(sum_rewards)
-        print(episode_idx, sum_rewards, sum(sum_rewards.values()))
+        if episode_idx % 100 == 0:
+            print(episode_idx, sum_rewards)
 
     for agent in episode_rewards[0].keys():
         plt.plot(
@@ -107,7 +108,7 @@ def main(env_name='simple_adversary_v2',
                     agent=agent, agent_state=state[agent], explore_eps=0)
                 for agent in env.agents
             }
-            next_state, reward, done, _, info = env.step(action)
+            next_state, reward, done, info = env.step(action)
             env.render()
             time.sleep(0.05)
 

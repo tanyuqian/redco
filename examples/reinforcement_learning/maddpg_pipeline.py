@@ -81,9 +81,6 @@ def loss_fn(train_rng,
         batch['actions'][:, agent_action_idx_r:]
     ], axis=-1)
 
-    # actions[:, agent_action_idx_l:agent_action_idx_r] = gumbel_softmax(
-    #     rng=train_rng, logits=action_logits, temperature=temperature)
-
     q_values = critic.apply(
         {'params': jax.lax.stop_gradient(params['critic'])},
         states=batch['states'],

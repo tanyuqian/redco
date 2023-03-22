@@ -6,6 +6,7 @@ import jax
 import jax.numpy as jnp
 import optax
 import time
+from scipy.special import softmax
 
 from redco import Deployer, Trainer, Predictor
 from maddpg_pipeline import (
@@ -100,8 +101,8 @@ class MADDPGAgent:
                 pred_fn=partial(actor_pred_fn, actor=actor))
 
         self._replay_buffer = deque(maxlen=replay_buffer_size)
-        self._update_interval_steps = update_interval_steps
 
+        self._update_interval_steps = update_interval_steps
         self._warmup_steps = warmup_steps
         self._gamma = gamma
         self._tau = tau
@@ -111,6 +112,9 @@ class MADDPGAgent:
         self._total_steps = 0
 
     def predict_action(self, agent, agent_state, explore_eps):
+        if self._total_steps < self._warmup_steps:
+            return np.random.choice(self._action_dims[agent])
+
         if random.random() < explore_eps:
             return random.randint(0, self._action_dims[agent] - 1)
 
@@ -119,28 +123,28 @@ class MADDPGAgent:
             params=self._trainer[agent].params['actor'],
             per_device_batch_size=1)[0]
 
-        return jax.random.categorical(
-            self._deployer.gen_rng(), logits=action_logits).item()
+        return np.random.choice(
+            self._action_dims[agent], p=softmax(action_logits))
 
     def get_target_actions(self, states):
         actions = [{} for _ in range(len(states))]
         for agent in self._agents:
-            preds = self._actor_predictor[agent].predict(
+            action_logits = self._actor_predictor[agent].predict(
                 examples=[{'states': state[agent]} for state in states],
                 params=self._target_actor_params[agent],
                 per_device_batch_size=self._per_device_batch_size)
 
-            for i, pred in enumerate(preds):
-                actions[i][agent] = jax.random.categorical(
-                    self._deployer.gen_rng(), logits=pred).item()
+            for i in range(len(states)):
+                actions[i][agent] = np.random.choice(
+                    self._action_dims[agent], p=softmax(action_logits[i]))
 
         return actions
 
-    def get_target_q_values(self, agent, state_vecs, action_vecs):
+    def get_target_q_values(self, agent, states, actions):
         examples = [{
-            'states': state_vec,
-            'actions': action_vec
-        } for state_vec, action_vec in zip(state_vecs, action_vecs)]
+            'states': self.get_state_input(state),
+            'actions': self.get_action_input(action)
+        } for state, action in zip(states, actions)]
 
         return self._critic_predictor[agent].predict(
             examples=examples,
@@ -151,15 +155,9 @@ class MADDPGAgent:
         self._replay_buffer.append(transition)
         self._total_steps += 1
 
-        if len(self._replay_buffer) > self._warmup_steps and \
+        if self._total_steps > self._warmup_steps and \
                 self._total_steps % self._update_interval_steps == 0:
-            batch_transitions = random.sample(
-                self._replay_buffer, self._global_batch_size)
-
-            t0 = time.time()
-            self.train(transitions=batch_transitions)
-            print(f'time: {time.time() - t0}')
-
+            self.train()
 
     def update_target(self, agent):
         self._target_actor_params[agent] = jax.tree_util.tree_map(
@@ -172,48 +170,45 @@ class MADDPGAgent:
             self._target_critic_params[agent],
             self._trainer[agent].params['critic'])
 
-    def train(self, transitions):
-        states = [trans.state for trans in transitions]
-        next_states = [trans.next_state for trans in transitions]
-        actions = [trans.action for trans in transitions]
-        next_actions = self.get_target_actions(states=next_states)
-
-        state_vecs = [self.get_state_input(state) for state in states]
-        action_vecs = [self.get_action_input(action) for action in actions]
-
+    def train(self):
         for agent in self._agents:
-            next_q_values = self.get_target_q_values(
-                agent=agent, state_vecs=state_vecs, action_vecs=action_vecs)
+            transitions = random.sample(
+                self._replay_buffer, self._global_batch_size)
 
-            rewards = np.array(
+            next_states = [trans.next_state for trans in transitions]
+
+            next_actions = self.get_target_actions(states=next_states)
+            next_q_values = np.array(self.get_target_q_values(
+                agent=agent, states=next_states, actions=next_actions))
+
+            agent_rewards = np.array(
                 [trans.reward[agent] for trans in transitions])
-            dones = np.array([trans.done[agent] for trans in transitions])
+            agent_dones = np.array(
+                [trans.done[agent] for trans in transitions])
 
-            td_targets = \
-                rewards + self._gamma * np.array(next_q_values) * (1. - dones)
+            td_targets = agent_rewards + \
+                         self._gamma * next_q_values * (1. - agent_dones)
 
             examples = [{
-                'states': state_vec,
-                'actions': action_vec,
+                'states': self.get_state_input(trans.state),
+                'actions': self.get_action_input(trans.action),
                 'td_targets': td_target,
-                'actor_states': state[agent]
-            } for state_vec, action_vec, td_target, state in zip(
-                state_vecs, action_vecs, td_targets, states)]
+                'actor_states': trans.state[agent]
+            } for trans, td_target in zip(transitions, td_targets)]
 
             self._trainer[agent].train(
                 examples=examples,
                 per_device_batch_size=self._per_device_batch_size)
 
-        for agent in self._agents:
             self.update_target(agent=agent)
 
     def get_state_input(self, state):
         x = [state[agent] for agent in self._agents]
-        return jnp.concatenate(x, axis=-1)
+        return np.concatenate(x, axis=-1)
 
     def get_action_input(self, action):
         x = [
-            jax.nn.one_hot(action[agent], num_classes=self._action_dims[agent])
+            np.eye(self._action_dims[agent])[action[agent]]
             for agent in self._agents
         ]
-        return jnp.concatenate(x, axis=-1)
+        return np.concatenate(x, axis=-1)
