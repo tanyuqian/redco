@@ -6,7 +6,7 @@ import flax.linen as nn
 
 class Actor(nn.Module):
     hidden_dim: int = 64
-    n_layers: int = 2
+    n_layers: int = 3
     action_dim: int = 1
 
     @nn.compact

@@ -9,11 +9,11 @@ from maddpg_agent import MADDPGAgent, Transition
 
 
 def main(env_name='simple_adversary_v2',
-         n_episodes=5000,
+         n_episodes=30000,
          learning_rate=1e-2,
          critic_loss_weight=1.,
          gamma=0.95,
-         tau=1e-2,
+         tau=0.02,
          explore_eps=0.01,
          replay_buffer_size=1000000,
          warmup_steps=50000,
@@ -26,12 +26,17 @@ def main(env_name='simple_adversary_v2',
     env = getattr(mpe, env_name).parallel_env()
     env.reset()
 
+    state_dims = {
+        agent: env.observation_space(agent=agent).shape[0]
+        for agent in env.agents
+    }
+    action_dims = \
+        {agent: env.action_space(agent=agent).n for agent in env.agents}
+
     maddpg = MADDPGAgent(
         agents=env.agents,
-        state_dims={
-            agent: env.observation_space(agent=agent).shape[0] for agent in env.agents},
-        action_dims={
-            agent: env.action_space(agent=agent).n for agent in env.agents},
+        state_dims=state_dims,
+        action_dims=action_dims,
         learning_rate=learning_rate,
         critic_loss_weight=critic_loss_weight,
         replay_buffer_size=replay_buffer_size,
@@ -92,7 +97,7 @@ def main(env_name='simple_adversary_v2',
     env = getattr(mpe, env_name).parallel_env(render_mode='human')
     env.reset()
 
-    for episode_idx in range(10000):
+    for episode_idx in range(10000000):
         state = env.reset()
         sum_rewards = {agent: 0. for agent in env.agents}
 
