@@ -23,9 +23,10 @@ class Deployer:
                  jax_seed,
                  n_model_shards=1,
                  verbose=True,
-                 workdir='./workdir',
+                 workdir=None,
                  run_tensorboard=False):
-        os.makedirs(workdir, exist_ok=True)
+        if workdir is not None:
+            os.makedirs(workdir, exist_ok=True)
 
         self._verbose = verbose
         self._workdir = workdir
@@ -191,7 +192,7 @@ class Deployer:
 
         return params
 
-    def save_params(self, params, filepath, params_shard_rules):
+    def save_params(self, params, filepath, params_shard_rules=None):
         if self._mesh is not None:
             params_spec = self.get_params_spec(
                 params=params, shard_rules=params_shard_rules)

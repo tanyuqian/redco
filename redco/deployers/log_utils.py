@@ -12,11 +12,12 @@ def get_logger(verbose, workdir):
         datefmt="%m/%d/%Y %H:%M:%S"))
     logger.addHandler(handler)
 
-    handler = logging.FileHandler(filename=f'{workdir}/log.txt')
-    handler.setFormatter(logging.Formatter(
-        fmt="[%(asctime)s - %(name)s - %(levelname)s] %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S"))
-    logger.addHandler(handler)
+    if workdir is not None:
+        handler = logging.FileHandler(filename=f'{workdir}/log.txt')
+        handler.setFormatter(logging.Formatter(
+            fmt="[%(asctime)s - %(name)s - %(levelname)s] %(message)s",
+            datefmt="%m/%d/%Y %H:%M:%S"))
+        logger.addHandler(handler)
 
     logger.propagate = False
 
