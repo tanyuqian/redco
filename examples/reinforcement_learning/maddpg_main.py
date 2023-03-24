@@ -1,11 +1,10 @@
-import time
 import tqdm
 import fire
 import matplotlib.pyplot as plt
 import numpy as np
 from pettingzoo import mpe
 
-from maddpg_agent import MADDPGAgent, Transition
+from maddpg_agent import MADDPGAgent
 
 
 def main(env_name='simple_adversary_v2',
@@ -47,19 +46,23 @@ def main(env_name='simple_adversary_v2',
         temperature=temperature,
         action_reg=action_reg,
         per_device_batch_size=per_device_batch_size,
-        jax_seed=jax_seed)
+        jax_seed=jax_seed,
+        workdir=f'workdir_{env_name}')
 
     episode_rewards = []
-    for episode_idx in range(n_episodes):
+    episodes = tqdm.trange(n_episodes, desc='Episodes')
+    for episode_idx in episodes:
         state = env.reset()
         sum_rewards = {agent: 0. for agent in env.agents}
 
         while env.agents:
+            explore_eps_ = explore_eps \
+                if maddpg.total_steps > warmup_steps else 1.
             action = {
                 agent: maddpg.predict_action(
                     agent=agent,
                     agent_state=state[agent],
-                    explore_eps=explore_eps)
+                    explore_eps=explore_eps_)
                 for agent in env.agents
             }
             next_state, reward, done, _, _ = env.step(action)
@@ -69,18 +72,22 @@ def main(env_name='simple_adversary_v2',
                 for agent in sum_rewards.keys()
             }
 
-            maddpg.update(transition=Transition(
+            maddpg.add_step(
                 state=state,
                 action=action,
                 next_state=next_state,
                 reward=reward,
-                done={key: int(value) for key, value in done.items()}))
+                done=done)
 
             state = next_state
 
+        episodes.set_postfix(**sum_rewards)
         episode_rewards.append(sum_rewards)
-        if episode_idx % 100 == 0:
-            print(episode_idx, sum_rewards)
+
+        if episode_idx % 5000 == 0:
+            maddpg.save(episode_idx=episode_idx)
+
+    env.close()
 
     for agent in episode_rewards[0].keys():
         plt.plot(
@@ -91,37 +98,8 @@ def main(env_name='simple_adversary_v2',
     plt.ylabel('Reward')
     plt.title(env_name)
     plt.legend()
+    plt.savefig(f'{maddpg.workdir}/maddpg_{env_name}.png')
     plt.show()
-
-    env.close()
-
-    env = getattr(mpe, env_name).parallel_env(render_mode='human')
-    env.reset()
-
-    for episode_idx in range(10000000):
-        state = env.reset()
-        sum_rewards = {agent: 0. for agent in env.agents}
-
-        while env.agents:
-            action = {
-                agent: maddpg.predict_action(
-                    agent=agent, agent_state=state[agent], explore_eps=0)
-                for agent in env.agents
-            }
-            next_state, reward, done, _, _ = env.step(action)
-            env.render()
-            time.sleep(0.05)
-
-            sum_rewards = {
-                agent: sum_rewards[agent] + reward[agent]
-                for agent in sum_rewards.keys()
-            }
-
-            state = next_state
-
-        print(episode_idx, sum_rewards)
-
-    env.close()
 
 
 if __name__ == '__main__':

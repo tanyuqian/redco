@@ -5,7 +5,6 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import optax
-import time
 from scipy.special import softmax
 
 from redco import Deployer, Trainer, Predictor
@@ -27,18 +26,21 @@ class MADDPGAgent:
                  agents,
                  state_dims,
                  action_dims,
-                 learning_rate,
-                 critic_loss_weight,
-                 replay_buffer_size,
-                 warmup_steps,
-                 update_interval_steps,
-                 tau,
-                 gamma,
-                 temperature,
-                 action_reg,
-                 per_device_batch_size,
-                 jax_seed):
-        self._deployer = Deployer(jax_seed=jax_seed, verbose=False)
+                 learning_rate=1e-2,
+                 critic_loss_weight=1.,
+                 replay_buffer_size=1000000,
+                 warmup_steps=50000,
+                 update_interval_steps=100,
+                 tau=0.02,
+                 gamma=0.95,
+                 temperature=1.,
+                 action_reg=1e-3,
+                 per_device_batch_size=1024,
+                 jax_seed=42,
+                 workdir=None,
+                 init_params_path=None):
+        self._deployer = Deployer(
+            jax_seed=jax_seed, verbose=False, workdir=workdir)
 
         self._agents = agents
         self._state_dims = state_dims
@@ -51,20 +53,27 @@ class MADDPGAgent:
         self._actor_predictor = {}
         self._replay_buffer = {}
 
+        if init_params_path is not None:
+            init_params = self._deployer.load_params(filepath=init_params_path)
+            for agent in self._agents:
+                self._target_critic_params[agent] = init_params[agent]['critic']
+                self._target_actor_params[agent] = init_params[agent]['actor']
+
         for agent_idx, agent in enumerate(agents):
             critic = Critic()
             actor = Actor(action_dim=self._action_dims[agent])
 
-            self._target_critic_params[agent] = critic.init(
-                self._deployer.gen_rng(),
-                states=jnp.zeros((1, sum(self._state_dims.values()))),
-                actions=jnp.zeros((1, sum(self._action_dims.values())))
-            )['params']
+            if init_params_path is None:
+                self._target_critic_params[agent] = critic.init(
+                    self._deployer.gen_rng(),
+                    states=jnp.zeros((1, sum(self._state_dims.values()))),
+                    actions=jnp.zeros((1, sum(self._action_dims.values())))
+                )['params']
 
-            self._target_actor_params[agent] = actor.init(
-                self._deployer.gen_rng(),
-                states=jnp.zeros((1, self._state_dims[agent]))
-            )['params']
+                self._target_actor_params[agent] = actor.init(
+                    self._deployer.gen_rng(),
+                    states=jnp.zeros((1, self._state_dims[agent]))
+                )['params']
 
             agent_action_idx_l = sum(
                 [self._action_dims[agents[i]] for i in range(agent_idx)])
@@ -112,9 +121,6 @@ class MADDPGAgent:
         self._total_steps = 0
 
     def predict_action(self, agent, agent_state, explore_eps):
-        if self._total_steps < self._warmup_steps:
-            return np.random.choice(self._action_dims[agent])
-
         if random.random() < explore_eps:
             return random.randint(0, self._action_dims[agent] - 1)
 
@@ -151,8 +157,14 @@ class MADDPGAgent:
             params=self._target_critic_params[agent],
             per_device_batch_size=self._per_device_batch_size)
 
-    def update(self, transition):
-        self._replay_buffer.append(transition)
+    def add_step(self, state, action, reward, next_state, done):
+        self._replay_buffer.append(Transition(
+            state=state,
+            action=action,
+            reward=reward,
+            next_state=next_state,
+            done={agent: int(value) for agent, value in done.items()}))
+
         self._total_steps += 1
 
         if self._total_steps > self._warmup_steps and \
@@ -212,3 +224,19 @@ class MADDPGAgent:
             for agent in self._agents
         ]
         return np.concatenate(x, axis=-1)
+
+    def save(self, episode_idx):
+        params = {agent: self._trainer[agent].params for agent in self._agents}
+        save_dir = self._deployer.workdir
+        filepath = f'{save_dir}/maddpg_episode{episode_idx}.msgpack'
+
+        self._deployer.save_params(params=params, filepath=filepath)
+        print(f'MADDPG checkpoint saved into {filepath}')
+
+    @property
+    def total_steps(self):
+        return self._total_steps
+
+    @property
+    def workdir(self):
+        return self._deployer.workdir
