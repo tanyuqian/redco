@@ -9,7 +9,7 @@ from maddpg_agent import MADDPGAgent, Transition
 
 
 def main(env_name='simple_adversary_v2',
-         n_episodes=5000,
+         n_episodes=50000,
          learning_rate=1e-2,
          critic_loss_weight=1.,
          gamma=0.95,
