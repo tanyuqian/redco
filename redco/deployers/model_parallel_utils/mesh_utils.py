@@ -65,7 +65,7 @@ def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
     return params, opt_state, opt_state_spec
 
 
-def gather_params(params, params_spec, mesh):
+def gather_params_to_cpu(params, params_spec, mesh):
     def param_gather_fn(param_spec):
         return pjit(
             lambda x: x,
@@ -80,7 +80,7 @@ def gather_params(params, params_spec, mesh):
     with mesh:
         with jax.default_device(jax.devices('cpu')[0]):
             return jax.tree_util.tree_map(
-                lambda gather_fn, param: np.asarray(gather_fn(param)),
+                lambda gather_fn, param: jax.device_get(gather_fn(param)),
                 gather_fns,
                 params)
 

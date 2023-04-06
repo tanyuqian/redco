@@ -13,7 +13,7 @@ from .log_utils import get_logger, log_info, save_outputs
 from .model_parallel_utils.mesh_utils import (
     get_mesh,
     shard_params_and_opt_state,
-    gather_params,
+    gather_params_to_cpu,
     get_param_spec,
     guess_shard_rules)
 
@@ -196,9 +196,8 @@ class Deployer:
         if self._mesh is not None:
             params_spec = self.get_params_spec(
                 params=params, shard_rules=params_shard_rules)
-            with jax.default_device(jax.devices('cpu')[0]):
-                params = gather_params(
-                    params=params, params_spec=params_spec, mesh=self._mesh)
+            params = gather_params_to_cpu(
+                params=params, params_spec=params_spec, mesh=self._mesh)
 
         if jax.process_index() == 0:
             save_dir = '/'.join(filepath.split('/')[:-1])
