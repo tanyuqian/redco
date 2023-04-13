@@ -39,7 +39,7 @@ class Trainer:
         self._p_eval_step = None
 
         self.create_train_state(
-            apply_fn=apply_fn, params=freeze(params), optimizer=optimizer)
+            apply_fn=apply_fn, params=params, optimizer=optimizer)
 
         n_params = \
             sum(np.prod(param.shape) for param in flatten_dict(params).values())
@@ -53,6 +53,8 @@ class Trainer:
             params_shard_rules=params_shard_rules)
 
     def create_train_state(self, apply_fn, params, optimizer):
+        params = freeze(params)
+
         if self._deployer.mesh is None:
             self._state = TrainState.create(
                 apply_fn=apply_fn, params=params, tx=optimizer)
