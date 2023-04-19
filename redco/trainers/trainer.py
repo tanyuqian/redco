@@ -139,14 +139,14 @@ class Trainer:
             data_batches.set_postfix(**metrics)
             self._deployer.log_metrics(metrics=metrics, step=self.step)
 
-    def eval_loss(self, examples, per_device_batch_size):
+    def eval_loss(self, examples, per_device_batch_size, desc=''):
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
             collate_fn=self._collate_fn,
             shuffle=False,
             shuffle_rng=None,
-            desc=f'Evaluating')
+            desc=f'Evaluating ({desc})')
 
         losses = []
         for batch in data_batches:
@@ -205,14 +205,16 @@ class Trainer:
                 if eval_loss:
                     loss = self.eval_loss(
                         examples=eval_examples,
-                        per_device_batch_size=eval_per_device_batch_size)
+                        per_device_batch_size=eval_per_device_batch_size,
+                        desc=f'epoch {epoch_idx} / {n_epochs}')
                     eval_metrics['loss'] = loss
 
                 if eval_predictor is not None:
                     preds = eval_predictor.predict(
                         examples=eval_examples,
                         params=self.params,
-                        per_device_batch_size=eval_per_device_batch_size)
+                        per_device_batch_size=eval_per_device_batch_size,
+                        desc=f'epoch {epoch_idx} / {n_epochs}')
 
                     if eval_metric_fn is not None:
                         eval_metrics.update(eval_metric_fn(
@@ -237,6 +239,7 @@ class Trainer:
                 }, step=self.step)
 
                 if save_every_ckpt:
+                    assert self._deployer.workdir is not None
                     path_to_save = f'{self._deployer.workdir}/ckpts/' \
                                    f'epoch_{epoch_idx}.msgpack'
                     self._deployer.save_params(
@@ -245,6 +248,7 @@ class Trainer:
                         filepath=path_to_save)
 
                 if save_last_ckpt:
+                    assert self._deployer.workdir is not None
                     path_to_save = f'{self._deployer.workdir}/ckpts/'\
                                    f'last.msgpack'
                     self._deployer.save_params(
@@ -253,6 +257,7 @@ class Trainer:
                         filepath=path_to_save)
 
                 for key in save_argmin_ckpt_by_metrics:
+                    assert self._deployer.workdir is not None
                     if eval_metrics[key] < min_metrics.get(key, float('inf')):
                         min_metrics[key] = eval_metrics[key]
                         self._deployer.log_info(
@@ -266,6 +271,7 @@ class Trainer:
                             filepath=path_to_save)
 
                 for key in save_argmax_ckpt_by_metrics:
+                    assert self._deployer.workdir is not None
                     if eval_metrics[key] > max_metrics.get(key, float('-inf')):
                         max_metrics[key] = eval_metrics[key]
                         self._deployer.log_info(

@@ -21,7 +21,7 @@ class Predictor:
         self._deployer = deployer
         self._collate_fn = partial(collate_fn_wrapper, collate_fn=collate_fn)
 
-        self._params = freeze(params) if params is not None else None
+        self._params = params
         self._params_shard_rules = params_shard_rules
         self._pred_fn = partial(
             pred_fn_wrapper,
@@ -34,7 +34,11 @@ class Predictor:
         else:
             self._output_fn = output_fn
 
-    def setup_running_step(self, pred_fn, dummy_batch, params_shard_rules):
+    def setup_running_step(self,
+                           pred_fn,
+                           dummy_batch,
+                           params,
+                           params_shard_rules):
         if self._deployer.mesh is None:
             self._p_pred_step = jax.pmap(pred_fn, axis_name='batch')
         else:
@@ -44,16 +48,17 @@ class Predictor:
             }
 
             params_spec = self._deployer.get_params_spec(
-                params=self._params, shard_rules=params_shard_rules)
+                params=params, shard_rules=params_shard_rules)
 
             self._p_pred_step = pjit(
                 pred_fn,
                 in_axis_resources=(None, params_spec, data_spec),
                 out_axis_resources=None)
 
-    def predict(self, examples, per_device_batch_size, params=None):
+    def predict(self, examples, per_device_batch_size, params=None, desc=''):
         if params is None:
             params = self._params
+        params = freeze(params)
 
         raw_n_inputs = len(examples)
         _, global_batch_size = self._deployer.process_batch_size(
@@ -69,7 +74,7 @@ class Predictor:
             collate_fn=self._collate_fn,
             shuffle=False,
             shuffle_rng=None,
-            desc='Predicting')
+            desc=f'Predicting ({desc})')
 
         preds = []
         for batch in data_batches:
@@ -77,6 +82,7 @@ class Predictor:
                 self.setup_running_step(
                     pred_fn=self._pred_fn,
                     dummy_batch=batch,
+                    params=params,
                     params_shard_rules=self._params_shard_rules)
 
             pred_rng = self._deployer.process_to_run_model(

@@ -14,26 +14,19 @@ from redco import Deployer, Trainer
 
 def collate_fn(
         examples, sent0_key, sent1_key, label_key, tokenizer, max_length):
-    if 'tokenization' in examples[0]:
-        batch = tokenizer.pad(
-            [example['tokenization'] for example in examples],
-            max_length=max_length,
-            padding='max_length',
-            return_tensors='np')
-    else:
-        texts = []
-        for example in examples:
-            if sent1_key is None:
-                texts.append(example[sent0_key])
-            else:
-                texts.append((example[sent0_key], example[sent1_key]))
+    texts = []
+    for example in examples:
+        if sent1_key is None:
+            texts.append(example[sent0_key])
+        else:
+            texts.append((example[sent0_key], example[sent1_key]))
 
-        batch = tokenizer(
-            texts,
-            max_length=max_length,
-            padding='max_length',
-            truncation=True,
-            return_tensors='np')
+    batch = tokenizer(
+        texts,
+        max_length=max_length,
+        padding='max_length',
+        truncation=True,
+        return_tensors='np')
 
     batch['labels'] = np.array([example[label_key] for example in examples])
 
@@ -79,7 +72,6 @@ def main(dataset_name='sst2',
          sent1_key=None,
          label_key='label',
          is_regression=False,
-         tokenize_before_train=False,
          model_name_or_path='roberta-large',
          n_model_shards=2,
          max_length=512,
@@ -111,16 +103,6 @@ def main(dataset_name='sst2',
         model = FlaxAutoModelForSequenceClassification.from_pretrained(
             model_name_or_path, num_labels=num_labels)
         model.params = model.to_fp32(model.params)
-
-    if tokenize_before_train:
-        for split in dataset:
-            for example in tqdm.tqdm(
-                    dataset[split], desc=f'tokenize {split} set'):
-                if sent1_key is None:
-                    example['tokenization'] = dict(tokenizer(example[sent0_key]))
-                else:
-                    example['tokenization'] = dict(
-                        tokenizer(example[sent0_key], example[sent1_key]))
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),

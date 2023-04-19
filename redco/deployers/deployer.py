@@ -9,7 +9,6 @@ from flax.serialization import msgpack_serialize, msgpack_restore
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_multistep_adamw_optimizer
 from .log_utils import get_logger, log_info, save_outputs
-
 from .model_parallel_utils.mesh_utils import (
     get_mesh,
     shard_params_and_opt_state,
@@ -177,7 +176,7 @@ class Deployer:
                 self._summary_writer.scalar(metric_name, value, step=step)
 
     def save_outputs(self, outputs, desc, step):
-        if jax.process_index() == 0:
+        if self._workdir is not None and jax.process_index() == 0:
             save_outputs(
                 workdir=self._workdir,
                 outputs=outputs,

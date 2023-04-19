@@ -1,13 +1,10 @@
 from functools import partial
 import fire
 import numpy as np
-
 import jax.numpy as jnp
 from flax import linen as nn
 import optax
-
 from torchvision.datasets import MNIST
-
 from redco import Deployer, Trainer, Predictor
 
 
@@ -72,18 +69,11 @@ def main(data_dir='./data/',
     deployer = Deployer(jax_seed=jax_seed)
 
     model = CNN()
-    # dummy_batch = collate_fn([dataset['train'][0]])
-    # params = model.init(
-    #     deployer.gen_rng(), dummy_batch['images'], training=False)['params']
-    params = deployer.load_params('workdir/ckpts/max_acc.msgpack')
+    dummy_batch = collate_fn([dataset['train'][0]])
+    params = model.init(
+        deployer.gen_rng(), dummy_batch['images'], training=False)['params']
 
     optimizer = optax.adam(learning_rate=learning_rate)
-
-    params_grad_weights = None
-    # params_grad_weights = {}
-    # for key, value in flatten_dict(params).items():
-    #     params_grad_weights[key] = float(key[0] == 'Conv_0')
-    # params_grad_weights = unflatten_dict(params_grad_weights)
 
     trainer = Trainer(
         deployer=deployer,
@@ -91,8 +81,7 @@ def main(data_dir='./data/',
         apply_fn=model.apply,
         loss_fn=loss_fn,
         params=params,
-        optimizer=optimizer,
-        params_grad_weights=params_grad_weights)
+        optimizer=optimizer)
 
     predictor = Predictor(
         deployer=deployer,
@@ -107,8 +96,7 @@ def main(data_dir='./data/',
         eval_per_device_batch_size=per_device_batch_size,
         eval_loss=True,
         eval_predictor=predictor,
-        eval_metric_fn=eval_metric_fn,
-        save_argmax_ckpt_by_metrics=['acc'])
+        eval_metric_fn=eval_metric_fn)
 
 
 if __name__ == '__main__':
