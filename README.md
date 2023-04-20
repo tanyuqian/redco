@@ -1,4 +1,4 @@
-# Redco: Distributed LLM training with a single line of code
+## Redco: Distributed LLM training with a single line of code
 
 Redco is a user-friendly toolkit for developing and scaling up Jax/Flax-based pipelines, 
 where you can define your pipeline in a couple of functions, without concerning environmental issues, 
