@@ -22,5 +22,8 @@ setup(
     packages=find_packages(),
     install_requires=['jax', 'flax', 'optax', 'numpy'],
     include_package_data=True,
-    python_requires=">=3.8"
+    python_requires=">=3.8",
+    long_description=open('README.md').read(),
+    long_description_content_type="text/markdown",
+    url='https://github.com/tanyuqian/redco'
 )
