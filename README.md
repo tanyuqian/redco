@@ -39,9 +39,11 @@ Examples across a set of paradigms can be found in [examples/](examples/), inclu
 
 ### Exemplar large model settings
 
-The table below shows runnable model finetuning on different kinds of servers. Numbers inside the brackets are the maximum length in training. All the settings are with full precision (fp32) with Adam optimizer.
+The table below shows runnable model LLM finetuning on different kinds of servers. Numbers inside the brackets are the maximum length in training. All the settings are with full precision (fp32) and Adam optimizer.
 
 | 2 $\times$ 1080Ti <br/>(2 $\times$ 10G) | 4 $\times$ A100 <br/>(4 $\times$ 40G) | 2 $\times$ TPU-v4 <br/>(2 $\times$ 4 $\times$ 32G) | 16 $\times$ TPU-v4 <br/>(16 $\times$ 4 $\times$ 32G) |
 |-----------------------------------------|---------------------------------------|----------------------------------------------------|------------------------------------------------------|
 | BART-Large (1024)                       | T5-XL-3B (1024)                       | T5-XL-11B (512)                                    | OPT-66B (512)                                        |
 | GPT2-Large (512)                        | GPT-J-6B (1024)                       | OPT-13B (1024)                                     |                                                      |
+
+Go to [example/language_modeling](examples%2Flanguage_modeling) and [examples/text_to_text](examples%2Ftext_to_text) to try them out!
