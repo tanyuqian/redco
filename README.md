@@ -8,7 +8,7 @@ e.g., multi-host, parallelization for large dataset and large models, etc.
 
 ### Features
 
-* **lightweight concepts**: *Redco* only introduces three concepts: Deployer, Trainer, and Predictor. You can be an expert in a couple of minites!
+* **Lightweight concepts**: *Redco* only introduces three concepts: Deployer, Trainer, and Predictor. You can be an expert in a couple of minites!
 * **Easy-to-use**: Customize your pipeline with 4-5 functions, each with a handful of lines. Designing your pipeline is the only thing you need to take care with *redco*.
 * **Automatic deployment**: No need to take care of your multi-host or multi-device environment. *Redco* processes your environment automatically, as well as other pipeline-unrelated things, e.g., randomness, logging, etc.
 * **Automatic model/data parallelism**: No need to concern your large models and large datasets. *Redco* distributes your models and datasets to all your devices automatically. 
