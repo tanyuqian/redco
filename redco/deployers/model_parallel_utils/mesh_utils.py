@@ -135,6 +135,12 @@ def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
             elif under_attention(key) and rule_key[0][0] in ['q', 'k', 'v']:
                 shard_rules[rule_key] = P(None, 'mp')
 
+            elif under_attention(key) and rule_key[0][-1] == 'o':
+                shard_rules[rule_key] = P('mp', None)
+
+            elif under_attention(key) and rule_key[0][-1] in ['q', 'k', 'v']:
+                shard_rules[rule_key] = P(None, 'mp')
+
             else:
                 rule_tuple = [None for _ in range(len(param.shape))]
                 for dim in range(-1, -len(param.shape) - 1, -1):
