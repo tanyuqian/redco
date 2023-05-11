@@ -46,9 +46,11 @@ def main(dataset_name='xsum',
         'validation': [{text_key: ''} for _ in range(50)]
     }
 
-    tokenizer = LLaMATokenizer(llama_tokenizer_path)
-    params, configs = convert_llama_weights(llama_ckpt_dir, tokenizer)
     with jax.default_device(jax.devices('cpu')[0]):
+        tokenizer = LLaMATokenizer(llama_tokenizer_path)
+        tokenizer.pad_token = tokenizer.eos_token
+
+        params, configs = convert_llama_weights(llama_ckpt_dir, tokenizer)
         params = jax.tree_map(lambda x: jnp.asarray(x), params)
         model = FlaxLLaMAForCausalLM(configs, _do_init=False)
 
