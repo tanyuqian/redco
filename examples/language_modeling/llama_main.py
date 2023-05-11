@@ -45,6 +45,13 @@ def main(dataset_name='xsum',
         'validation': [{text_key: ''} for _ in range(50)]
     }
 
+    deployer = Deployer(
+        jax_seed=jax_seed,
+        n_model_shards=n_model_shards,
+        workdir=workdir,
+        run_tensorboard=run_tensorboard,
+        verbose=True)
+
     with jax.default_device(jax.devices('cpu')[0]):
         tokenizer = LLaMATokenizer(llama_tokenizer_path)
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -52,20 +59,14 @@ def main(dataset_name='xsum',
         params, configs = convert_llama_weights(llama_ckpt_dir, tokenizer)
         params = jax.tree_map(lambda x: jnp.asarray(x), params)
         model = FlaxLLaMAForCausalLM(configs, _do_init=False)
+        params_shard_rules = deployer.guess_shard_rules(params=params)
 
-    gen_kwargs = {
-        'do_sample': True,
-        'top_p': top_p,
-        'max_length': max_length,
-        'pad_token_id': model.config.eos_token_id
-    }
-
-    deployer = Deployer(
-        jax_seed=jax_seed,
-        n_model_shards=n_model_shards,
-        workdir=workdir,
-        run_tensorboard=run_tensorboard,
-        verbose=True)
+        gen_kwargs = {
+            'do_sample': True,
+            'top_p': top_p,
+            'max_length': max_length,
+            'pad_token_id': model.config.eos_token_id
+        }
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),
@@ -88,7 +89,7 @@ def main(dataset_name='xsum',
         params=params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
-        params_shard_rules=deployer.guess_shard_rules(params=params))
+        params_shard_rules=params_shard_rules)
 
     predictor = Predictor(
         deployer=deployer,
@@ -97,7 +98,7 @@ def main(dataset_name='xsum',
         pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
         output_fn=partial(output_fn, tokenizer=tokenizer),
         params=params,
-        params_shard_rules=deployer.guess_shard_rules(params=params))
+        params_shard_rules=params_shard_rules)
 
     trainer.fit(
         train_examples=dataset['train'],
