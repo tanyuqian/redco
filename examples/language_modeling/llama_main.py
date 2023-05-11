@@ -17,6 +17,7 @@ import fire
 import datasets
 import jax
 import jax.numpy as jnp
+from jax.experimental.pjit import PartitionSpec as P
 from jax_llama import convert_llama_weights, LLaMATokenizer, FlaxLLaMAForCausalLM
 
 from redco import Deployer, Trainer, Predictor
@@ -60,6 +61,23 @@ def main(dataset_name='xsum',
         params = jax.tree_map(lambda x: jnp.asarray(x), params)
         model = FlaxLLaMAForCausalLM(configs, _do_init=False)
         params_shard_rules = deployer.guess_shard_rules(params=params)
+        params_shard_rules = [
+            # embeddings
+            (("transformer", "wte", "embedding"), P("mp", None)),
+            # atention
+            (("attention", "(wq|wk|wv)", "kernel"), P(None, "mp")),
+            (("attention", "wo", "kernel"), P("mp", None)),
+            # mlp
+            (("feed_forward", "w1", "kernel"), P(None, "mp")),
+            (("feed_forward", "w2", "kernel"), P("mp", None)),
+            (("feed_forward", "w3", "kernel"), P(None, "mp")),
+            # layer norms
+            (("attention_norm", "kernel"), P(None)),
+            (("ffn_norm", "kernel"), P(None)),
+            # output head
+            (("transformer", "ln_f", "kernel"), P(None)),
+            (("lm_head", "kernel"), P(None, "mp")),
+        ]
 
         gen_kwargs = {
             'do_sample': True,
