@@ -17,7 +17,6 @@ import fire
 import datasets
 import jax
 import jax.numpy as jnp
-from jax.experimental.pjit import PartitionSpec as P
 from jax_llama import convert_llama_weights, LLaMATokenizer, FlaxLLaMAForCausalLM
 
 from redco import Deployer, Trainer, Predictor
@@ -60,7 +59,7 @@ def main(dataset_name='xsum',
         params, configs = convert_llama_weights(llama_ckpt_dir, tokenizer)
         params = jax.tree_map(lambda x: jnp.asarray(x), params)
         model = FlaxLLaMAForCausalLM(configs, _do_init=False)
-        params_shard_rules = deployer.guess_shard_rules(params=params)
+        params = model.to_fp32(params=params)
 
         gen_kwargs = {
             'do_sample': True,
@@ -77,6 +76,8 @@ def main(dataset_name='xsum',
         accumulate_grad_batches=accumulate_grad_batches,
         warmup_rate=warmup_rate,
         weight_decay=weight_decay)
+
+    params_shard_rules = deployer.guess_shard_rules(params=params)
 
     trainer = Trainer(
         deployer=deployer,
