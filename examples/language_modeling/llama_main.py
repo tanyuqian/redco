@@ -26,7 +26,8 @@ from language_modeling_pipeline import collate_fn, loss_fn, pred_fn, output_fn
 
 def main(dataset_name='xsum',
          text_key='document',
-         llama_ckpt_dir='./llama_ckpt',
+         llama_tokenizer_path='./llama_ckpt/tokenizer.model',
+         llama_ckpt_dir='./llama_ckpt/7B',
          n_model_shards=2,
          n_epochs=2,
          per_device_batch_size=1,
@@ -45,7 +46,7 @@ def main(dataset_name='xsum',
         'validation': [{text_key: ''} for _ in range(50)]
     }
 
-    tokenizer = LLaMATokenizer(f'{llama_ckpt_dir}/tokenizer.model')
+    tokenizer = LLaMATokenizer(llama_tokenizer_path)
     params, configs = convert_llama_weights(llama_ckpt_dir, tokenizer)
     with jax.default_device(jax.devices('cpu')[0]):
         params = jax.tree_map(lambda x: jnp.asarray(x), params)
