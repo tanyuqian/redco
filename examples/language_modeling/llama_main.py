@@ -17,8 +17,7 @@ import fire
 import datasets
 import jax
 import jax.numpy as jnp
-from jax_llama import \
-    convert_llama_weights, LLaMATokenizer, FlaxLLaMAForCausalLM
+from jax_llama import convert_llama_weights, LLaMATokenizer, FlaxLLaMAForCausalLM
 
 from redco import Deployer, Trainer, Predictor
 from language_modeling_pipeline import collate_fn, loss_fn, pred_fn, output_fn
@@ -48,9 +47,7 @@ def main(dataset_name='xsum',
 
     with jax.default_device(jax.devices('cpu')[0]):
         tokenizer = LLaMATokenizer(llama_tokenizer_path)
-        tokenizer.pad_token = tokenizer.eos_token
-        print(tokenizer.pad_token)
-        exit()
+        tokenizer.pad_token_id = tokenizer.eos_token_id
 
         params, configs = convert_llama_weights(llama_ckpt_dir, tokenizer)
         params = jax.tree_map(lambda x: jnp.asarray(x), params)
