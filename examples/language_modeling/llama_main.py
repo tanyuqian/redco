@@ -33,7 +33,7 @@ def main(dataset_name='xsum',
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
          accumulate_grad_batches=1,
-         max_length=512,
+         max_length=32,
          learning_rate=1e-5,
          warmup_rate=0.1,
          weight_decay=0.,
@@ -61,23 +61,6 @@ def main(dataset_name='xsum',
         params = jax.tree_map(lambda x: jnp.asarray(x), params)
         model = FlaxLLaMAForCausalLM(configs, _do_init=False)
         params_shard_rules = deployer.guess_shard_rules(params=params)
-        params_shard_rules = [
-            # embeddings
-            (("transformer", "wte", "embedding"), P("mp", None)),
-            # atention
-            (("attention", "(wq|wk|wv)", "kernel"), P(None, "mp")),
-            (("attention", "wo", "kernel"), P("mp", None)),
-            # mlp
-            (("feed_forward", "w1", "kernel"), P(None, "mp")),
-            (("feed_forward", "w2", "kernel"), P("mp", None)),
-            (("feed_forward", "w3", "kernel"), P(None, "mp")),
-            # layer norms
-            (("attention_norm", "kernel"), P(None)),
-            (("ffn_norm", "kernel"), P(None)),
-            # output head
-            (("transformer", "ln_f", "kernel"), P(None)),
-            (("lm_head", "kernel"), P(None, "mp")),
-        ]
 
         gen_kwargs = {
             'do_sample': True,
