@@ -49,6 +49,8 @@ def main(dataset_name='xsum',
     with jax.default_device(jax.devices('cpu')[0]):
         tokenizer = LLaMATokenizer(llama_tokenizer_path)
         tokenizer.pad_token = tokenizer.eos_token
+        print(tokenizer.pad_token)
+        exit()
 
         params, configs = convert_llama_weights(llama_ckpt_dir, tokenizer)
         params = jax.tree_map(lambda x: jnp.asarray(x), params)
