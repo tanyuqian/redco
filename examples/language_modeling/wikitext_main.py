@@ -19,6 +19,8 @@ import fire
 import datasets
 import numpy as np
 import jax
+import jax.numpy as jnp
+import optax
 from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
 from redco import Deployer, Trainer
 
@@ -68,19 +70,17 @@ def loss_fn(train_rng, state, params, batch, is_training, model_type):
 
 
 def main(text_key='text',
-         model_name_or_path='gpt2-large',
-         n_model_shards=2,
+         model_name_or_path='EleutherAI/gpt-j-6b',
+         n_model_shards=4,
          n_epochs=2,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
          accumulate_grad_batches=1,
-         max_length=512,
+         max_length=1024,
          learning_rate=4e-5,
          warmup_rate=0.1,
          weight_decay=0.,
-         jax_seed=42,
-         workdir='./workdir',
-         run_tensorboard=False):
+         jax_seed=42):
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     tokenizer.pad_token = tokenizer.eos_token
     with jax.default_device(jax.devices('cpu')[0]):
@@ -103,12 +103,7 @@ def main(text_key='text',
         desc=f"Grouping texts in chunks of {max_length}")
     dataset = {split: list(dataset[split]) for split in dataset.keys()}
 
-    deployer = Deployer(
-        jax_seed=jax_seed,
-        n_model_shards=n_model_shards,
-        workdir=workdir,
-        run_tensorboard=run_tensorboard,
-        verbose=True)
+    deployer = Deployer(jax_seed=jax_seed, n_model_shards=n_model_shards)
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
         train_size=len(dataset['train']),

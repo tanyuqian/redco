@@ -16,9 +16,9 @@ from functools import partial
 import fire
 import datasets
 import numpy as np
-import optax
 import jax
 import jax.numpy as jnp
+import optax
 from jax_llama import \
     convert_llama_weights, LLaMATokenizer, FlaxLLaMAForCausalLM
 from redco import Deployer, Trainer, Predictor
