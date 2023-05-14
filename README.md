@@ -43,7 +43,7 @@ The table below shows runnable model LLM finetuning on different kinds of server
 
 | 2 $\times$ 1080Ti <br/>(2 $\times$ 10G) | 4 $\times$ A100 <br/>(4 $\times$ 40G) | 2 $\times$ TPU-v4 <br/>(2 hosts $\times$ 4 chips $\times$ 32G) | 16 $\times$ TPU-v4 <br/>(16 hosts $\times$ 4 chips $\times$ 32G) |
 |-----------------------------------------|---------------------------------------|----------------------------------------------------------------|------------------------------------------------------------------|
-| BART-Large (1024)                       | T5-XL-3B (1024)                       | T5-XL-11B (512)                                                | OPT-66B (512)                                                    |
+| BART-Large (1024)                       | LLaMA-7B (1024)                       | T5-XL-11B (512)                                                | OPT-66B (512)                                                    |
 | GPT2-Large (512)                        | GPT-J-6B (1024)                       | OPT-13B (1024)                                                 |                                                                  |
 
 Go to [example/language_modeling](examples%2Flanguage_modeling) and [examples/text_to_text](examples%2Ftext_to_text) to try them out!
