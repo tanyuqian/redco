@@ -123,7 +123,7 @@ def main(text_key='text',
         params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
-        params_shard_rules=deployer.guess_shard_rules(params=model.params))
+        params_shard_rules=deployer.get_sharding_rules(params=model.params))
 
     trainer.fit(
         train_examples=dataset['train'],
