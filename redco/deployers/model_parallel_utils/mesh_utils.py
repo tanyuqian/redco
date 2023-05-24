@@ -99,7 +99,7 @@ def gather_params_to_cpu(params, params_spec, mesh):
                 params)
 
 
-def guess_shard_rules(params, mesh_model_shards, investigate_depth=2):
+def get_sharding_rules(params, mesh_model_shards, investigate_depth=2):
     shard_rules = {
         ('(bias|scale)',): None,
         ('embedding',): P('mp', None),

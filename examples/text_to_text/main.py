@@ -162,7 +162,7 @@ def main(dataset_name='xsum',
         params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
-        params_shard_rules=deployer.guess_shard_rules(params=model.params))
+        params_shard_rules=deployer.get_sharding_rules(params=model.params))
 
     predictor = trainer.get_default_predictor(
         pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),

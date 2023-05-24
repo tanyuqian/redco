@@ -24,31 +24,43 @@ from jax_llama import \
 from redco import Deployer, Trainer, Predictor
 
 
-def collate_fn(examples, tokenizer, text_key, max_length):
+def collate_fn(examples,
+               tokenizer,
+               text_key,
+               tgt_key,
+               max_src_len,
+               max_tgt_len,
+               for_training):
+    if for_training:
+        texts = [example[text_key] for example in examples]
+        max_length = max_src_len + max_tgt_len
+    else:
+        texts = []
+        for example in examples:
+            assert example[text_key].endswith(example[tgt_key])
+            texts.append(example[text_key][:-len(example[tgt_key])])
+        max_length = max_src_len
+
     batch = tokenizer(
-        [(example[text_key] + tokenizer.eos_token) for example in examples],
+        texts,
         max_length=max_length,
         padding='max_length',
         truncation=True,
         add_special_tokens=False,
         return_tensors='np')
 
-    batch['labels'] = np.copy(batch['input_ids'])
-    batch['input_ids'][:, 1:] = batch['input_ids'][:, :-1]
-    batch['input_ids'][:, 0] = tokenizer.eos_token_id
+    if for_training:
+        batch['labels'] = np.copy(batch['input_ids'])
+        batch['labels'][:, :-1] = batch['input_ids'][:, 1:]
 
     return batch
 
 
-def loss_fn(train_rng, state, params, batch, is_training, model_type):
+def loss_fn(train_rng, state, params, batch, is_training):
     labels = batch.pop("labels")
     label_weights = batch['attention_mask']
 
-    if model_type != 'opt':
-        is_training_kwarg = {'train': is_training}
-    else:
-        is_training_kwarg = {'deterministic': not is_training}
-
+    is_training_kwarg = {'train': is_training}
     logits = state.apply_fn(
         **batch, params=params, dropout_rng=train_rng, **is_training_kwarg)[0]
 
@@ -74,6 +86,7 @@ def output_fn(batch_preds, tokenizer):
 
 def main(dataset_name='tatsu-lab/alpaca',
          text_key='text',
+         tgt_key='output',
          llama_tokenizer_path='./llama_ckpt/tokenizer.model',
          llama_ckpt_dir='./llama_ckpt/7B',
          n_model_shards=4,
@@ -81,7 +94,8 @@ def main(dataset_name='tatsu-lab/alpaca',
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
          accumulate_grad_batches=1,
-         max_length=1024,
+         max_src_len=512,
+         max_tgt_len=512,
          learning_rate=1e-5,
          warmup_rate=0.1,
          weight_decay=0.,
@@ -89,9 +103,10 @@ def main(dataset_name='tatsu-lab/alpaca',
          jax_seed=42,
          workdir='./workdir',
          run_tensorboard=False):
+    dataset = list(datasets.load_dataset(dataset_name, split='train'))
     dataset = {
-        'train': list(datasets.load_dataset(dataset_name, split='train')),
-        'validation': [{text_key: ''} for _ in range(50)]
+        'train': dataset[:int(0.9 * len(dataset))],
+        'validation': dataset[int(0.9 * len(dataset)):],
     }
 
     deployer = Deployer(
@@ -103,7 +118,9 @@ def main(dataset_name='tatsu-lab/alpaca',
 
     with jax.default_device(jax.devices('cpu')[0]):
         tokenizer = LLaMATokenizer(llama_tokenizer_path)
-        tokenizer.pad_token_id = tokenizer.eos_token_id
+        tokenizer.pad_token_id = 0
+        assert tokenizer.pad_token_id != tokenizer.eos_token_id
+        tokenizer.padding_side = 'left'
 
         params, configs = convert_llama_weights(llama_ckpt_dir, tokenizer)
         params = jax.tree_map(lambda x: jnp.asarray(x), params)
@@ -113,8 +130,8 @@ def main(dataset_name='tatsu-lab/alpaca',
         gen_kwargs = {
             'do_sample': True,
             'top_p': top_p,
-            'max_length': max_length,
-            'pad_token_id': model.config.eos_token_id
+            'max_new_tokens': max_tgt_len,
+            'pad_token_id': tokenizer.pad_token_id
         }
 
     optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
@@ -126,7 +143,7 @@ def main(dataset_name='tatsu-lab/alpaca',
         warmup_rate=warmup_rate,
         weight_decay=weight_decay)
 
-    params_shard_rules = deployer.guess_shard_rules(params=params)
+    params_shard_rules = deployer.get_sharding_rules(params=params)
 
     trainer = Trainer(
         deployer=deployer,
@@ -134,7 +151,10 @@ def main(dataset_name='tatsu-lab/alpaca',
             collate_fn,
             tokenizer=tokenizer,
             text_key=text_key,
-            max_length=max_length),
+            tgt_key=tgt_key,
+            max_src_len=max_src_len,
+            max_tgt_len=max_tgt_len,
+            for_training=True),
         apply_fn=model.__call__,
         loss_fn=partial(loss_fn, model_type=model.config.model_type),
         params=params,
@@ -145,7 +165,13 @@ def main(dataset_name='tatsu-lab/alpaca',
     predictor = Predictor(
         deployer=deployer,
         collate_fn=partial(
-            collate_fn, tokenizer=tokenizer, text_key=text_key, max_length=1),
+            collate_fn,
+            tokenizer=tokenizer,
+            text_key=text_key,
+            tgt_key=tgt_key,
+            max_src_len=max_src_len,
+            max_tgt_len=max_tgt_len,
+            for_training=False),
         pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
         output_fn=partial(output_fn, tokenizer=tokenizer),
         params=params,
@@ -157,7 +183,7 @@ def main(dataset_name='tatsu-lab/alpaca',
         per_device_batch_size=per_device_batch_size,
         eval_examples=dataset['validation'],
         eval_per_device_batch_size=eval_per_device_batch_size,
-        eval_loss=False,
+        eval_loss=True,
         eval_predictor=predictor)
 
 

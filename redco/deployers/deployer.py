@@ -28,7 +28,7 @@ from .model_parallel_utils.mesh_utils import (
     shard_params_and_opt_state,
     gather_params_to_cpu,
     get_param_spec,
-    guess_shard_rules)
+    get_sharding_rules)
 
 
 class Deployer:
@@ -141,18 +141,18 @@ class Deployer:
             warmup_rate=warmup_rate,
             weight_decay=weight_decay)
 
-    def guess_shard_rules(self, params):
+    def get_sharding_rules(self, params):
         if self._mesh is None:
             return None
         else:
-            shard_rules = guess_shard_rules(
+            sharding_rules = get_sharding_rules(
                 params=params, mesh_model_shards=self._mesh.shape['mp'])
 
             self.log_info(
-                info='\n'.join([f'{t}' for t in shard_rules]),
-                title='Guessed shard rules')
+                info='\n'.join([f'{t}' for t in sharding_rules]),
+                title='Sharding rules')
 
-            return shard_rules
+            return sharding_rules
 
     def get_params_spec(self, params, shard_rules):
         return get_param_spec(params=params, shard_rules=shard_rules)
