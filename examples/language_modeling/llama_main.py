@@ -92,7 +92,7 @@ def main(dataset_name='tatsu-lab/alpaca',
          n_model_shards=4,
          n_epochs=2,
          per_device_batch_size=1,
-         eval_per_device_batch_size=1,
+         eval_per_device_batch_size=4,
          accumulate_grad_batches=1,
          max_src_len=512,
          max_tgt_len=512,
@@ -104,9 +104,10 @@ def main(dataset_name='tatsu-lab/alpaca',
          workdir='./workdir',
          run_tensorboard=False):
     dataset = list(datasets.load_dataset(dataset_name, split='train'))
+    train_size = int(0.9 * len(dataset))
     dataset = {
-        'train': dataset[:int(0.9 * len(dataset))],
-        'validation': dataset[int(0.9 * len(dataset)):],
+        'train': dataset[:train_size],
+        'validation': dataset[train_size:],
     }
 
     deployer = Deployer(
