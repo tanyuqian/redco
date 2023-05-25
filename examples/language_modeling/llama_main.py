@@ -52,6 +52,7 @@ def collate_fn(examples,
     if is_training:
         batch['labels'] = np.copy(batch['input_ids'])
         batch['labels'][:, :-1] = batch['input_ids'][:, 1:]
+        batch['labels'][:, -1] = tokenizer.eos_token_id
 
     return batch
 
