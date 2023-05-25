@@ -30,8 +30,8 @@ def collate_fn(examples,
                tgt_key,
                max_src_len,
                max_tgt_len,
-               for_training):
-    if for_training:
+               is_training):
+    if is_training:
         texts = [example[text_key] for example in examples]
         max_length = max_src_len + max_tgt_len
     else:
@@ -49,7 +49,7 @@ def collate_fn(examples,
         add_special_tokens=False,
         return_tensors='np')
 
-    if for_training:
+    if is_training:
         batch['labels'] = np.copy(batch['input_ids'])
         batch['labels'][:, :-1] = batch['input_ids'][:, 1:]
 
@@ -154,7 +154,7 @@ def main(dataset_name='tatsu-lab/alpaca',
             tgt_key=tgt_key,
             max_src_len=max_src_len,
             max_tgt_len=max_tgt_len,
-            for_training=True),
+            is_training=True),
         apply_fn=model.__call__,
         loss_fn=loss_fn,
         params=params,
@@ -171,7 +171,7 @@ def main(dataset_name='tatsu-lab/alpaca',
             tgt_key=tgt_key,
             max_src_len=max_src_len,
             max_tgt_len=max_tgt_len,
-            for_training=False),
+            is_training=False),
         pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
         output_fn=partial(output_fn, tokenizer=tokenizer),
         params=params,
