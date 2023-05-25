@@ -61,9 +61,8 @@ def loss_fn(train_rng, state, params, batch, is_training):
     labels = batch.pop("labels")
     label_weights = batch['attention_mask']
 
-    is_training_kwarg = {'train': is_training}
     logits = state.apply_fn(
-        **batch, params=params, dropout_rng=train_rng, **is_training_kwarg)[0]
+        **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
 
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
