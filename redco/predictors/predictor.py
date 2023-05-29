@@ -31,12 +31,12 @@ class Predictor:
                  pred_fn,
                  output_fn=None,
                  params=None,
-                 params_shard_rules=None):
+                 params_sharding_rules=None):
         self._deployer = deployer
         self._collate_fn = partial(collate_fn_wrapper, collate_fn=collate_fn)
 
         self._params = params
-        self._params_shard_rules = params_shard_rules
+        self._params_sharding_rules = params_sharding_rules
         self._pred_fn = partial(
             pred_fn_wrapper,
             pred_fn=pred_fn,
@@ -52,7 +52,7 @@ class Predictor:
                            pred_fn,
                            dummy_batch,
                            params,
-                           params_shard_rules):
+                           params_sharding_rules):
         if self._deployer.mesh is None:
             self._p_pred_step = jax.pmap(pred_fn, axis_name='batch')
         else:
@@ -62,7 +62,7 @@ class Predictor:
             }
 
             params_spec = self._deployer.get_params_spec(
-                params=params, shard_rules=params_shard_rules)
+                params=params, params_sharding_rules=params_sharding_rules)
 
             self._p_pred_step = pjit(
                 pred_fn,
@@ -97,7 +97,7 @@ class Predictor:
                     pred_fn=self._pred_fn,
                     dummy_batch=batch,
                     params=params,
-                    params_shard_rules=self._params_shard_rules)
+                    params_sharding_rules=self._params_sharding_rules)
 
             pred_rng = self._deployer.process_to_run_model(
                 self._deployer.gen_rng(), is_prng_key=True)

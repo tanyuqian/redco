@@ -46,8 +46,8 @@ class ShapeDtypeStruct:
         self.dtype = dtype
 
 
-def get_param_spec(params, shard_rules):
-    return set_partitions(unfreeze(params), shard_rules)
+def get_param_spec(params, params_sharding_rules):
+    return set_partitions(unfreeze(params), params_sharding_rules)
 
 
 def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
@@ -100,7 +100,7 @@ def gather_params_to_cpu(params, params_spec, mesh):
 
 
 def get_sharding_rules(params, mesh_model_shards, investigate_depth=2):
-    shard_rules = {
+    sharding_rules = {
         ('(bias|scale)',): None,
         ('embedding',): P('mp', None),
     }
@@ -118,28 +118,28 @@ def get_sharding_rules(params, mesh_model_shards, investigate_depth=2):
         elif key[-1] == 'embedding':
             assert len(param.shape) == 2
             if param.shape[0] % mesh_model_shards != 0:
-                shard_rules[('embedding',)] = P(None, 'mp')
+                sharding_rules[('embedding',)] = P(None, 'mp')
 
         else:
             if len(param.squeeze().shape) == 1:
-                shard_rules[rule_key] = None
+                sharding_rules[rule_key] = None
 
-            elif rule_key in shard_rules:
+            elif rule_key in sharding_rules:
                 for dim_size, rule_str in zip(
-                        param.shape, shard_rules[rule_key]):
+                        param.shape, sharding_rules[rule_key]):
                     assert rule_str != 'mp' or dim_size % mesh_model_shards == 0
 
             elif under_attention(key) and rule_key[0][0] == 'o':
-                shard_rules[rule_key] = P('mp', None)
+                sharding_rules[rule_key] = P('mp', None)
 
             elif under_attention(key) and rule_key[0][0] in ['q', 'k', 'v']:
-                shard_rules[rule_key] = P(None, 'mp')
+                sharding_rules[rule_key] = P(None, 'mp')
 
             elif under_attention(key) and rule_key[0][-1] == 'o':
-                shard_rules[rule_key] = P('mp', None)
+                sharding_rules[rule_key] = P('mp', None)
 
             elif under_attention(key) and rule_key[0][-1] in ['q', 'k', 'v']:
-                shard_rules[rule_key] = P(None, 'mp')
+                sharding_rules[rule_key] = P(None, 'mp')
 
             else:
                 rule_tuple = [None for _ in range(len(param.shape))]
@@ -155,9 +155,9 @@ def get_sharding_rules(params, mesh_model_shards, investigate_depth=2):
                             mesh_model_shards == 0:
                         rule_tuple[last_dense_mp_dim] = 'mp'
 
-                shard_rules[rule_key] = P(*rule_tuple)
+                sharding_rules[rule_key] = P(*rule_tuple)
 
-    return list(shard_rules.items())
+    return list(sharding_rules.items())
 
 
 def under_attention(flat_param_key):

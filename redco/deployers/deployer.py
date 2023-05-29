@@ -154,8 +154,9 @@ class Deployer:
 
             return sharding_rules
 
-    def get_params_spec(self, params, shard_rules):
-        return get_param_spec(params=params, shard_rules=shard_rules)
+    def get_params_spec(self, params, params_sharding_rules):
+        return get_param_spec(
+            params=params, params_sharding_rules=params_sharding_rules)
 
     def shard_params_and_opt_state(self, params, params_spec, optimizer):
         return shard_params_and_opt_state(
@@ -205,10 +206,10 @@ class Deployer:
 
         return params
 
-    def save_params(self, params, filepath, params_shard_rules=None):
+    def save_params(self, params, filepath, params_sharding_rules=None):
         if self._mesh is not None:
             params_spec = self.get_params_spec(
-                params=params, shard_rules=params_shard_rules)
+                params=params, params_sharding_rules=params_sharding_rules)
             params = gather_params_to_cpu(
                 params=params, params_spec=params_spec, mesh=self._mesh)
 

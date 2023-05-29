@@ -37,13 +37,13 @@ class Trainer:
                  params,
                  optimizer,
                  lr_schedule_fn=None,
-                 params_shard_rules=None,
+                 params_sharding_rules=None,
                  params_grad_weights=None):
         self._deployer = deployer
         self._collate_fn = collate_fn
         self._loss_fn = loss_fn
         self._lr_schedule_fn = lr_schedule_fn
-        self._params_shard_rules = params_shard_rules
+        self._params_sharding_rules = params_sharding_rules
         self._params_grad_weights = freeze(params_grad_weights) \
             if params_grad_weights is not None else None
 
@@ -63,8 +63,7 @@ class Trainer:
             Predictor,
             deployer=deployer,
             collate_fn=collate_fn,
-            params=params,
-            params_shard_rules=params_shard_rules)
+            params_sharding_rules=params_sharding_rules)
 
     def create_train_state(self, apply_fn, params, optimizer):
         params = freeze(params)
@@ -75,7 +74,7 @@ class Trainer:
             self._state = replicate(self._state)
         else:
             params_spec = self._deployer.get_params_spec(
-                params=params, shard_rules=self._params_shard_rules)
+                params=params, shard_rules=self._params_sharding_rules)
 
             params, opt_state, opt_state_spec = \
                 self._deployer.shard_params_and_opt_state(
@@ -258,7 +257,7 @@ class Trainer:
                                    f'epoch_{epoch_idx}.msgpack'
                     self._deployer.save_params(
                         params=self.params,
-                        params_shard_rules=self._params_shard_rules,
+                        params_sharding_rules=self._params_sharding_rules,
                         filepath=path_to_save)
 
                 if save_last_ckpt:
@@ -267,7 +266,7 @@ class Trainer:
                                    f'last.msgpack'
                     self._deployer.save_params(
                         params=self.params,
-                        params_shard_rules=self._params_shard_rules,
+                        params_sharding_rules=self._params_sharding_rules,
                         filepath=path_to_save)
 
                 for key in save_argmin_ckpt_by_metrics:
@@ -281,7 +280,7 @@ class Trainer:
                                        f'min_{key}.msgpack'
                         self._deployer.save_params(
                             params=self.params,
-                            params_shard_rules=self._params_shard_rules,
+                            params_sharding_rules=self._params_sharding_rules,
                             filepath=path_to_save)
 
                 for key in save_argmax_ckpt_by_metrics:
@@ -295,7 +294,7 @@ class Trainer:
                                        f'max_{key}.msgpack'
                         self._deployer.save_params(
                             params=self.params,
-                            params_shard_rules=self._params_shard_rules,
+                            params_sharding_rules=self._params_sharding_rules,
                             filepath=path_to_save)
 
     def get_default_predictor(self, pred_fn, output_fn=None):

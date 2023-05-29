@@ -144,7 +144,7 @@ def main(dataset_name='tatsu-lab/alpaca',
         warmup_rate=warmup_rate,
         weight_decay=weight_decay)
 
-    params_shard_rules = deployer.get_sharding_rules(params=params)
+    params_sharding_rules = deployer.get_sharding_rules(params=params)
 
     trainer = Trainer(
         deployer=deployer,
@@ -161,7 +161,7 @@ def main(dataset_name='tatsu-lab/alpaca',
         params=params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
-        params_shard_rules=params_shard_rules)
+        params_sharding_rules=params_sharding_rules)
 
     predictor = Predictor(
         deployer=deployer,
@@ -175,8 +175,7 @@ def main(dataset_name='tatsu-lab/alpaca',
             is_training=False),
         pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
         output_fn=partial(output_fn, tokenizer=tokenizer),
-        params=params,
-        params_shard_rules=params_shard_rules)
+        params_sharding_rules=params_sharding_rules)
 
     trainer.fit(
         train_examples=dataset['train'],
