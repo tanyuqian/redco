@@ -74,7 +74,8 @@ class Trainer:
             self._state = replicate(self._state)
         else:
             params_spec = self._deployer.get_params_spec(
-                params=params, shard_rules=self._params_sharding_rules)
+                params=params,
+                params_sharding_rules=self._params_sharding_rules)
 
             params, opt_state, opt_state_spec = \
                 self._deployer.shard_params_and_opt_state(
