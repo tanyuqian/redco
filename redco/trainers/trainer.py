@@ -15,15 +15,13 @@
 from functools import partial
 import json
 import numpy as np
-
 import jax
 from jax.experimental.pjit import pjit
-from jax.experimental.pjit import PartitionSpec as P
+from jax.sharding import PartitionSpec as P
 from flax.jax_utils import replicate
 from flax.training.train_state import TrainState
 from flax.traverse_util import flatten_dict
 from flax.core.frozen_dict import freeze
-
 from .utils import default_train_step, default_eval_step
 from ..predictors import Predictor
 

@@ -14,12 +14,10 @@
 
 from functools import partial
 import numpy as np
-
 import jax
 from jax.experimental.pjit import pjit
-from jax.experimental.pjit import PartitionSpec as P
+from jax.sharding import PartitionSpec as P
 from flax.core.frozen_dict import freeze
-
 from .utils import \
     add_idxes, collate_fn_wrapper, pred_fn_wrapper, default_output_fn
 
