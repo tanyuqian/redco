@@ -18,11 +18,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-import tqdm
-
 from datasets import load_dataset
 from transformers import AutoTokenizer, FlaxAutoModelForSequenceClassification
-
 from redco import Deployer, Trainer
 
 
@@ -141,7 +138,7 @@ def main(dataset_name='sst2',
         params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
-        params_shard_rules=deployer.guess_shard_rules(params=model.params))
+        params_sharding_rules=deployer.get_sharding_rules(params=model.params))
 
     predictor = trainer.get_default_predictor(
         pred_fn=partial(pred_fn, model=model, is_regression=is_regression))
