@@ -13,11 +13,10 @@
 #  limitations under the License.
 
 import numpy as np
-
 import jax
-from jax.experimental.maps import Mesh
 from jax.experimental.pjit import pjit
-from jax.experimental.pjit import PartitionSpec as P
+from jax.sharding import Mesh
+from jax.sharding import PartitionSpec as P
 from flax.core.frozen_dict import FrozenDict, unfreeze
 from flax.traverse_util import flatten_dict
 import optax

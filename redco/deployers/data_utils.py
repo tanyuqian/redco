@@ -13,7 +13,6 @@
 #  limitations under the License.
 
 import tqdm
-
 import jax
 import jax.numpy as jnp
 from flax.training.common_utils import shard

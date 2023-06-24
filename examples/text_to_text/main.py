@@ -78,7 +78,7 @@ def loss_fn(train_rng, state, params, batch, is_training):
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def pred_fn(pred_rng, batch, params, model, gen_kwargs):
+def pred_fn(pred_rng, params, batch, model, gen_kwargs):
     output_ids = model.generate(
         input_ids=batch['input_ids'],
         attention_mask=batch['attention_mask'],

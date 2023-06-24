@@ -57,7 +57,7 @@ def loss_fn(train_rng, state, params, batch, is_training):
     return jnp.mean(loss)
 
 
-def pred_fn(pred_rng, batch, params, model):
+def pred_fn(pred_rng, params, batch, model):
     return model.apply(
         {'params': params}, batch['images'], training=False).argmax(axis=-1)
 

@@ -57,7 +57,7 @@ def loss_fn(train_rng, state, params, batch, is_training, is_regression):
             logits=logits, labels=labels).mean()
 
 
-def pred_fn(pred_rng, batch, params, model, is_regression):
+def pred_fn(pred_rng, params, batch, model, is_regression):
     batch.pop('labels')
 
     logits = model(**batch, params=params, train=False).logits
