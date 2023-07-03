@@ -13,9 +13,16 @@
 #  limitations under the License.
 
 import jax
+import jax.numpy as jnp
+from flax.training import train_state
+from flax.training.dynamic_scale import DynamicScale
 
 
-def default_loss_and_grads(train_rng, state, batch, loss_fn):
+class TrainState(train_state.TrainState):
+    dynamic_scale: DynamicScale
+
+
+def default_loss_and_grads(train_rng, state, batch, loss_fn, under_pmap):
     def compute_loss(params):
         return loss_fn(
             train_rng=train_rng,
@@ -24,7 +31,9 @@ def default_loss_and_grads(train_rng, state, batch, loss_fn):
             batch=batch,
             is_training=True)
 
-    grad_fn = jax.value_and_grad(compute_loss)
+    grad_fn = state.dynamic_scale.value_and_grad(
+        compute_loss, axis_name='batch' if under_pmap else None)
+
     return grad_fn(state.params)
 
 
@@ -35,19 +44,25 @@ def default_train_step(train_rng,
                        lr_schedule_fn,
                        params_grad_weights,
                        under_pmap):
-    loss, grads = default_loss_and_grads(
-        train_rng=train_rng, state=state, batch=batch, loss_fn=loss_fn)
+    dynamic_scale, is_finite, loss, grads = default_loss_and_grads(
+        train_rng=train_rng,
+        state=state,
+        batch=batch,
+        loss_fn=loss_fn,
+        under_pmap=under_pmap)
+
+    grads = jax.tree_util.tree_map(lambda x: jnp.where(is_finite, x, 0.), grads)
 
     if params_grad_weights is not None:
         grads = jax.tree_util.tree_map(
             lambda x, y: x * y, grads, params_grad_weights)
 
-    if under_pmap:
-        grads = jax.lax.pmean(grads, 'batch')
+    # if under_pmap:
+    #     grads = jax.lax.pmean(grads, 'batch')
 
-    new_state = state.apply_gradients(grads=grads)
+    new_state = state.apply_gradients(grads=grads, dynamic_scale=dynamic_scale)
 
-    metrics = {'loss': loss, 'step': state.step}
+    metrics = {'loss': loss, 'step': state.step, 'grad_is_finite': is_finite}
     if lr_schedule_fn is not None:
         metrics.update({'lr': lr_schedule_fn(state.step)})
 

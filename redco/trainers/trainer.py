@@ -19,10 +19,10 @@ import jax
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
 from flax.jax_utils import replicate
-from flax.training.train_state import TrainState
+from flax.training import dynamic_scale
 from flax.traverse_util import flatten_dict
 from flax.core.frozen_dict import freeze
-from .utils import default_train_step, default_eval_step
+from .utils import default_train_step, default_eval_step, TrainState
 from ..predictors import Predictor
 
 
@@ -53,8 +53,7 @@ class Trainer:
         self.create_train_state(
             apply_fn=apply_fn, params=params, optimizer=optimizer)
 
-        n_params = \
-            sum(np.prod(param.shape) for param in flatten_dict(params).values())
+        n_params = sum([param.size for param in flatten_dict(params).values()])
         self._deployer.log_info(f'{n_params:,}', title='Training parameters')
 
         self._default_predictor_fn = partial(
@@ -68,7 +67,10 @@ class Trainer:
 
         if self._deployer.mesh is None:
             self._state = TrainState.create(
-                apply_fn=apply_fn, params=params, tx=optimizer)
+                apply_fn=apply_fn,
+                params=params,
+                tx=optimizer,
+                dynamic_scale=dynamic_scale.DynamicScale())
             self._state = replicate(self._state)
         else:
             params_spec = self._deployer.get_params_spec(
@@ -84,14 +86,16 @@ class Trainer:
                 params=params,
                 tx=optimizer,
                 opt_state=opt_state,
-                step=0)
+                step=0,
+                dynamic_scale=dynamic_scale.DynamicScale())
 
             self._state_spec = TrainState(
                 apply_fn=apply_fn,
                 params=params_spec,
                 tx=optimizer,
                 opt_state=opt_state_spec,
-                step=None)
+                step=None,
+                dynamic_scale=None)
 
     def setup_running_step(self, dummy_batch):
         train_step_fn = partial(
@@ -107,8 +111,6 @@ class Trainer:
             under_pmap=(self._deployer.mesh is None))
 
         if self._deployer.mesh is None:
-            del dummy_batch
-
             self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
             self._p_eval_step = jax.pmap(eval_step_fn, axis_name='batch')
         else:
