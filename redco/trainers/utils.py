@@ -51,7 +51,8 @@ def default_train_step(train_rng,
         loss_fn=loss_fn,
         under_pmap=under_pmap)
 
-    grads = jax.tree_util.tree_map(lambda x: jnp.where(is_finite, x, 0.), grads)
+    grads = jax.tree_util.tree_map(
+        lambda x: jnp.where(is_finite, x, jnp.zeros_like(x)), grads)
 
     if params_grad_weights is not None:
         grads = jax.tree_util.tree_map(
