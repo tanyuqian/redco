@@ -19,10 +19,10 @@ import jax
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
 from flax.jax_utils import replicate
-from flax.training import dynamic_scale
+from flax.training import train_state
 from flax.traverse_util import flatten_dict
 from flax.core.frozen_dict import freeze
-from .utils import default_train_step, default_eval_step, TrainState
+from .utils import default_train_step, default_eval_step
 from ..predictors import Predictor
 
 
@@ -66,11 +66,8 @@ class Trainer:
         params = freeze(params)
 
         if self._deployer.mesh is None:
-            self._state = TrainState.create(
-                apply_fn=apply_fn,
-                params=params,
-                tx=optimizer,
-                dynamic_scale=dynamic_scale.DynamicScale())
+            self._state = train_state.TrainState.create(
+                apply_fn=apply_fn, params=params, tx=optimizer)
             self._state = replicate(self._state)
         else:
             params_spec = self._deployer.get_params_spec(
@@ -81,21 +78,19 @@ class Trainer:
                 self._deployer.shard_params_and_opt_state(
                     params=params, params_spec=params_spec, optimizer=optimizer)
 
-            self._state = TrainState(
+            self._state = train_state.TrainState(
                 apply_fn=apply_fn,
                 params=params,
                 tx=optimizer,
                 opt_state=opt_state,
-                step=0,
-                dynamic_scale=dynamic_scale.DynamicScale())
+                step=0)
 
-            self._state_spec = TrainState(
+            self._state_spec = train_state.TrainState(
                 apply_fn=apply_fn,
                 params=params_spec,
                 tx=optimizer,
                 opt_state=opt_state_spec,
-                step=None,
-                dynamic_scale=None)
+                step=None)
 
     def setup_running_step(self, dummy_batch):
         train_step_fn = partial(
@@ -173,7 +168,7 @@ class Trainer:
             metrics = self._deployer.process_to_deliver(metrics)
             data_batches.set_postfix(**metrics)
 
-            losses.append(metrics['loss'])
+            losses.append(metrics['loss'].item())
 
         return np.mean(losses).item()
 

@@ -13,16 +13,9 @@
 #  limitations under the License.
 
 import jax
-import jax.numpy as jnp
-from flax.training import train_state
-from flax.training.dynamic_scale import DynamicScale
 
 
-class TrainState(train_state.TrainState):
-    dynamic_scale: DynamicScale
-
-
-def default_loss_and_grads(train_rng, state, batch, loss_fn, under_pmap):
+def default_loss_and_grads(train_rng, state, batch, loss_fn):
     def compute_loss(params):
         return loss_fn(
             train_rng=train_rng,
@@ -31,9 +24,7 @@ def default_loss_and_grads(train_rng, state, batch, loss_fn, under_pmap):
             batch=batch,
             is_training=True)
 
-    grad_fn = state.dynamic_scale.value_and_grad(
-        compute_loss, axis_name='batch' if under_pmap else None)
-
+    grad_fn = jax.value_and_grad(compute_loss)
     return grad_fn(state.params)
 
 
@@ -44,26 +35,19 @@ def default_train_step(train_rng,
                        lr_schedule_fn,
                        params_grad_weights,
                        under_pmap):
-    dynamic_scale, is_finite, loss, grads = default_loss_and_grads(
-        train_rng=train_rng,
-        state=state,
-        batch=batch,
-        loss_fn=loss_fn,
-        under_pmap=under_pmap)
-
-    grads = jax.tree_util.tree_map(
-        lambda x: jnp.where(is_finite, x, jnp.zeros_like(x)), grads)
+    loss, grads = default_loss_and_grads(
+        train_rng=train_rng, state=state, batch=batch, loss_fn=loss_fn)
 
     if params_grad_weights is not None:
         grads = jax.tree_util.tree_map(
             lambda x, y: x * y, grads, params_grad_weights)
 
-    # if under_pmap:
-    #     grads = jax.lax.pmean(grads, 'batch')
+    if under_pmap:
+        grads = jax.lax.pmean(grads, 'batch')
 
-    new_state = state.apply_gradients(grads=grads, dynamic_scale=dynamic_scale)
+    new_state = state.apply_gradients(grads=grads)
 
-    metrics = {'loss': loss, 'step': state.step, 'grad_is_finite': is_finite}
+    metrics = {'loss': loss, 'step': state.step}
     if lr_schedule_fn is not None:
         metrics.update({'lr': lr_schedule_fn(state.step)})
 

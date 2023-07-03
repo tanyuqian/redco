@@ -19,28 +19,54 @@ def get_multistep_adamw_optimizer(train_size,
                                   global_batch_size,
                                   n_epochs,
                                   learning_rate,
-                                  accumulate_grad_batches,
+                                  weight_decay,
                                   warmup_rate,
-                                  weight_decay):
+                                  warmup_steps,
+                                  b1,
+                                  b2,
+                                  eps,
+                                  lr_schedule_type,
+                                  end_learning_rate,
+                                  accumulate_grad_batches):
     total_train_steps = n_epochs * (train_size // global_batch_size)
-    warmup_steps = int(total_train_steps * warmup_rate)
+
+    if warmup_steps is None:
+        warmup_steps = int(total_train_steps * warmup_rate)
 
     warmup_fn = optax.linear_schedule(
         init_value=0.0, end_value=learning_rate,
         transition_steps=warmup_steps)
-    decay_fn = optax.linear_schedule(
-        init_value=learning_rate,
-        end_value=0,
-        transition_steps=total_train_steps - warmup_steps)
+
+    if lr_schedule_type == 'linear':
+        decay_fn = optax.linear_schedule(
+            init_value=learning_rate,
+            end_value=end_learning_rate,
+            transition_steps=total_train_steps - warmup_steps)
+    elif lr_schedule_type == 'cosine':
+        decay_fn = optax.cosine_decay_schedule(
+            init_value=learning_rate,
+            decay_steps=total_train_steps - warmup_steps,
+            alpha=end_learning_rate / learning_rate)
+    else:
+        raise ValueError(f'lr schedule {lr_schedule_type} not supported now.')
+
     lr_schedule_fn = optax.join_schedules(
         schedules=[warmup_fn, decay_fn], boundaries=[warmup_steps])
 
     if accumulate_grad_batches == 1:
         optimizer = optax.adamw(
-            learning_rate=lr_schedule_fn, weight_decay=weight_decay)
+            learning_rate=lr_schedule_fn,
+            weight_decay=weight_decay,
+            b1=b1,
+            b2=b2,
+            eps=eps)
     else:
         optimizer = optax.MultiSteps(optax.adamw(
-            learning_rate=lr_schedule_fn, weight_decay=weight_decay),
-            every_k_schedule=accumulate_grad_batches)
+            learning_rate=lr_schedule_fn,
+            weight_decay=weight_decay,
+            b1=b1,
+            b2=b2,
+            eps=eps
+        ), every_k_schedule=accumulate_grad_batches)
 
     return optimizer, lr_schedule_fn

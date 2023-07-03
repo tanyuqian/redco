@@ -127,9 +127,15 @@ class Deployer:
                             per_device_batch_size,
                             n_epochs,
                             learning_rate,
-                            accumulate_grad_batches,
-                            warmup_rate,
-                            weight_decay):
+                            weight_decay=0.,
+                            warmup_rate=0.,
+                            warmup_steps=None,
+                            b1=0.9,
+                            b2=0.999,
+                            eps=1e-8,
+                            lr_schedule_type='linear',
+                            end_learning_rate=0.,
+                            accumulate_grad_batches=1):
         _, global_batch_size = self.process_batch_size(
             per_device_batch_size=per_device_batch_size)
         return get_multistep_adamw_optimizer(
@@ -137,9 +143,15 @@ class Deployer:
             global_batch_size=global_batch_size,
             n_epochs=n_epochs,
             learning_rate=learning_rate,
-            accumulate_grad_batches=accumulate_grad_batches,
+            weight_decay=weight_decay,
             warmup_rate=warmup_rate,
-            weight_decay=weight_decay)
+            warmup_steps=warmup_steps,
+            b1=b1,
+            b2=b2,
+            eps=eps,
+            lr_schedule_type=lr_schedule_type,
+            end_learning_rate=end_learning_rate,
+            accumulate_grad_batches=accumulate_grad_batches)
 
     def get_sharding_rules(self, params):
         if self._mesh is None:
