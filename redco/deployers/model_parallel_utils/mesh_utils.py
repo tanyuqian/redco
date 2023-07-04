@@ -49,6 +49,14 @@ def get_param_spec(params, params_sharding_rules):
     return set_partitions(unfreeze(params), params_sharding_rules)
 
 
+def shard_params(params, params_spec, mesh):
+    shard_fn = pjit(
+        lambda x: x, in_shardings=(None,), out_shardings=(params_spec, ))
+
+    with mesh:
+        return shard_fn(params)
+
+
 def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
     def init_fn(params_):
         opt_state_ = optimizer.init(params_)
@@ -69,8 +77,8 @@ def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
 
     p_get_initial_state = pjit(
         init_fn,
-        in_axis_resources=(params_spec,),
-        out_axis_resources=(opt_state_spec, params_spec))
+        in_shardings=(params_spec,),
+        out_shardings=(opt_state_spec, params_spec))
 
     with mesh:
         opt_state, params = p_get_initial_state(params)
@@ -81,9 +89,7 @@ def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
 def gather_params_to_cpu(params, params_spec, mesh):
     def param_gather_fn(param_spec):
         return pjit(
-            lambda x: x,
-            in_axis_resources=(param_spec, ),
-            out_axis_resources=None)
+            lambda x: x, in_shardings=(param_spec, ), out_shardings=None)
 
     gather_fns = jax.tree_util.tree_map(
         lambda param_spec: param_gather_fn(param_spec),

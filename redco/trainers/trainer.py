@@ -222,6 +222,7 @@ class Trainer:
                     preds = eval_predictor.predict(
                         examples=eval_examples,
                         params=self.params,
+                        params_meshed=(self._deployer.mesh is not None),
                         per_device_batch_size=eval_per_device_batch_size,
                         desc=f'epoch {epoch_idx} / {n_epochs}')
 

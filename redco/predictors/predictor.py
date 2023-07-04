@@ -28,17 +28,16 @@ class Predictor:
                  collate_fn,
                  pred_fn,
                  output_fn=None,
-                 params=None,
                  params_sharding_rules=None):
         self._deployer = deployer
         self._collate_fn = partial(collate_fn_wrapper, collate_fn=collate_fn)
 
-        self._params = params
         self._params_sharding_rules = params_sharding_rules
         self._pred_fn = partial(
             pred_fn_wrapper,
             pred_fn=pred_fn,
             under_pmap=self._deployer.mesh is None)
+        self._params_spec = None
         self._p_pred_step = None
 
         if output_fn is None:
@@ -59,17 +58,20 @@ class Predictor:
                 for key, value in dummy_batch.items()
             }
 
-            params_spec = self._deployer.get_params_spec(
+            self._params_spec = self._deployer.get_params_spec(
                 params=params, params_sharding_rules=params_sharding_rules)
 
             self._p_pred_step = pjit(
                 pred_fn,
-                in_axis_resources=(None, params_spec, data_spec),
+                in_axis_resources=(None, self._params_spec, data_spec),
                 out_axis_resources=None)
 
-    def predict(self, examples, per_device_batch_size, params=None, desc=''):
-        if params is None:
-            params = self._params
+    def predict(self,
+                examples,
+                per_device_batch_size,
+                params,
+                params_meshed=False,
+                desc=''):
         params = freeze(params)
 
         raw_n_inputs = len(examples)
@@ -96,6 +98,11 @@ class Predictor:
                     dummy_batch=batch,
                     params=params,
                     params_sharding_rules=self._params_sharding_rules)
+
+            if (self._params_spec is not None) and (not params_meshed):
+                params = self._deployer.shard_params(
+                    params=params, params_spec=self._params_spec)
+                params_meshed = True
 
             pred_rng = self._deployer.process_to_run_model(
                 self._deployer.gen_rng(), is_prng_key=True)

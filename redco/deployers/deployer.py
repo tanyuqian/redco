@@ -26,6 +26,7 @@ from .log_utils import get_logger, log_info, save_outputs
 from .model_parallel_utils.mesh_utils import (
     get_mesh,
     shard_params_and_opt_state,
+    shard_params,
     gather_params_to_cpu,
     get_param_spec,
     get_sharding_rules)
@@ -45,7 +46,7 @@ class Deployer:
         self._workdir = workdir
         self._logger = get_logger(verbose=verbose, workdir=workdir)
 
-        if run_tensorboard:
+        if run_tensorboard and jax.process_index() == 0:
             from flax.metrics import tensorboard
             self._summary_writer = tensorboard.SummaryWriter(workdir)
         else:
@@ -170,6 +171,10 @@ class Deployer:
         return get_param_spec(
             params=params, params_sharding_rules=params_sharding_rules)
 
+    def shard_params(self, params, params_spec):
+        return shard_params(
+            params=params, params_spec=params_spec, mesh=self._mesh)
+
     def shard_params_and_opt_state(self, params, params_spec, optimizer):
         return shard_params_and_opt_state(
             params=params,
@@ -198,7 +203,7 @@ class Deployer:
                 step=step)
 
     def log_metrics(self, metrics, step):
-        if jax.process_index() == 0 and self._summary_writer is not None:
+        if self._summary_writer is not None:
             for metric_name, value in metrics.items():
                 self._summary_writer.scalar(metric_name, value, step=step)
 

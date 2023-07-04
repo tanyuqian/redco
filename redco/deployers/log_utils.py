@@ -68,7 +68,6 @@ def log_info(info, title, logger, summary_writer, step):
             logger.info(t)
         logger.info('=' * max_len)
 
-
     else:
         logger.info(info)
 
