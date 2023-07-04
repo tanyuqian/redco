@@ -21,7 +21,7 @@ from flax.core.frozen_dict import unfreeze
 from flax.serialization import msgpack_serialize, msgpack_restore
 
 from .data_utils import get_host_examples, get_data_batches
-from .opt_utils import get_multistep_adamw_optimizer
+from .opt_utils import get_lr_schedule_fn
 from .log_utils import get_logger, log_info, save_outputs
 from .model_parallel_utils.mesh_utils import (
     get_mesh,
@@ -123,36 +123,30 @@ class Deployer:
         else:
             return x
 
-    def get_adamw_optimizer(self,
-                            train_size,
-                            per_device_batch_size,
-                            n_epochs,
-                            learning_rate,
-                            weight_decay=0.,
-                            warmup_rate=0.,
-                            warmup_steps=None,
-                            b1=0.9,
-                            b2=0.999,
-                            eps=1e-8,
-                            lr_schedule_type='linear',
-                            end_learning_rate=0.,
-                            accumulate_grad_batches=1):
+    def get_lr_schedule_fn(self,
+                           train_size,
+                           per_device_batch_size,
+                           n_epochs,
+                           learning_rate,
+                           schedule_type='linear',
+                           warmup_rate=0.,
+                           warmup_steps=None,
+                           init_learning_rate=0.,
+                           end_learning_rate=0.):
         _, global_batch_size = self.process_batch_size(
             per_device_batch_size=per_device_batch_size)
-        return get_multistep_adamw_optimizer(
-            train_size=train_size,
-            global_batch_size=global_batch_size,
-            n_epochs=n_epochs,
-            learning_rate=learning_rate,
-            weight_decay=weight_decay,
-            warmup_rate=warmup_rate,
+        total_train_steps = n_epochs * (train_size // global_batch_size)
+
+        if warmup_steps is None:
+            warmup_steps = int(total_train_steps * warmup_rate)
+
+        return get_lr_schedule_fn(
+            schedule_type=schedule_type,
+            total_train_steps=total_train_steps,
             warmup_steps=warmup_steps,
-            b1=b1,
-            b2=b2,
-            eps=eps,
-            lr_schedule_type=lr_schedule_type,
-            end_learning_rate=end_learning_rate,
-            accumulate_grad_batches=accumulate_grad_batches)
+            init_learning_rate=init_learning_rate,
+            learning_rate=learning_rate,
+            end_learning_rate=end_learning_rate)
 
     def get_sharding_rules(self, params):
         if self._mesh is None:
