@@ -51,7 +51,7 @@ def get_param_spec(params, params_sharding_rules):
 
 def shard_params(params, params_spec, mesh):
     shard_fn = pjit(
-        lambda x: x, in_shardings=(None,), out_shardings=(params_spec, ))
+        lambda x: x, in_shardings=(None,), out_shardings=params_spec)
 
     with mesh:
         return shard_fn(params)
