@@ -17,7 +17,7 @@ This example finetunes LLaMA-7B on a server with 4 A100s (40G each), which runs 
 ```shell
 python main.py
 ```
-All the default configs can be found inside ```def main(...)``` of [main.py](main.py).
+All the default configs can be found inside ```def main(...)``` of [main.py](main.py). The training log and outputs would be saved into ```workdir/``` (can be changed by ```--wordir xxx```). To launch a tensorboard, add ```--run_tensorboard``` in your command. 
 
 If it reports OOM, we suggest firstly try updating the env variable ```XLA_PYTHON_CLIENT_MEM_FRACTION``` to pre-allocate more memory to Jax. 
 See [Jax's notes](https://jax.readthedocs.io/en/latest/gpu_memory_allocation.html) for more details.
