@@ -1,15 +1,16 @@
-## Redco: Distributed LLM training with a single line of code
+## Redco: A Lightweight Tool to Automate Distributed Training
 
-Redco is a user-friendly toolkit for developing and scaling up Jax/Flax-based pipelines, 
-where you can define your pipeline in a couple of functions, without concerning environmental issues, 
-e.g., multi-host, parallelization for large dataset and large models, etc. 
+Redco is a lightweight and user-friendly tool designed to automate distributed training and inference for large models while simplifying the ML pipeline development process without necessitating MLSys expertise from users.
 
-![](https://bowentan.bitcron.com/redco_framework.jpg)
+* Redco allows for the simple implementation of distributed training and inference, eliminating the need for additional coding efforts or complex configurations, but still exhibits efficiency comparable to the most advanced model parallel tools.
+* Redco enables customization of arbitrary ML pipelines within three functions, eliminating repetitive ans boilerplate coding, such as multi-host related processing, etc. We demonstrate that this mechanism is widely applicable to various ML algorithms
+
+![](https://bowentan.bitcron.com/redco_coding.png)
 
 ### Features
 
 * **Lightweight concepts**: *Redco* only introduces three concepts: Deployer, Trainer, and Predictor. You can be an expert in a couple of minites!
-* **Easy-to-use**: Customize your pipeline with 4-5 functions, each with a handful of lines. Designing your pipeline is the only thing you need to take care with *redco*.
+* **Easy-to-use**: Customize your pipeline with a couple of functions, each with a handful of lines. Designing your pipeline is the only thing you need to take care with *redco*.
 * **Automatic deployment**: No need to take care of your multi-host or multi-device environment. *Redco* processes your environment automatically, as well as other pipeline-unrelated things, e.g., randomness, logging, etc.
 * **Automatic model/data parallelism**: No need to concern your large models and large datasets. *Redco* distributes your models and datasets to all your devices automatically. 
 * **Easy to migrate from PyTorch**: No need to know complex Jax functions (e.g., ```pmap()```, ```pjit()```, etc.). *Redco* only needs a couple of numpy-like functions from you as your pipeline design. 
@@ -31,7 +32,7 @@ Examples across a set of paradigms can be found in [examples/](examples/), inclu
 * [classification/regression (GLUE & MNIST)](examples%2Fclassification_regression)
 * [faderated learning (FedAvg)](examples%2Ffaderated_learning)
 * [image to text (image captioning)](examples%2Fimage_to_text)
-* [language modeling](examples%2Flanguage_modeling)
+* [language modeling (Training LLMs like LLaMA)](examples%2Flanguage_modeling)
 * [meta learning (MAML)](examples%2Fmeta_learning)
 * [reinforcement learning (PPO & DDPG & MADDPG)](examples%2Freinforcement_learning)
 * [text to image (StableDiffusion)](examples%2Ftext_to_image)
