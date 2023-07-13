@@ -48,3 +48,11 @@ The table below shows runnable model LLM finetuning on different kinds of server
 | GPT2-Large (512)                        | GPT-J-6B (1024)                       | OPT-13B (1024)                                                 |                                                                  |
 
 Go to [example/language_modeling](examples%2Flanguage_modeling) and [examples/text_to_text](examples%2Ftext_to_text) to try them out!
+
+## Acknowledgement
+
+
+The name of this package, *Redco*, is inspired by *Red Coast Base*, a key location in the story of Three-Body. From Red Coast Base, humanity broadcasts its first message into the vast universe. We thank Cixin Liu for such a masterpiece!
+
+![](https://preview.redd.it/vonp0gvw6sd61.jpg?width=1680&format=pjpg&auto=webp&s=ec76245e86fe1cdc70bad33adddb6794b5176051)
+(image: https://nhz123.lofter.com/post/1d7b3012_1c711d54c)
