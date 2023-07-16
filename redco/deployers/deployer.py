@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import os
+import json
 import jax
 import jax.numpy as jnp
 from flax.jax_utils import replicate, unreplicate
@@ -212,12 +213,18 @@ class Deployer:
                 summary_writer=self._summary_writer)
 
     def load_params(self, filepath):
-        params = msgpack_restore(open(filepath, 'rb').read())
+        with jax.default_device(jax.devices('cpu')[0]):
+            params = msgpack_restore(open(filepath, 'rb').read())
         self.log_info(f'params loaded from {filepath}')
 
         return params
 
-    def save_params(self, params, filepath, params_sharding_rules=None):
+    def save_params(self,
+                    params,
+                    filepath,
+                    step=0,
+                    epoch_idx=-1,
+                    params_sharding_rules=None):
         if self._mesh is not None:
             params_spec = self.get_params_spec(
                 params=params, params_sharding_rules=params_sharding_rules)
@@ -230,6 +237,17 @@ class Deployer:
 
             open(filepath, "wb").write(msgpack_serialize(unfreeze(params)))
             self.log_info(f'params saved into {filepath}')
+
+            if self.workdir is not None:
+                last_ckpt_info = {
+                    'last_ckpt': filepath,
+                    'last_step': step,
+                    'last_epoch_idx': epoch_idx
+                }
+
+                json.dump(last_ckpt_info, open(
+                    f'{self.workdir}/last_ckpt_info.json', 'w'))
+                self.log_info(f'{self.workdir}/last_ckpt_info.json updated.')
 
     @property
     def mesh(self):

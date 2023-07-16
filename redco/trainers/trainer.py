@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import os
 from functools import partial
 import json
 import numpy as np
@@ -39,7 +40,9 @@ class Trainer:
                  params_grad_weights=None):
         self._deployer = deployer
         self._collate_fn = collate_fn
+        self._apply_fn = apply_fn
         self._loss_fn = loss_fn
+        self._optimizer = optimizer
         self._lr_schedule_fn = lr_schedule_fn
         self._params_sharding_rules = params_sharding_rules
         self._params_grad_weights = freeze(params_grad_weights) \
@@ -50,11 +53,29 @@ class Trainer:
         self._p_train_step = None
         self._p_eval_step = None
 
-        self.create_train_state(
-            apply_fn=apply_fn, params=params, optimizer=optimizer)
-
         n_params = sum([param.size for param in flatten_dict(params).values()])
         self._deployer.log_info(f'{n_params:,}', title='Training parameters')
+
+        last_ckpt_info_path = f'{self._deployer.workdir}/last_ckpt_info.json'
+        if os.path.exists(last_ckpt_info_path):
+            self._last_ckpt_info = json.load(open(last_ckpt_info_path))
+            params = self._deployer.load_params(
+                self._last_ckpt_info['last_ckpt'])
+            self.create_train_state(
+                apply_fn=self._apply_fn,
+                params=params,
+                optimizer=self._optimizer,
+                step=self._last_ckpt_info['last_step'])
+            self._deployer.log_info(
+                'detect last_ckpt {last_ckpt},'
+                ' last_step={last_step},'
+                ' last_epoch_idx={last_epoch_idx}'.format(
+                    **self._last_ckpt_info))
+        else:
+            self._last_ckpt_info = \
+                {'last_ckpt': None, 'last_step': 0, 'last_epoch_idx': -1}
+            self.create_train_state(
+                apply_fn=apply_fn, params=params, optimizer=optimizer, step=0)
 
         self._default_predictor_fn = partial(
             Predictor,
@@ -62,12 +83,17 @@ class Trainer:
             collate_fn=collate_fn,
             params_sharding_rules=params_sharding_rules)
 
-    def create_train_state(self, apply_fn, params, optimizer):
+    def create_train_state(self, apply_fn, params, optimizer, step):
         params = freeze(params)
 
         if self._deployer.mesh is None:
-            self._state = train_state.TrainState.create(
-                apply_fn=apply_fn, params=params, tx=optimizer)
+            self._state = train_state.TrainState(
+                step=step,
+                apply_fn=apply_fn,
+                params=params,
+                tx=optimizer,
+                opt_state=optimizer.init(params)
+            )
             self._state = replicate(self._state)
         else:
             params_spec = self._deployer.get_params_spec(
@@ -83,7 +109,7 @@ class Trainer:
                 params=params,
                 tx=optimizer,
                 opt_state=opt_state,
-                step=0)
+                step=step)
 
             self._state_spec = train_state.TrainState(
                 apply_fn=apply_fn,
@@ -191,7 +217,18 @@ class Trainer:
             save_argmin_ckpt_by_metrics = []
         min_metrics, max_metrics = {}, {}
 
-        for epoch_idx in range(n_epochs):
+        if os.path.exists(f'{self._deployer.workdir}/min_metrics.json'):
+            min_metrics = json.load(open(
+                f'{self._deployer.workdir}/min_metrics.json'))
+            self._deployer.log_info(min_metrics, title='Detected min_metrics')
+
+        if os.path.exists(f'{self._deployer.workdir}/max_metrics.json'):
+            max_metrics = json.load(open(
+                f'{self._deployer.workdir}/max_metrics.json'))
+            self._deployer.log_info(max_metrics, title='Detected max_metrics')
+
+        for epoch_idx in range(
+                self._last_ckpt_info['last_epoch_idx'] + 1, n_epochs):
             if isinstance(train_examples, list):
                 epoch_train_examples = train_examples
             else:
@@ -248,23 +285,26 @@ class Trainer:
                     for key, value in eval_metrics.items()
                 }, step=self.step)
 
+                save_ckpt_kwargs = {
+                    'params': self.params,
+                    'params_sharding_rules': self._params_sharding_rules,
+                    'step': self.step,
+                    'epoch_idx': epoch_idx
+                }
+
                 if save_every_ckpt:
                     assert self._deployer.workdir is not None
                     path_to_save = f'{self._deployer.workdir}/ckpts/' \
                                    f'epoch_{epoch_idx}.msgpack'
                     self._deployer.save_params(
-                        params=self.params,
-                        params_sharding_rules=self._params_sharding_rules,
-                        filepath=path_to_save)
+                        filepath=path_to_save, **save_ckpt_kwargs)
 
                 if save_last_ckpt:
                     assert self._deployer.workdir is not None
                     path_to_save = f'{self._deployer.workdir}/ckpts/'\
                                    f'last.msgpack'
                     self._deployer.save_params(
-                        params=self.params,
-                        params_sharding_rules=self._params_sharding_rules,
-                        filepath=path_to_save)
+                        filepath=path_to_save, **save_ckpt_kwargs)
 
                 for key in save_argmin_ckpt_by_metrics:
                     assert self._deployer.workdir is not None
@@ -276,23 +316,29 @@ class Trainer:
                         path_to_save = f'{self._deployer.workdir}/ckpts/'\
                                        f'min_{key}.msgpack'
                         self._deployer.save_params(
-                            params=self.params,
-                            params_sharding_rules=self._params_sharding_rules,
-                            filepath=path_to_save)
+                            filepath=path_to_save, **save_ckpt_kwargs)
+
+                        if jax.process_index() == 0:
+                            json.dump(max_metrics, open(
+                                f'{self._deployer.workdir}/max_metrics.json',
+                                'w'))
 
                 for key in save_argmax_ckpt_by_metrics:
                     assert self._deployer.workdir is not None
                     if eval_metrics[key] > max_metrics.get(key, float('-inf')):
                         max_metrics[key] = eval_metrics[key]
                         self._deployer.log_info(
-                            f'minimal {key} updated to {max_metrics[key]}')
+                            f'maximal {key} updated to {max_metrics[key]}')
 
                         path_to_save = f'{self._deployer.workdir}/ckpts/'\
                                        f'max_{key}.msgpack'
                         self._deployer.save_params(
-                            params=self.params,
-                            params_sharding_rules=self._params_sharding_rules,
-                            filepath=path_to_save)
+                            filepath=path_to_save, **save_ckpt_kwargs)
+
+                        if jax.process_index() == 0:
+                            json.dump(max_metrics, open(
+                                f'{self._deployer.workdir}/max_metrics.json',
+                                'w'))
 
     def get_default_predictor(self, pred_fn, output_fn=None):
         return self._default_predictor_fn(pred_fn=pred_fn, output_fn=output_fn)
@@ -303,5 +349,5 @@ class Trainer:
 
     @property
     def step(self):
-        return self._deployer.process_to_deliver(self._state.step)
+        return self._deployer.process_to_deliver(self._state.step).item()
 
