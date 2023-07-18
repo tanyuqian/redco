@@ -36,8 +36,7 @@ class Trainer:
                  params,
                  optimizer,
                  lr_schedule_fn=None,
-                 params_sharding_rules=None,
-                 params_grad_weights=None):
+                 params_sharding_rules=None):
         self._deployer = deployer
         self._collate_fn = collate_fn
         self._apply_fn = apply_fn
@@ -45,8 +44,6 @@ class Trainer:
         self._optimizer = optimizer
         self._lr_schedule_fn = lr_schedule_fn
         self._params_sharding_rules = params_sharding_rules
-        self._params_grad_weights = freeze(params_grad_weights) \
-            if params_grad_weights is not None else None
 
         self._state = None
         self._state_spec = None
@@ -123,7 +120,6 @@ class Trainer:
             default_train_step,
             loss_fn=self._loss_fn,
             lr_schedule_fn=self._lr_schedule_fn,
-            params_grad_weights=self._params_grad_weights,
             under_pmap=(self._deployer.mesh is None))
 
         eval_step_fn = partial(
@@ -350,4 +346,3 @@ class Trainer:
     @property
     def step(self):
         return self._deployer.process_to_deliver(self._state.step).item()
-
