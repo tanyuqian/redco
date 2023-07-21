@@ -81,3 +81,5 @@ def save_outputs(outputs, workdir, desc, logger, summary_writer, step):
     if summary_writer is not None:
         samples_str = json.dumps(outputs[:10], indent=4).replace('\n', '\n\n')
         summary_writer.text('outputs', samples_str, step=step)
+
+    return f'{workdir}/outputs_{desc}.json'

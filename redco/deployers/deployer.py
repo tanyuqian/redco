@@ -16,6 +16,7 @@ import os
 import json
 import jax
 import jax.numpy as jnp
+import wandb
 from flax.jax_utils import replicate, unreplicate
 from flax.training.common_utils import shard_prng_key
 from flax.core.frozen_dict import unfreeze
@@ -39,13 +40,18 @@ class Deployer:
                  n_model_shards=1,
                  verbose=True,
                  workdir=None,
-                 run_tensorboard=False):
+                 run_tensorboard=False,
+                 run_wandb=False):
         if workdir is not None:
             os.makedirs(workdir, exist_ok=True)
 
         self._verbose = verbose
         self._workdir = workdir
         self._logger = get_logger(verbose=verbose, workdir=workdir)
+        self._run_wandb = run_wandb
+
+        if run_wandb:
+            import wandb
 
         if run_tensorboard and jax.process_index() == 0:
             from flax.metrics import tensorboard
@@ -202,15 +208,21 @@ class Deployer:
             for metric_name, value in metrics.items():
                 self._summary_writer.scalar(metric_name, value, step=step)
 
+        if self._run_wandb and jax.process_index() == 0:
+            wandb.log(metrics, step)
+
     def save_outputs(self, outputs, desc, step):
         if self._workdir is not None and jax.process_index() == 0:
-            save_outputs(
+            save_filename = save_outputs(
                 workdir=self._workdir,
                 outputs=outputs,
                 desc=desc,
                 step=step,
                 logger=self._logger,
                 summary_writer=self._summary_writer)
+
+            if self._run_wandb:
+                wandb.save(save_filename)
 
     def load_params(self, filepath):
         with jax.default_device(jax.devices('cpu')[0]):
