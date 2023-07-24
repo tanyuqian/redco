@@ -240,6 +240,27 @@ class Trainer:
                 per_device_batch_size=per_device_batch_size,
                 desc=f'epoch {epoch_idx} / {n_epochs}')
 
+            save_ckpt_kwargs = {
+                'params': self.params,
+                'params_sharding_rules': self._params_sharding_rules,
+                'step': self.step,
+                'epoch_idx': epoch_idx
+            }
+
+            if save_every_ckpt:
+                assert self._deployer.workdir is not None
+                path_to_save = f'{self._deployer.workdir}/ckpts/' \
+                               f'epoch_{epoch_idx}.msgpack'
+                self._deployer.save_params(
+                    filepath=path_to_save, **save_ckpt_kwargs)
+
+            if save_last_ckpt:
+                assert self._deployer.workdir is not None
+                path_to_save = f'{self._deployer.workdir}/ckpts/' \
+                               f'last.msgpack'
+                self._deployer.save_params(
+                    filepath=path_to_save, **save_ckpt_kwargs)
+
             if eval_examples is None:
                 self._deployer.log_info(
                     'No evaluation cuz \'eval_examples\' is None.')
@@ -285,27 +306,6 @@ class Trainer:
                     f'eval_{key}': value
                     for key, value in eval_metrics.items()
                 }, step=self.step)
-
-                save_ckpt_kwargs = {
-                    'params': self.params,
-                    'params_sharding_rules': self._params_sharding_rules,
-                    'step': self.step,
-                    'epoch_idx': epoch_idx
-                }
-
-                if save_every_ckpt:
-                    assert self._deployer.workdir is not None
-                    path_to_save = f'{self._deployer.workdir}/ckpts/' \
-                                   f'epoch_{epoch_idx}.msgpack'
-                    self._deployer.save_params(
-                        filepath=path_to_save, **save_ckpt_kwargs)
-
-                if save_last_ckpt:
-                    assert self._deployer.workdir is not None
-                    path_to_save = f'{self._deployer.workdir}/ckpts/'\
-                                   f'last.msgpack'
-                    self._deployer.save_params(
-                        filepath=path_to_save, **save_ckpt_kwargs)
 
                 for key in save_argmin_ckpt_by_metrics:
                     assert self._deployer.workdir is not None
