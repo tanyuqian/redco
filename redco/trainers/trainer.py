@@ -56,6 +56,7 @@ class Trainer:
         last_ckpt_info_path = f'{self._deployer.workdir}/last_ckpt_info.json'
         if os.path.exists(last_ckpt_info_path):
             self._last_ckpt_info = json.load(open(last_ckpt_info_path))
+
             params = self._deployer.load_params(
                 self._last_ckpt_info['last_ckpt'])
             self.create_train_state(
@@ -63,6 +64,10 @@ class Trainer:
                 params=params,
                 optimizer=self._optimizer,
                 step=self._last_ckpt_info['last_step'])
+
+            for _ in len(self._last_ckpt_info['last_step']):
+                self._deployer.gen_rng()
+
             self._deployer.log_info(
                 'detect last_ckpt {last_ckpt},'
                 ' last_step={last_step},'
