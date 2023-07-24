@@ -227,8 +227,9 @@ class Deployer:
     def load_params(self, filepath):
         with jax.default_device(jax.devices('cpu')[0]):
             params = msgpack_restore(open(filepath, 'rb').read())
-        self.log_info(f'params loaded from {filepath}')
+            params = jax.tree_util.tree_map(jnp.asarray, params)
 
+        self.log_info(f'params loaded from {filepath}')
         return params
 
     def save_params(self,
