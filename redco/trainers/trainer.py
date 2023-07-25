@@ -65,7 +65,7 @@ class Trainer:
                 optimizer=self._optimizer,
                 step=self._last_ckpt_info['last_step'])
 
-            for _ in len(self._last_ckpt_info['last_step']):
+            for _ in range(self._last_ckpt_info['last_step']):
                 self._deployer.gen_rng()
 
             self._deployer.log_info(
