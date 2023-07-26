@@ -29,7 +29,7 @@ class JsonlDataset(Dataset):
     def __getitem__(self, split):
         examples = []
         for line in tqdm.tqdm(open(self._split_filenames[split]),
-                              desc=f'loading {self._split_filenames[split]}'):
+                              desc=f'loading {split} examples'):
             examples.append(json.loads(line))
 
         return examples
