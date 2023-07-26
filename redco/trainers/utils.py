@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import jax
+from optax._src.linear_algebra import global_norm
 
 
 def default_loss_and_grads(train_rng, state, batch, loss_fn):
@@ -42,7 +43,11 @@ def default_train_step(train_rng,
 
     new_state = state.apply_gradients(grads=grads)
 
-    metrics = {'loss': loss, 'step': state.step}
+    metrics = {
+        'loss': loss,
+        'step': state.step,
+        'grad_norm': global_norm(grads)
+    }
     if lr_schedule_fn is not None:
         metrics.update({'lr': lr_schedule_fn(state.step)})
 
