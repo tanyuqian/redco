@@ -213,16 +213,13 @@ class Deployer:
 
     def save_outputs(self, outputs, desc, step):
         if self._workdir is not None and jax.process_index() == 0:
-            save_filename = save_outputs(
+            save_outputs(
                 workdir=self._workdir,
                 outputs=outputs,
                 desc=desc,
                 step=step,
                 logger=self._logger,
                 summary_writer=self._summary_writer)
-
-            if self._run_wandb:
-                wandb.save(save_filename)
 
     def load_params(self, filepath):
         with jax.default_device(jax.devices('cpu')[0]):
