@@ -21,7 +21,8 @@ def add_idxes(examples):
     examples_upd = []
     for idx, example in enumerate(examples):
         assert '__idx__' not in example
-        example = copy.deepcopy(example)
+        # example = copy.deepcopy(example)
+        example = {key: example[key] for key in example.keys()}
         example.update({'__idx__': idx})
 
         examples_upd.append(example)

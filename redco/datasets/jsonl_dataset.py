@@ -14,6 +14,7 @@
 
 import json
 from glob import glob
+import tqdm
 
 from .dataset import Dataset
 
@@ -27,7 +28,8 @@ class JsonlDataset(Dataset):
 
     def __getitem__(self, split):
         examples = []
-        for line in open(self._split_filenames[split]):
+        for line in tqdm.tqdm(open(self._split_filenames[split]),
+                              desc=f'loading {self._split_filenames[split]}'):
             examples.append(json.loads(line))
 
         return examples
