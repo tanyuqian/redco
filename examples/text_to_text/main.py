@@ -102,7 +102,10 @@ def eval_rouge(examples, preds, tgt_key):
         use_stemmer=True)
 
 
-def main(dataset_name='xsum',
+def main(num_processes=1,
+         process_id=None,
+         coordinator_address=None,
+         dataset_name='xsum',
          src_key='document',
          tgt_key='summary',
          model_name_or_path='facebook/bart-base',
@@ -120,6 +123,15 @@ def main(dataset_name='xsum',
          jax_seed=42,
          workdir='./workdir',
          run_tensorboard=False):
+    if num_processes > 1:
+        jax.distributed.initialize(
+            coordinator_address=coordinator_address,
+            num_processes=num_processes,
+            process_id=process_id)
+
+        print(f'PROCESS: {jax.process_index()}/{jax.process_count()}')
+        print(f'DEVICES: {jax.local_device_count()}/{jax.device_count()}')
+
     dataset = datasets.load_dataset(dataset_name)
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
