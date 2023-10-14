@@ -150,14 +150,19 @@ def main(num_processes=1,
         run_tensorboard=run_tensorboard,
         verbose=True)
 
-    optimizer, lr_schedule_fn = deployer.get_adamw_optimizer(
+    lr_schedule_fn = deployer.get_lr_schedule_fn(
         train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
         learning_rate=learning_rate,
-        accumulate_grad_batches=accumulate_grad_batches,
-        warmup_rate=warmup_rate,
-        weight_decay=weight_decay)
+        schedule_type='linear',
+        warmup_rate=warmup_rate)
+
+    optimizer = optax.adamw(
+        learning_rate=lr_schedule_fn, weight_decay=weight_decay)
+    if accumulate_grad_batches > 1:
+        optimizer = optax.MultiSteps(
+            optimizer, every_k_schedule=accumulate_grad_batches)
 
     trainer = Trainer(
         deployer=deployer,
