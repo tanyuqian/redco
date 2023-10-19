@@ -103,7 +103,10 @@ def output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
 
 
-def main(dataset_name='tatsu-lab/alpaca',
+def main(num_processes=1,
+         process_id=None,
+         coordinator_address=None,
+         dataset_name='tatsu-lab/alpaca',
          text_key='text',
          tgt_key='output',
          model_name_or_path='facebook/opt-350m',
@@ -122,6 +125,15 @@ def main(dataset_name='tatsu-lab/alpaca',
          jax_seed=42,
          workdir='./workdir',
          run_tensorboard=False):
+    if num_processes > 1:
+        jax.distributed.initialize(
+            coordinator_address=coordinator_address,
+            num_processes=num_processes,
+            process_id=process_id)
+
+        print(f'PROCESS: {jax.process_index()}/{jax.process_count()}')
+        print(f'DEVICES: {jax.local_device_count()}/{jax.device_count()}')
+
     dataset = list(datasets.load_dataset(dataset_name, split='train'))
     train_size = int(0.9 * len(dataset))
     dataset = {
