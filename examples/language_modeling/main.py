@@ -75,8 +75,13 @@ def eval_collate_fn(examples, tokenizer, src_length, text_key, tgt_key):
 def loss_fn(train_rng, state, params, batch, is_training):
     labels, label_weights = batch.pop("labels"), batch.pop('label_weights')
 
+    # logits = state.apply_fn(
+    #     **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
     logits = state.apply_fn(
-        **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
+        **batch,
+        params=params,
+        dropout_rng=train_rng,
+        deterministic=not is_training)[0]
 
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
