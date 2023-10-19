@@ -136,7 +136,7 @@ def main(dataset_name='tatsu-lab/alpaca',
             model_name_or_path, padding_size='right')
         tokenizer.pad_token = tokenizer.eos_token
 
-        model = FlaxLlamaForCausalLM.from_pretrained(model_name_or_path)
+        model = FlaxLlamaForCausalLM.from_pretrained(model_name_or_path, from_pt=True)
         params = model.params
 
         gen_kwargs = {
