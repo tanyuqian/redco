@@ -147,7 +147,7 @@ def main(dataset_name='tatsu-lab/alpaca',
         else:
             model = FlaxAutoModelForCausalLM.from_pretrained(model_name_or_path)
 
-        params = model.params
+        model.params = model.to_fp32(model.params)
 
         gen_kwargs = {
             'do_sample': True,
