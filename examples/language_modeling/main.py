@@ -213,7 +213,7 @@ def main(num_processes=1,
 
     preds = predictor.predict(
         examples=dataset['validation'][:100],
-        pre_device_batch_size=eval_per_device_batch_size,
+        per_device_batch_size=eval_per_device_batch_size,
         params=params)
 
     print(preds[0])
