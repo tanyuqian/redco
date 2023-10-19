@@ -75,13 +75,13 @@ def eval_collate_fn(examples, tokenizer, src_length, text_key, tgt_key):
 def loss_fn(train_rng, state, params, batch, is_training):
     labels, label_weights = batch.pop("labels"), batch.pop('label_weights')
 
-    # logits = state.apply_fn(
-    #     **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
     logits = state.apply_fn(
-        **batch,
-        params=params,
-        dropout_rng=train_rng,
-        deterministic=not is_training)[0]
+        **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
+    # logits = state.apply_fn(
+    #     **batch,
+    #     params=params,
+    #     dropout_rng=train_rng,
+    #     deterministic=not is_training)[0]
 
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
@@ -109,14 +109,14 @@ def main(num_processes=1,
          dataset_name='tatsu-lab/alpaca',
          text_key='text',
          tgt_key='output',
-         model_name_or_path='facebook/opt-350m',
+         model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
          n_model_shards=2,
          n_epochs=3,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
          accumulate_grad_batches=1,
-         max_length=64,
-         eval_src_length=32,
+         max_length=256,
+         eval_src_length=128,
          learning_rate=2e-5,
          lr_schedule_type='cosine',
          warmup_rate=0.03,
@@ -216,6 +216,8 @@ def main(num_processes=1,
         per_device_batch_size=eval_per_device_batch_size,
         params=params)
 
+    print(dataset['validation'][0][text_key])
+    print('=' * 100)
     print(preds[0])
 
     # trainer.fit(
