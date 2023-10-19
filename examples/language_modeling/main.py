@@ -159,7 +159,7 @@ def main(num_processes=1,
         else:
             model = FlaxAutoModelForCausalLM.from_pretrained(model_name_or_path)
 
-        params = model.to_fp32(model.params)
+        params = model.to_fp16(model.params)
 
         gen_kwargs = {
             'do_sample': True,
