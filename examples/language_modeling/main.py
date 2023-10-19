@@ -19,7 +19,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import optax
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
 from redco import Deployer, Trainer, Predictor
 
 from modeling_flax_llama import FlaxLlamaForCausalLM
@@ -101,14 +101,14 @@ def output_fn(batch_preds, tokenizer):
 def main(dataset_name='tatsu-lab/alpaca',
          text_key='text',
          tgt_key='output',
-         model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
+         model_name_or_path='facebook/opt-350m',
          n_model_shards=2,
          n_epochs=3,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
          accumulate_grad_batches=1,
          max_length=64,
-         eval_src_length=32,
+         eval_src_length=64,
          learning_rate=2e-5,
          lr_schedule_type='cosine',
          warmup_rate=0.03,
@@ -136,7 +136,12 @@ def main(dataset_name='tatsu-lab/alpaca',
             model_name_or_path, padding_size='right')
         tokenizer.pad_token = tokenizer.eos_token
 
-        model = FlaxLlamaForCausalLM.from_pretrained(model_name_or_path, from_pt=True)
+        if 'llama' in model_name_or_path.lower():
+            model = FlaxLlamaForCausalLM.from_pretrained(
+                model_name_or_path, from_pt=True)
+        else:
+            model = FlaxAutoModelForCausalLM.from_pretrained(model_name_or_path)
+
         params = model.params
 
         gen_kwargs = {
