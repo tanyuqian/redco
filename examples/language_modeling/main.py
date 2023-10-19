@@ -19,10 +19,10 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import optax
-from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
+from transformers import AutoTokenizer
 from redco import Deployer, Trainer, Predictor
 
-from llama_utils import get_llama
+from modeling_flax_llama import FlaxLlamaForCausalLM
 
 
 def train_collate_fn(examples, tokenizer, max_length, text_key, tgt_key):
@@ -101,15 +101,14 @@ def output_fn(batch_preds, tokenizer):
 def main(dataset_name='tatsu-lab/alpaca',
          text_key='text',
          tgt_key='output',
-         model_name_or_path='huggyllama/llama-7b',
-         bf16=True,
-         n_model_shards=4,
+         model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
+         n_model_shards=2,
          n_epochs=3,
-         per_device_batch_size=12,
-         eval_per_device_batch_size=16,
-         accumulate_grad_batches=8,
-         max_length=512,
-         eval_src_length=256,
+         per_device_batch_size=1,
+         eval_per_device_batch_size=1,
+         accumulate_grad_batches=1,
+         max_length=64,
+         eval_src_length=32,
          learning_rate=2e-5,
          lr_schedule_type='cosine',
          warmup_rate=0.03,
@@ -137,15 +136,8 @@ def main(dataset_name='tatsu-lab/alpaca',
             model_name_or_path, padding_size='right')
         tokenizer.pad_token = tokenizer.eos_token
 
-        if 'llama' in model_name_or_path:
-            model, params = get_llama(
-                model_name_or_path=model_name_or_path, bf16=bf16)
-        else:
-            model = FlaxAutoModelForCausalLM.from_pretrained(
-                model_name_or_path, dtype=jnp.bfloat16 if bf16 else jnp.float32)
-            params = model.params
-
-        params = model.to_bf16(params) if bf16 else model.to_fp32(params)
+        model = FlaxLlamaForCausalLM.from_pretrained(model_name_or_path)
+        params = model.params
 
         gen_kwargs = {
             'do_sample': True,
