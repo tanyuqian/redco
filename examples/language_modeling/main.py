@@ -116,7 +116,7 @@ def main(num_processes=1,
          eval_per_device_batch_size=1,
          accumulate_grad_batches=1,
          max_length=64,
-         eval_src_length=64,
+         eval_src_length=32,
          learning_rate=2e-5,
          lr_schedule_type='cosine',
          warmup_rate=0.03,
@@ -211,7 +211,10 @@ def main(num_processes=1,
         output_fn=partial(output_fn, tokenizer=tokenizer),
         params_sharding_rules=params_sharding_rules)
 
-    preds = predictor.predict(examples=dataset['validation'][:100])
+    preds = predictor.predict(
+        examples=dataset['validation'][:100],
+        pre_device_batch_size=eval_per_device_batch_size,
+        params=params)
 
     print(preds[0])
 
