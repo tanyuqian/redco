@@ -74,14 +74,8 @@ def eval_collate_fn(examples, tokenizer, src_length, text_key, tgt_key):
 
 def loss_fn(train_rng, state, params, batch, is_training):
     labels, label_weights = batch.pop("labels"), batch.pop('label_weights')
-
     logits = state.apply_fn(
         **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
-    # logits = state.apply_fn(
-    #     **batch,
-    #     params=params,
-    #     dropout_rng=train_rng,
-    #     deterministic=not is_training)[0]
 
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
@@ -109,7 +103,7 @@ def main(num_processes=1,
          dataset_name='tatsu-lab/alpaca',
          text_key='text',
          tgt_key='output',
-         model_name_or_path='huggyllama/llama-7b',
+         model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
          n_model_shards=2,
          n_epochs=3,
          per_device_batch_size=1,
@@ -150,7 +144,7 @@ def main(num_processes=1,
 
     with jax.default_device(jax.devices('cpu')[0]):
         tokenizer = AutoTokenizer.from_pretrained(
-            model_name_or_path, padding_size='right')
+            model_name_or_path, padding_side='right')
         tokenizer.pad_token = tokenizer.eos_token
 
         if 'llama' in model_name_or_path.lower():
@@ -167,37 +161,37 @@ def main(num_processes=1,
             'max_new_tokens': max_length - eval_src_length,
             'pad_token_id': tokenizer.pad_token_id
         }
-    #
-    # lr_schedule_fn = deployer.get_lr_schedule_fn(
-    #     train_size=len(dataset['train']),
-    #     per_device_batch_size=per_device_batch_size,
-    #     n_epochs=n_epochs,
-    #     learning_rate=learning_rate,
-    #     schedule_type=lr_schedule_type,
-    #     warmup_rate=warmup_rate)
-    #
-    # optimizer = optax.adamw(
-    #     learning_rate=lr_schedule_fn, weight_decay=weight_decay)
-    # if accumulate_grad_batches > 1:
-    #     optimizer = optax.MultiSteps(
-    #         optimizer, every_k_schedule=accumulate_grad_batches)
-    #
+
+    lr_schedule_fn = deployer.get_lr_schedule_fn(
+        train_size=len(dataset['train']),
+        per_device_batch_size=per_device_batch_size,
+        n_epochs=n_epochs,
+        learning_rate=learning_rate,
+        schedule_type=lr_schedule_type,
+        warmup_rate=warmup_rate)
+
+    optimizer = optax.adamw(
+        learning_rate=lr_schedule_fn, weight_decay=weight_decay)
+    if accumulate_grad_batches > 1:
+        optimizer = optax.MultiSteps(
+            optimizer, every_k_schedule=accumulate_grad_batches)
+
     params_sharding_rules = deployer.get_sharding_rules(params=params)
-    #
-    # trainer = Trainer(
-    #     deployer=deployer,
-    #     collate_fn=partial(
-    #         train_collate_fn,
-    #         tokenizer=tokenizer,
-    #         max_length=max_length,
-    #         text_key=text_key,
-    #         tgt_key=tgt_key),
-    #     apply_fn=model,
-    #     loss_fn=loss_fn,
-    #     params=params,
-    #     optimizer=optimizer,
-    #     lr_schedule_fn=lr_schedule_fn,
-    #     params_sharding_rules=params_sharding_rules)
+
+    trainer = Trainer(
+        deployer=deployer,
+        collate_fn=partial(
+            train_collate_fn,
+            tokenizer=tokenizer,
+            max_length=max_length,
+            text_key=text_key,
+            tgt_key=tgt_key),
+        apply_fn=model,
+        loss_fn=loss_fn,
+        params=params,
+        optimizer=optimizer,
+        lr_schedule_fn=lr_schedule_fn,
+        params_sharding_rules=params_sharding_rules)
 
     predictor = Predictor(
         deployer=deployer,
@@ -211,22 +205,13 @@ def main(num_processes=1,
         output_fn=partial(output_fn, tokenizer=tokenizer),
         params_sharding_rules=params_sharding_rules)
 
-    preds = predictor.predict(
-        examples=dataset['validation'][:100],
-        per_device_batch_size=eval_per_device_batch_size,
-        params=params)
-
-    print(dataset['validation'][0][text_key])
-    print('=' * 100)
-    print(preds[0])
-
-    # trainer.fit(
-    #     train_examples=dataset['train'],
-    #     n_epochs=n_epochs,
-    #     per_device_batch_size=per_device_batch_size,
-    #     eval_examples=dataset['validation'],
-    #     eval_per_device_batch_size=eval_per_device_batch_size,
-    #     eval_predictor=predictor)
+    trainer.fit(
+        train_examples=dataset['train'],
+        n_epochs=n_epochs,
+        per_device_batch_size=per_device_batch_size,
+        eval_examples=dataset['validation'],
+        eval_per_device_batch_size=eval_per_device_batch_size,
+        eval_predictor=predictor)
 
 
 if __name__ == '__main__':
