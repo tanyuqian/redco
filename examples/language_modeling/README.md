@@ -2,7 +2,7 @@
 
 It supports 
 * assigning a dataset from [datasets](https://github.com/huggingface/datasets) (alpaca by default)
-* a seq2seq model from [transformers](https://github.com/huggingface/transformers) ( by default)
+* assigning a causal language model from [transformers](https://github.com/huggingface/transformers) ( by default)
 * multi-host running
 
 ### Requirement
@@ -19,9 +19,9 @@ python main.py \
   --coordinator_address 192.168.0.1:1234 \ 
   --num_processes 2 \
   --process_id 1 \
-  --dataset_name xsum \
-  --model_name_or_path facebook/bart-base \
-  --n_model_shards 1
+  --dataset_name tatsu-lab/alpaca \
+  --model_name_or_path huggyllama/llama-7b \
+  --n_model_shards 4
 ```
 * `--num_processes`: number of hosts.
 * `--coordinator_address` *(ignore it if num_processes=1)*: the ip of host 0 with an arbitrary available port number.
