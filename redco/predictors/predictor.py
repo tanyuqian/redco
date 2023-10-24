@@ -63,8 +63,8 @@ class Predictor:
 
             self._p_pred_step = pjit(
                 pred_fn,
-                in_axis_resources=(None, self._params_spec, data_spec),
-                out_axis_resources=None)
+                in_shardings=(None, self._params_spec, data_spec),
+                out_shardings=None)
 
     def predict(self,
                 examples,

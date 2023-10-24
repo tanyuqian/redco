@@ -17,11 +17,16 @@ Redco is a lightweight and user-friendly tool designed to automate distributed t
 
 ### Installation
 
-Redco can be installed by
+#### Install Jax
+```
+pip install -U "jax[cuda11_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+```
+If you are using TPU/CPU/AMD/Apple, see [here](https://github.com/google/jax#installation) for corresponding installation commands.
+
+#### Install Redco
 ```
 pip install redco
 ```
-Make sure correct [Jax version](https://github.com/google/jax#installation) is installed according to your device. 
 
 
 

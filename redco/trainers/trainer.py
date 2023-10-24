@@ -143,14 +143,14 @@ class Trainer:
 
             self._p_train_step = pjit(
                 train_step_fn,
-                in_axis_resources=(None, self._state_spec, data_spec),
-                out_axis_resources=(self._state_spec, None),
+                in_shardings=(None, self._state_spec, data_spec),
+                out_shardings=(self._state_spec, None),
                 donate_argnums=(1, ))
 
             self._p_eval_step = pjit(
                 eval_step_fn,
-                in_axis_resources=(self._state_spec, data_spec),
-                out_axis_resources=None)
+                in_shardings=(self._state_spec, data_spec),
+                out_shardings=None)
 
     def train(self, examples, per_device_batch_size, desc=''):
         data_batches = self._deployer.get_model_input_batches(
@@ -166,7 +166,7 @@ class Trainer:
                 self.setup_running_step(dummy_batch=batch)
 
             train_rng = self._deployer.process_to_run_model(
-                self._deployer.gen_rng())
+                self._deployer.gen_rng(), is_prng_key=True)
             self._state, metrics = self._deployer.run_model_step(
                 step_fn=self._p_train_step,
                 input_args=(train_rng, self._state, batch))
