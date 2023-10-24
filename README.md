@@ -13,14 +13,16 @@ Redco is a lightweight and user-friendly tool designed to automate distributed t
 * **Easy-to-use**: Customize your pipeline with a couple of functions, each with a handful of lines. Designing your pipeline is the only thing you need to take care with *redco*.
 * **Automatic deployment**: No need to take care of your multi-host or multi-device environment. *Redco* processes your environment automatically, as well as other pipeline-unrelated things, e.g., randomness, logging, etc.
 * **Automatic model/data parallelism**: No need to concern your large models and large datasets. *Redco* distributes your models and datasets to all your devices automatically. 
-* **Easy to migrate from PyTorch**: No need to know complex Jax functions (e.g., ```pmap()```, ```pjit()```, etc.). *Redco* only needs a couple of numpy-like functions from you as your pipeline design. 
+* **No need to know JAX**: *Redco* only needs a couple of numpy-like functions as your pipeline design. 
 
 ### Installation
 
 #### Install Jax
 ```
-pip install -U "jax[cuda11_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install --upgrade jax[cuda11_pip]==0.4.16 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
+Jax version (`==0.4.16`) can be flexible, as long as it matches your CUDA/CUDNN version.
+
 If you are using TPU/CPU/AMD/Apple, see [here](https://github.com/google/jax#installation) for corresponding installation commands.
 
 #### Install Redco
