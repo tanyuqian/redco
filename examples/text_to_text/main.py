@@ -157,7 +157,6 @@ def main(num_processes=1,
         learning_rate=learning_rate,
         schedule_type='linear',
         warmup_rate=warmup_rate)
-
     optimizer = optax.adamw(
         learning_rate=lr_schedule_fn, weight_decay=weight_decay)
     if accumulate_grad_batches > 1:
