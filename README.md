@@ -19,9 +19,9 @@ Redco is a lightweight and user-friendly tool designed to automate distributed t
 
 #### Install Jax
 ```
-pip install --upgrade jax[cuda11_pip]==0.4.16 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install --upgrade jax[cuda11_pip]==0.4.13 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
-Jax version (`==0.4.16`) can be flexible, as long as it matches your CUDA/CUDNN version.
+Jax version (`==0.4.13`) can be flexible, as long as it matches your CUDA/CUDNN version.
 
 If you are using TPU/CPU/AMD/Apple, see [here](https://github.com/google/jax#installation) for corresponding installation commands.
 
