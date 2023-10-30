@@ -281,7 +281,7 @@ class Deployer:
                 1, self._mesh.shape['mp'] // jax.local_device_count())
 
             if jax.process_index() < n_processes_per_model:
-                opt_state = to_state_dict(unreplicate(opt_state))
+                opt_state = to_state_dict(opt_state)
 
                 filepath = (f'{ckpt_dir}/opt_state_{desc}'
                             f'_process_{jax.process_index()}.msgpack')
