@@ -17,12 +17,14 @@ from functools import partial
 import json
 import numpy as np
 import jax
+import jax.numpy as jnp
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
 from flax.jax_utils import replicate
 from flax.training import train_state
 from flax.traverse_util import flatten_dict
 from flax.core.frozen_dict import freeze
+
 from .utils import default_train_step, default_eval_step
 from ..predictors import Predictor
 
@@ -53,29 +55,37 @@ class Trainer:
         n_params = sum([param.size for param in flatten_dict(params).values()])
         self._deployer.log_info(f'{n_params:,}', title='Training parameters')
 
-        last_ckpt_info_path = f'{self._deployer.workdir}/last_ckpt_info.json'
+        last_ckpt_info_path = \
+            f'{self.workdir}/ckpts/last_ckpt_info.json'
         if os.path.exists(last_ckpt_info_path):
             self._last_ckpt_info = json.load(open(last_ckpt_info_path))
-
+            desc = self._last_ckpt_info['last_desc']
             params = self._deployer.load_params(
-                self._last_ckpt_info['last_ckpt'])
+                filepath=f'{self.workdir}/ckpts/params_{desc}.msgpack')
+
             self.create_train_state(
                 apply_fn=self._apply_fn,
                 params=params,
                 optimizer=self._optimizer,
                 step=self._last_ckpt_info['last_step'])
 
-            for _ in range(self._last_ckpt_info['last_step']):
-                self._deployer.gen_rng()
+            self._state = self._state.replace(
+                opt_state=self._deployer.load_opt_state(
+                    ckpt_dir=f'{self.workdir}/ckpts',
+                    desc=desc,
+                    target=self._state.opt_state))
+
+            self._deployer._rng = jnp.load(
+                f'{self.workdir}/ckpts/rng_{desc}.npy')
 
             self._deployer.log_info(
-                'detect last_ckpt {last_ckpt},'
+                'detect last_ckpt \"{last_desc}\",'
                 ' last_step={last_step},'
                 ' last_epoch_idx={last_epoch_idx}'.format(
                     **self._last_ckpt_info))
         else:
             self._last_ckpt_info = \
-                {'last_ckpt': None, 'last_step': 0, 'last_epoch_idx': -1}
+                {'last_desc': None, 'last_step': 0, 'last_epoch_idx': -1}
             self.create_train_state(
                 apply_fn=apply_fn, params=params, optimizer=optimizer, step=0)
 
@@ -218,14 +228,14 @@ class Trainer:
             save_argmin_ckpt_by_metrics = []
         min_metrics, max_metrics = {}, {}
 
-        if os.path.exists(f'{self._deployer.workdir}/min_metrics.json'):
+        if os.path.exists(f'{self.workdir}/min_metrics.json'):
             min_metrics = json.load(open(
-                f'{self._deployer.workdir}/min_metrics.json'))
+                f'{self.workdir}/min_metrics.json'))
             self._deployer.log_info(min_metrics, title='Detected min_metrics')
 
-        if os.path.exists(f'{self._deployer.workdir}/max_metrics.json'):
+        if os.path.exists(f'{self.workdir}/max_metrics.json'):
             max_metrics = json.load(open(
-                f'{self._deployer.workdir}/max_metrics.json'))
+                f'{self.workdir}/max_metrics.json'))
             self._deployer.log_info(max_metrics, title='Detected max_metrics')
 
         for epoch_idx in range(
@@ -239,27 +249,6 @@ class Trainer:
                 examples=epoch_train_examples,
                 per_device_batch_size=per_device_batch_size,
                 desc=f'epoch {epoch_idx} / {n_epochs}')
-
-            save_ckpt_kwargs = {
-                'params': self.params,
-                'params_sharding_rules': self._params_sharding_rules,
-                'step': self.step,
-                'epoch_idx': epoch_idx
-            }
-
-            if save_every_ckpt:
-                assert self._deployer.workdir is not None
-                path_to_save = f'{self._deployer.workdir}/ckpts/' \
-                               f'epoch_{epoch_idx}.msgpack'
-                self._deployer.save_params(
-                    filepath=path_to_save, **save_ckpt_kwargs)
-
-            if save_last_ckpt:
-                assert self._deployer.workdir is not None
-                path_to_save = f'{self._deployer.workdir}/ckpts/' \
-                               f'last.msgpack'
-                self._deployer.save_params(
-                    filepath=path_to_save, **save_ckpt_kwargs)
 
             if eval_examples is None:
                 self._deployer.log_info(
@@ -308,38 +297,71 @@ class Trainer:
                 }, step=self.step)
 
                 for key in save_argmin_ckpt_by_metrics:
-                    assert self._deployer.workdir is not None
+                    assert self.workdir is not None
                     if eval_metrics[key] < min_metrics.get(key, float('inf')):
                         min_metrics[key] = eval_metrics[key]
-                        self._deployer.log_info(
-                            f'minimal {key} updated to {min_metrics[key]}')
-
-                        path_to_save = f'{self._deployer.workdir}/ckpts/'\
-                                       f'min_{key}.msgpack'
-                        self._deployer.save_params(
-                            filepath=path_to_save, **save_ckpt_kwargs)
 
                         if jax.process_index() == 0:
+                            self._deployer.log_info(
+                                f'minimal {key} updated to {min_metrics[key]}')
                             json.dump(max_metrics, open(
-                                f'{self._deployer.workdir}/max_metrics.json',
-                                'w'))
+                                f'{self.workdir}/max_metrics.json', 'w'))
+
+                        self.save_ckpt(
+                            desc=f'min_{key}',
+                            epoch_idx=epoch_idx,
+                            ckpt_dir=f'{self.workdir}/ckpts')
 
                 for key in save_argmax_ckpt_by_metrics:
-                    assert self._deployer.workdir is not None
+                    assert self.workdir is not None
                     if eval_metrics[key] > max_metrics.get(key, float('-inf')):
                         max_metrics[key] = eval_metrics[key]
-                        self._deployer.log_info(
-                            f'maximal {key} updated to {max_metrics[key]}')
-
-                        path_to_save = f'{self._deployer.workdir}/ckpts/'\
-                                       f'max_{key}.msgpack'
-                        self._deployer.save_params(
-                            filepath=path_to_save, **save_ckpt_kwargs)
 
                         if jax.process_index() == 0:
+                            self._deployer.log_info(
+                                f'maximal {key} updated to {max_metrics[key]}')
                             json.dump(max_metrics, open(
-                                f'{self._deployer.workdir}/max_metrics.json',
-                                'w'))
+                                f'{self.workdir}/max_metrics.json', 'w'))
+
+                        self.save_ckpt(
+                            desc=f'max_{key}',
+                            epoch_idx=epoch_idx,
+                            ckpt_dir=f'{self.workdir}/ckpts')
+
+            if save_every_ckpt:
+                self.save_ckpt(
+                    desc=f'epoch_{epoch_idx}',
+                    epoch_idx=epoch_idx,
+                    ckpt_dir=f'{self.workdir}/ckpts')
+            elif save_last_ckpt:
+                self.save_ckpt(
+                    desc=f'last',
+                    epoch_idx=epoch_idx,
+                    ckpt_dir=f'{self.workdir}/ckpts')
+
+    def save_ckpt(self, epoch_idx, desc, ckpt_dir):
+        if jax.process_index() == 0:
+            os.makedirs(ckpt_dir, exist_ok=True)
+
+        self._deployer.save_params(
+            params=self._state.params,
+            ckpt_dir=ckpt_dir,
+            desc=desc,
+            params_sharding_rules=self._params_sharding_rules)
+        self._deployer.save_opt_state(
+            opt_state=self._state.opt_state, ckpt_dir=ckpt_dir, desc=desc)
+        self._deployer.save_rng(ckpt_dir=ckpt_dir, desc=desc)
+
+        if jax.process_index() == 0:
+            last_ckpt_info = {
+                'last_desc': desc,
+                'last_step': self.step,
+                'last_epoch_idx': epoch_idx
+            }
+
+            json.dump(last_ckpt_info, open(
+                f'{ckpt_dir}/last_ckpt_info.json', 'w'), indent=4)
+            self._deployer.log_info(f'{ckpt_dir}/last_ckpt_info.json updated.')
 
     def get_default_predictor(self, pred_fn, output_fn=None):
         return self._default_predictor_fn(pred_fn=pred_fn, output_fn=output_fn)
@@ -351,3 +373,7 @@ class Trainer:
     @property
     def step(self):
         return self._deployer.process_to_deliver(self._state.step).item()
+
+    @property
+    def workdir(self):
+        return self._deployer.workdir

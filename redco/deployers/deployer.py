@@ -13,13 +13,13 @@
 #  limitations under the License.
 
 import os
-import json
 import jax
 import jax.numpy as jnp
 from flax.jax_utils import replicate, unreplicate
 from flax.training.common_utils import shard_prng_key
 from flax.core.frozen_dict import unfreeze
-from flax.serialization import msgpack_serialize, msgpack_restore
+from flax.serialization import (
+    msgpack_serialize, msgpack_restore, from_state_dict, to_state_dict)
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_lr_schedule_fn
@@ -230,35 +230,68 @@ class Deployer:
         self.log_info(f'params loaded from {filepath}')
         return params
 
+    def load_opt_state(self, ckpt_dir, desc, target):
+        if self._mesh is None:
+            filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
+            opt_state = msgpack_restore(open(filepath, 'rb').read())
+            opt_state = from_state_dict(target=target, state=opt_state)
+            opt_state = replicate(opt_state)
+        else:
+            n_processes_per_model = max(
+                1, self._mesh.shape['mp'] // jax.local_device_count())
+            filepath = (f'{ckpt_dir}/opt_state_{desc}'
+                        f'_{jax.process_index() % n_processes_per_model}'
+                        f'.msgpack')
+            opt_state = msgpack_restore(open(filepath, 'rb').read())
+            opt_state = from_state_dict(target=target, state=opt_state)
+
+        return opt_state
+
     def save_params(self,
                     params,
-                    filepath,
-                    step=0,
-                    epoch_idx=-1,
+                    ckpt_dir,
+                    desc,
                     params_sharding_rules=None):
-        if self._mesh is not None:
+        if self._mesh is None:
+            params = unreplicate(params)
+        else:
             params_spec = self.get_params_spec(
                 params=params, params_sharding_rules=params_sharding_rules)
             params = gather_params_to_cpu(
                 params=params, params_spec=params_spec, mesh=self._mesh)
 
         if jax.process_index() == 0:
-            save_dir = '/'.join(filepath.split('/')[:-1])
-            os.makedirs(save_dir, exist_ok=True)
-
+            filepath = f'{ckpt_dir}/params_{desc}.msgpack'
             open(filepath, "wb").write(msgpack_serialize(unfreeze(params)))
             self.log_info(f'params saved into {filepath}')
 
-            if self.workdir is not None:
-                last_ckpt_info = {
-                    'last_ckpt': filepath,
-                    'last_step': step,
-                    'last_epoch_idx': epoch_idx
-                }
+    def save_opt_state(self, opt_state, ckpt_dir, desc):
+        if self._mesh is None:
+            if jax.process_index() == 0:
+                opt_state = to_state_dict(unreplicate(opt_state))
 
-                json.dump(last_ckpt_info, open(
-                    f'{self.workdir}/last_ckpt_info.json', 'w'))
-                self.log_info(f'{self.workdir}/last_ckpt_info.json updated.')
+                filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
+                open(filepath, "wb").write(
+                    msgpack_serialize(unfreeze(opt_state)))
+                self.log_info(f'opt_state saved into {filepath}')
+        else:
+            assert (jax.local_device_count() % self._mesh.shape['mp'] == 0 or
+                    self._mesh.shape['mp'] % jax.local_device_count() == 0)
+            n_processes_per_model = max(
+                1, self._mesh.shape['mp'] // jax.local_device_count())
+
+            if jax.process_index() < n_processes_per_model:
+                opt_state = to_state_dict(unreplicate(opt_state))
+
+                filepath = (f'{ckpt_dir}/opt_state_{desc}'
+                            f'_process_{jax.process_index()}.msgpack')
+                open(filepath, "wb").write(
+                    msgpack_serialize(unfreeze(opt_state)))
+                self.log_info(f'opt_state saved into {filepath}')
+
+    def save_rng(self, ckpt_dir, desc):
+        if jax.process_index() == 0:
+            jnp.save(f'{ckpt_dir}/rng_{desc}.npy', self._rng)
 
     @property
     def mesh(self):
