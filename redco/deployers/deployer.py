@@ -239,9 +239,9 @@ class Deployer:
         else:
             n_processes_per_model = max(
                 1, self._mesh.shape['mp'] // jax.local_device_count())
+            ckpt_process_idx = jax.process_index() % n_processes_per_model
             filepath = (f'{ckpt_dir}/opt_state_{desc}'
-                        f'_{jax.process_index() % n_processes_per_model}'
-                        f'.msgpack')
+                        f'_process_{ckpt_process_idx}.msgpack')
             opt_state = msgpack_restore(open(filepath, 'rb').read())
             opt_state = from_state_dict(target=target, state=opt_state)
 
