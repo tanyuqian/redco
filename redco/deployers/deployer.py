@@ -45,6 +45,15 @@ class Deployer:
                  process_id=None,
                  run_tensorboard=False,
                  run_wandb=False):
+        if n_processes > 1:
+            jax.distributed.initialize(
+                coordinator_address=f'{host0_address}:{host0_port}',
+                num_processes=n_processes,
+                process_id=process_id)
+
+            print(f'process_id: {jax.process_index()} / {jax.process_count()}')
+            print(f'devices: {jax.local_device_count()} / {jax.device_count()}')
+
         if workdir is not None:
             os.makedirs(workdir, exist_ok=True)
 
@@ -63,17 +72,6 @@ class Deployer:
             self._summary_writer = tensorboard.SummaryWriter(workdir)
         else:
             self._summary_writer = None
-
-        if n_processes > 1:
-            jax.distributed.initialize(
-                coordinator_address=f'{host0_address}:{host0_port}',
-                num_processes=n_processes,
-                process_id=process_id)
-
-            self.log_info(title='Multi-Host Initialized', info=json.dumps({
-                'process_id': f'{jax.process_index()} / {jax.process_count()}',
-                'devices': f'{jax.local_device_count()} / {jax.device_count()}'
-            }, indent=4))
 
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._mesh = get_mesh(n_model_shards=n_model_shards)
