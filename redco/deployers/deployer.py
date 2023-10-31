@@ -11,7 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import json
 import os
 import jax
 import jax.numpy as jnp
@@ -39,6 +39,10 @@ class Deployer:
                  n_model_shards=1,
                  verbose=True,
                  workdir=None,
+                 n_processes=1,
+                 host0_address=None,
+                 host0_port=None,
+                 process_id=None,
                  run_tensorboard=False,
                  run_wandb=False):
         if workdir is not None:
@@ -47,6 +51,17 @@ class Deployer:
         self._verbose = verbose
         self._workdir = workdir
         self._logger = get_logger(verbose=verbose, workdir=workdir)
+
+        if n_processes > 1:
+            jax.distributed.initialize(
+                coordinator_address=f'{host0_address}:{host0_port}',
+                num_processes=n_processes,
+                process_id=process_id)
+
+            self.log_info(title='Multi-Host Initialized', info=json.dumps({
+                'process_id': f'{jax.process_index()} / {jax.process_count()}',
+                'devices': f'{jax.local_device_count()} / {jax.device_count()}'
+            }, indent=4))
 
         if run_wandb:
             import wandb
