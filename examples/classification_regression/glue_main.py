@@ -78,12 +78,16 @@ def eval_metric_fn(examples, preds, label_key, is_regression):
         return {'acc': np.mean(preds == labels).item()}
 
 
-def main(dataset_name='sst2',
+def main(n_processes=1,
+         host0_address=None,
+         host0_port=11111,
+         process_id=None,
+         dataset_name='sst2',
          sent0_key='sentence',
          sent1_key=None,
          label_key='label',
          is_regression=False,
-         model_name_or_path='roberta-large',
+         model_name_or_path='roberta-base',
          n_model_shards=2,
          max_length=512,
          n_epochs=2,
@@ -96,17 +100,21 @@ def main(dataset_name='sst2',
          jax_seed=42,
          workdir='./workdir',
          run_tensorboard=False):
+    deployer = Deployer(
+        n_model_shards=n_model_shards,
+        jax_seed=jax_seed,
+        workdir=workdir,
+        run_tensorboard=run_tensorboard,
+        n_processes=n_processes,
+        host0_address=host0_address,
+        host0_port=host0_port,
+        process_id=process_id)
+
     dataset = load_dataset('glue', dataset_name)
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
 
     num_labels = 1 if is_regression \
         else len(set([example[label_key] for example in dataset['train']]))
-
-    deployer = Deployer(
-        n_model_shards=n_model_shards,
-        jax_seed=jax_seed,
-        workdir=workdir,
-        run_tensorboard=run_tensorboard)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
