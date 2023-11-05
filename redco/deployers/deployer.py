@@ -246,6 +246,10 @@ class Deployer:
     def load_opt_state(self, ckpt_dir, desc, target):
         if self._mesh is None:
             filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
+            self.log_info(f'Skip loading opt_state (No file {filepath})')
+            if not os.path.exists(filepath):
+                return None
+
             opt_state = msgpack_restore(open(filepath, 'rb').read())
             opt_state = from_state_dict(target=target, state=opt_state)
             opt_state = replicate(opt_state)
@@ -255,9 +259,14 @@ class Deployer:
             ckpt_process_idx = jax.process_index() % n_processes_per_model
             filepath = (f'{ckpt_dir}/opt_state_{desc}'
                         f'_process_{ckpt_process_idx}.msgpack')
+            if not os.path.exists(filepath):
+                self.log_info(f'Skip loading opt_state (No file {filepath})')
+                return None
+
             opt_state = msgpack_restore(open(filepath, 'rb').read())
             opt_state = from_state_dict(target=target, state=opt_state)
 
+        self.log_info(f'opt_state loaded from {filepath}.')
         return opt_state
 
     def save_params(self,
