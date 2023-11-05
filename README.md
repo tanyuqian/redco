@@ -17,11 +17,13 @@ Redco is a lightweight and user-friendly tool designed to automate distributed t
 
 ### Installation
 
-#### Install Jax
+#### Install Jax & Flax
 ```
 pip install --upgrade jax[cuda11_pip]==0.4.13 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install --upgrade flax==0.7.0
 ```
-Jax version (`==0.4.13`) can be flexible, as long as it matches your CUDA/CUDNN version.
+Jax version (`==0.4.13`) and Flax version (`==0.7.0`) can be flexible, as long as they match your CUDA/CUDNN version. 
+Besides, the Flax modeling in the HuggingFace implementation sometimes doesn't support recent Jax & Flax versions. 
 
 If you are using TPU/CPU/AMD/Apple, see [here](https://github.com/google/jax#installation) for corresponding installation commands.
 

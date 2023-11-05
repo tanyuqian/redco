@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import tqdm
+from collections import UserDict
 import jax
 import jax.numpy as jnp
 from flax.training.common_utils import shard
@@ -20,15 +21,16 @@ from flax.training.common_utils import shard
 
 def get_dataloader(examples, batch_size, collate_fn, do_shard):
     def make_jnp(value):
-        return jax.tree_util.tree_map(jnp.asarray, value)
+        value = jax.tree_util.tree_map(
+            lambda x: dict(x) if isinstance(x, UserDict) else x, value)
+        value = jax.tree_util.tree_map(jnp.asarray, value)
+        if do_shard:
+            value = jax.tree_util.tree_map(shard, value)
+        return value
 
     for i in range(0, len(examples) // batch_size):
-        batch = collate_fn(
-            examples=examples[i * batch_size:(i + 1) * batch_size])
-        yield {
-            key: shard(make_jnp(value)) if do_shard else make_jnp(value)
-            for key, value in batch.items()
-        }
+        yield make_jnp(collate_fn(
+            examples=examples[i * batch_size:(i + 1) * batch_size]))
 
 
 def get_data_batches(examples,

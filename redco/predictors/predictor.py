@@ -53,10 +53,9 @@ class Predictor:
         if self._deployer.mesh is None:
             self._p_pred_step = jax.pmap(pred_fn, axis_name='batch')
         else:
-            data_spec = {
-                key: P(*(('dp',) + (None,) * (len(value.shape) - 1)))
-                for key, value in dummy_batch.items()
-            }
+            data_spec = jax.tree_util.tree_map(
+                lambda x: P(*(('dp',) + (None,) * (len(x.shape) - 1))),
+                dummy_batch)
 
             self._params_spec = self._deployer.get_params_spec(
                 params=params, params_sharding_rules=params_sharding_rules)

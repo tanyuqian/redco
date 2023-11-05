@@ -146,10 +146,9 @@ class Trainer:
             self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
             self._p_eval_step = jax.pmap(eval_step_fn, axis_name='batch')
         else:
-            data_spec = {
-                key: P(*(('dp',) + (None,) * (len(value.shape) - 1)))
-                for key, value in dummy_batch.items()
-            }
+            data_spec = jax.tree_util.tree_map(
+                lambda x: P(*(('dp',) + (None,) * (len(x.shape) - 1))),
+                dummy_batch)
 
             self._p_train_step = pjit(
                 train_step_fn,
