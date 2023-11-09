@@ -264,9 +264,9 @@ class Trainer:
                     'Sanity check (for prediction) passed.')
 
                 if eval_metric_fn is not None:
-                    eval_metric_fn(
+                    json.dumps(eval_metric_fn(
                         examples=eval_examples[:eval_global_batch_size],
-                        preds=preds)
+                        preds=preds))
                     self._deployer.log_info(
                         'Sanity check (for prediction evaluation) passed.')
 
@@ -329,6 +329,11 @@ class Trainer:
                     f'eval_{key}': value
                     for key, value in eval_metrics.items()
                 }, step=self.step)
+
+                if self.workdir is not None:
+                    json.dump(eval_metrics, open(
+                        f'{self.workdir}/eval_results_epoch{epoch_idx}.json',
+                        'w'), indent=4)
 
                 save_ckpt_kwargs = {
                     'epoch_idx': epoch_idx,
