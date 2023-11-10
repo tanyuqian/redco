@@ -92,7 +92,9 @@ class Deployer:
                                 collate_fn,
                                 shuffle,
                                 shuffle_rng,
-                                desc):
+                                desc,
+                                is_train=False,
+                                accumulate_grad_batches=None):
         batch_size, global_batch_size = self.process_batch_size(
             per_device_batch_size=per_device_batch_size)
 
@@ -103,12 +105,21 @@ class Deployer:
             shuffle_rng=shuffle_rng,
             mesh=self._mesh)
 
+        if not is_train:
+            desc = f'{desc} (global_batch_size = {global_batch_size})'
+        elif accumulate_grad_batches is None:
+            desc = f'{desc} (global_micro_batch_size = {global_batch_size})'
+        else:
+            desc = (f'{desc} ('
+                    f'global_micro_batch_size = {global_batch_size}, '
+                    f'accumulate_grad_batches = {accumulate_grad_batches})')
+
         return get_data_batches(
             examples=examples,
             batch_size=batch_size,
             collate_fn=collate_fn,
             do_shard=(self.mesh is None),
-            desc=f'{desc} (global_batch_size = {global_batch_size})',
+            desc=desc,
             verbose=self._verbose)
 
     def process_batch_preds(self, batch_preds_with_idxes):

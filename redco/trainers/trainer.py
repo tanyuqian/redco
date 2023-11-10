@@ -38,6 +38,7 @@ class Trainer:
                  params,
                  optimizer,
                  lr_schedule_fn=None,
+                 accumulate_grad_batches=None,
                  params_sharding_rules=None):
         self._deployer = deployer
         self._collate_fn = collate_fn
@@ -45,6 +46,7 @@ class Trainer:
         self._loss_fn = loss_fn
         self._optimizer = optimizer
         self._lr_schedule_fn = lr_schedule_fn
+        self._accumulate_grad_batches = accumulate_grad_batches
         self._params_sharding_rules = params_sharding_rules
 
         self._state = None
@@ -169,7 +171,9 @@ class Trainer:
             collate_fn=self._collate_fn,
             shuffle=True,
             shuffle_rng=self._deployer.gen_rng(),
-            desc=f'Training ({desc})')
+            desc=f'Training ({desc})',
+            is_train=True,
+            accumulate_grad_batches=self._accumulate_grad_batches)
 
         for batch in data_batches:
             if self._p_train_step is None:
@@ -268,7 +272,7 @@ class Trainer:
                         examples=eval_examples[:eval_global_batch_size],
                         preds=preds))
                     self._deployer.log_info(
-                        'Sanity check (for prediction evaluation) passed.')
+                        'Sanity check (for evaluation metrics) passed.')
 
             self._deployer._rng = rng_backup
 
@@ -331,9 +335,12 @@ class Trainer:
                 }, step=self.step)
 
                 if self.workdir is not None:
-                    json.dump(eval_metrics, open(
-                        f'{self.workdir}/eval_results_epoch{epoch_idx}.json',
-                        'w'), indent=4)
+                    result_filepath = \
+                        f'{self.workdir}/eval_results_epoch{epoch_idx}.json'
+                    json.dump(
+                        eval_metrics, open(result_filepath, 'w'), indent=4)
+                    self._deployer.log_info(
+                        f'eval_results saved into {result_filepath}.')
 
                 save_ckpt_kwargs = {
                     'epoch_idx': epoch_idx,
