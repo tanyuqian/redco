@@ -70,7 +70,7 @@ class Predictor:
                 per_device_batch_size,
                 params,
                 params_meshed=False,
-                desc=''):
+                desc=None):
         params = freeze(params)
 
         raw_n_inputs = len(examples)
@@ -87,7 +87,7 @@ class Predictor:
             collate_fn=self._collate_fn,
             shuffle=False,
             shuffle_rng=None,
-            desc=f'Predicting ({desc})')
+            desc=f'Predicting ({desc})' if desc is not None else 'Predicting')
 
         preds = []
         for batch in data_batches:
