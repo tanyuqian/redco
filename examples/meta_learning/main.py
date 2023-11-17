@@ -67,8 +67,8 @@ def inner_pred_fn(batch, params, model):
     return model.apply({'params': params}, batch['inputs']).argmax(axis=-1)
 
 
-def inner_step(params, inner_batch, inner_learning_rate, inner_n_steps):
-    grads = jax.grad(inner_loss_fn)(params, inner_batch)
+def inner_step(params, model, inner_batch, inner_learning_rate, inner_n_steps):
+    grads = jax.grad(inner_loss_fn)(params, inner_batch, model)
 
     inner_optimizer = optax.sgd(learning_rate=inner_learning_rate)
     inner_opt_state = inner_optimizer.init(params)
@@ -86,16 +86,19 @@ def loss_fn(train_rng,
             params,
             batch,
             is_training,
+            model,
             inner_learning_rate,
             inner_n_steps):
     def inner_maml_loss_fn(inner_batch_train, inner_batch_val):
         params_upd = inner_step(
             params=params,
+            model=model,
             inner_batch=inner_batch_train,
             inner_learning_rate=inner_learning_rate,
             inner_n_steps=inner_n_steps)
 
-        return inner_loss_fn(params=params_upd, batch=inner_batch_val)
+        return inner_loss_fn(
+            params=params_upd, batch=inner_batch_val, model=model)
 
     return jax.vmap(inner_maml_loss_fn)(batch['train'], batch['val']).mean()
 
@@ -158,6 +161,7 @@ def main(dataset_name='omniglot',
         apply_fn=model.apply,
         loss_fn=partial(
             loss_fn,
+            model=model,
             inner_learning_rate=inner_learning_rate,
             inner_n_steps=inner_n_steps),
         params=params,
