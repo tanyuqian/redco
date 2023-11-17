@@ -14,15 +14,15 @@
 
 from functools import partial
 import fire
+import numpy as np
+import jax
+import flax.linen as nn
 import jax.numpy as jnp
 import optax
-import numpy as np
-import flax.linen as nn
 
 from redco import Deployer, Trainer
 
 from data_utils import get_torchmeta_dataset, sample_tasks
-from maml_pipeline import collate_fn, loss_fn, pred_fn
 
 
 class CNN(nn.Module):
@@ -44,6 +44,19 @@ class CNN(nn.Module):
         return x
 
 
+def collate_fn(examples, train_key='train', val_key='test'):
+    return {
+        'train': {
+            key: np.stack([example[train_key][key] for example in examples])
+            for key in examples[0][train_key].keys()
+        },
+        'val': {
+            key: np.stack([example[val_key][key] for example in examples])
+            for key in examples[0][val_key].keys()
+        }
+    }
+
+
 def inner_loss_fn(params, batch, model):
     logits = model.apply({'params': params}, batch['inputs'])
     return jnp.mean(optax.softmax_cross_entropy_with_integer_labels(
@@ -52,6 +65,58 @@ def inner_loss_fn(params, batch, model):
 
 def inner_pred_fn(batch, params, model):
     return model.apply({'params': params}, batch['inputs']).argmax(axis=-1)
+
+
+def inner_step(params, inner_batch, inner_learning_rate, inner_n_steps):
+    grads = jax.grad(inner_loss_fn)(params, inner_batch)
+
+    inner_optimizer = optax.sgd(learning_rate=inner_learning_rate)
+    inner_opt_state = inner_optimizer.init(params)
+
+    for _ in range(inner_n_steps):
+        updates, inner_opt_state = inner_optimizer.update(
+            updates=grads, state=inner_opt_state, params=params)
+        params = optax.apply_updates(params, updates)
+
+    return params
+
+
+def loss_fn(train_rng,
+            state,
+            params,
+            batch,
+            is_training,
+            inner_learning_rate,
+            inner_n_steps):
+    def inner_maml_loss_fn(inner_batch_train, inner_batch_val):
+        params_upd = inner_step(
+            params=params,
+            inner_batch=inner_batch_train,
+            inner_learning_rate=inner_learning_rate,
+            inner_n_steps=inner_n_steps)
+
+        return inner_loss_fn(params=params_upd, batch=inner_batch_val)
+
+    return jax.vmap(inner_maml_loss_fn)(batch['train'], batch['val']).mean()
+
+
+def pred_fn(pred_rng,
+            batch,
+            params,
+            model,
+            inner_learning_rate,
+            inner_n_steps):
+    def inner_maml_pred_fn(inner_batch_train, inner_batch_val):
+        params_upd = inner_step(
+            params=params,
+            inner_batch=inner_batch_train,
+            inner_learning_rate=inner_learning_rate,
+            inner_n_steps=inner_n_steps)
+
+        return model.apply(
+            {'params': params_upd}, inner_batch_val['inputs']).argmax(axis=-1)
+
+    return jax.vmap(inner_maml_pred_fn)(batch['train'], batch['val'])
 
 
 def eval_metric_fn(preds, examples):
@@ -93,7 +158,6 @@ def main(dataset_name='omniglot',
         apply_fn=model.apply,
         loss_fn=partial(
             loss_fn,
-            inner_loss_fn=partial(inner_loss_fn, model=model),
             inner_learning_rate=inner_learning_rate,
             inner_n_steps=inner_n_steps),
         params=params,
@@ -102,10 +166,9 @@ def main(dataset_name='omniglot',
     predictor = trainer.get_default_predictor(
         pred_fn=partial(
             pred_fn,
-            inner_loss_fn=partial(inner_loss_fn, model=model),
+            model=model,
             inner_learning_rate=inner_learning_rate,
-            inner_n_steps=inner_n_steps,
-            inner_pred_fn=partial(inner_pred_fn, model=model)))
+            inner_n_steps=inner_n_steps))
 
     eval_examples = sample_tasks(
         tm_dataset=tm_dataset['val'], n_tasks=n_tasks_per_epoch)
