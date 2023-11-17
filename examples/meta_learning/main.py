@@ -112,6 +112,7 @@ def pred_fn(pred_rng,
     def inner_maml_pred_fn(inner_batch_train, inner_batch_val):
         params_upd = inner_step(
             params=params,
+            model=model,
             inner_batch=inner_batch_train,
             inner_learning_rate=inner_learning_rate,
             inner_n_steps=inner_n_steps)
