@@ -228,6 +228,9 @@ class Trainer:
             save_argmin_ckpt_by_metrics=None,
             save_argmax_ckpt_by_metrics=None,
             save_opt_states=True):
+        if eval_per_device_batch_size is None:
+            eval_per_device_batch_size = per_device_batch_size
+
         if save_argmax_ckpt_by_metrics is None:
             save_argmax_ckpt_by_metrics = []
         if save_argmin_ckpt_by_metrics is None:
@@ -293,9 +296,6 @@ class Trainer:
                     'No evaluation cuz \'eval_examples\' is None.')
             else:
                 eval_metrics = {}
-
-                if eval_per_device_batch_size is None:
-                    eval_per_device_batch_size = per_device_batch_size
 
                 if eval_loss:
                     loss = self.eval_loss(
