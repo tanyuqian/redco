@@ -20,18 +20,37 @@ import flax.linen as nn
 import jax.numpy as jnp
 import optax
 import learn2learn as l2l
-from transformers import AutoConfig, FlaxViTForImageClassification
 from redco import Deployer, Trainer
+
+
+class CNN(nn.Module):
+    """A simple CNN model."""
+    hidden_size: int = 64
+    n_layers: int = 4
+    n_labels: int = 5
+
+    @nn.compact
+    def __call__(self, x):
+        for _ in range(self.n_layers):
+            x = nn.Conv(features=self.hidden_size, kernel_size=(3, 3))(x)
+            x = nn.relu(x)
+            x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
+
+        x = x.reshape((x.shape[0], -1))  # flatten
+        x = nn.Dense(features=256)(x)
+        x = nn.relu(x)
+        x = nn.Dense(features=self.n_labels)(x)
+        return x
 
 
 def preprocess(l2l_example):
     return {
         'train': {
-            'pixel_values': l2l_example[0][::2].numpy(),
+            'pixel_values': l2l_example[0][::2].numpy().transpose((0, 2, 3, 1)),
             'labels': l2l_example[1][::2].numpy()
         },
         'val': {
-            'pixel_values': l2l_example[0][1::2].numpy(),
+            'pixel_values': l2l_example[0][1::2].numpy().transpose((0, 2, 3, 1)),
             'labels': l2l_example[1][1::2].numpy()
         },
     }
@@ -51,7 +70,7 @@ def collate_fn(examples):
 
 
 def inner_loss_fn(params, batch, model):
-    logits = model(pixel_values=batch['pixel_values'], params=params).logits
+    logits = model.apply({'params': params}, batch['pixel_values'])
     return jnp.mean(optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch['labels']))
 
@@ -106,10 +125,9 @@ def pred_fn(pred_rng,
             inner_learning_rate=inner_learning_rate,
             inner_n_steps=inner_n_steps)
 
-        return model(
-            pixel_values=inner_batch_val['pixel_values'],
-            params=params_upd
-        ).logits.argmax(axis=-1)
+        return model.apply(
+            {'params': params_upd}, inner_batch_val['pixel_values']
+        ).argmax(axis=-1)
 
     return jax.vmap(inner_maml_pred_fn)(batch['train'], batch['val'])
 
@@ -125,7 +143,7 @@ def main(dataset_name='omniglot',
          n_shots=1,
          n_tasks_per_epoch=1000,
          n_epochs=1000,
-         per_device_batch_size=1,
+         per_device_batch_size=16,
          learning_rate=0.003,
          inner_learning_rate=0.5,
          inner_n_steps=1,
@@ -140,25 +158,21 @@ def main(dataset_name='omniglot',
         test_samples=2 * n_shots,
         root='./data')
 
-    # model = CNN(n_classes=n_ways)
-    # dummy_inputs = taskset.train.sample()[0].numpy().transpose((0, 2, 3, 1))
-    # params = model.init(deployer.gen_rng(), dummy_inputs)['params']
-    # optimizer = optax.adam(learning_rate=learning_rate)
-    model = FlaxViTForImageClassification(
-        config=AutoConfig.from_pretrained(
-            'google/vit-base-patch16-224', image_size=28, num_channels=1, num_hidden_layers=3))
+    model = CNN(n_labels=n_ways)
+    dummy_inputs = taskset.train.sample()[0].numpy().transpose((0, 2, 3, 1))
+    params = model.init(deployer.gen_rng(), dummy_inputs)['params']
     optimizer = optax.adamw(learning_rate=learning_rate)
 
     trainer = Trainer(
         deployer=deployer,
         collate_fn=collate_fn,
-        apply_fn=model,
+        apply_fn=model.apply,
         loss_fn=partial(
             loss_fn,
             model=model,
             inner_learning_rate=inner_learning_rate,
             inner_n_steps=inner_n_steps),
-        params=model.params,
+        params=params,
         optimizer=optimizer)
 
     predictor = trainer.get_default_predictor(
