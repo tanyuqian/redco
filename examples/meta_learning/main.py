@@ -24,18 +24,20 @@ from redco import Deployer, Trainer
 
 
 class CNN(nn.Module):
-    """A simple CNN model."""
-    hidden_size: int = 64
-    n_layers: int = 4
-    n_labels: int = 5
+    """
+    A simple CNN model.
+    Copied from https://github.com/google/flax/blob/main/examples/mnist/train.py#L36
+    """
+    n_labels: int = 1
 
     @nn.compact
     def __call__(self, x):
-        for _ in range(self.n_layers):
-            x = nn.Conv(features=self.hidden_size, kernel_size=(3, 3))(x)
-            x = nn.relu(x)
-            x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
-
+        x = nn.Conv(features=32, kernel_size=(3, 3))(x)
+        x = nn.relu(x)
+        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
+        x = nn.Conv(features=64, kernel_size=(3, 3))(x)
+        x = nn.relu(x)
+        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
         x = x.reshape((x.shape[0], -1))  # flatten
         x = nn.Dense(features=256)(x)
         x = nn.relu(x)
@@ -50,7 +52,8 @@ def preprocess(l2l_example):
             'labels': l2l_example[1][::2].numpy()
         },
         'val': {
-            'pixel_values': l2l_example[0][1::2].numpy().transpose((0, 2, 3, 1)),
+            'pixel_values': l2l_example[0][1::2].numpy().transpose(
+                (0, 2, 3, 1)),
             'labels': l2l_example[1][1::2].numpy()
         },
     }
