@@ -19,10 +19,8 @@ import jax
 import flax.linen as nn
 import jax.numpy as jnp
 import optax
-
+import learn2learn as l2l
 from redco import Deployer, Trainer
-
-from data_utils import get_torchmeta_dataset, sample_tasks
 
 
 class CNN(nn.Module):
@@ -44,16 +42,29 @@ class CNN(nn.Module):
         return x
 
 
-def collate_fn(examples, train_key='train', val_key='test'):
+def preprocess(l2l_example):
     return {
         'train': {
-            key: np.stack([example[train_key][key] for example in examples])
-            for key in examples[0][train_key].keys()
+            'inputs': l2l_example[0][::2].numpy().transpose((0, 2, 3, 1)),
+            'labels': l2l_example[1][::2].numpy()
         },
         'val': {
-            key: np.stack([example[val_key][key] for example in examples])
-            for key in examples[0][val_key].keys()
-        }
+            'inputs': l2l_example[0][1::2].numpy().transpose((0, 2, 3, 1)),
+            'labels': l2l_example[1][1::2].numpy()
+        },
+    }
+
+
+def collate_fn(examples):
+    return {
+        'train': {
+            key: np.stack([example['train'][key] for example in examples])
+            for key in examples[0]['train'].keys()
+        },
+        'val': {
+            key: np.stack([example['val'][key] for example in examples])
+            for key in examples[0]['val'].keys()
+        },
     }
 
 
@@ -125,40 +136,38 @@ def pred_fn(pred_rng,
 
 def eval_metric_fn(preds, examples):
     preds = np.array(preds)
-    labels = np.array([example['test']['labels'] for example in examples])
+    labels = np.array([example['val']['labels'] for example in examples])
     return {'acc': np.mean(preds == labels).item()}
 
 
 def main(dataset_name='omniglot',
          n_ways=5,
-         n_shots=5,
-         n_test_shots=15,
+         n_shots=1,
          n_tasks_per_epoch=10000,
          n_epochs=1000,
-         learning_rate=1e-3,
-         per_device_batch_size=16,
-         inner_learning_rate=0.1,
+         per_device_batch_size=1,
+         learning_rate=0.003,
+         inner_learning_rate=0.5,
          inner_n_steps=1,
-         train_key='train',
-         val_key='test',
          jax_seed=42):
-    tm_dataset = get_torchmeta_dataset(
-        dataset_name=dataset_name,
-        n_ways=n_ways,
-        n_shots=n_shots,
-        n_test_shots=n_test_shots)
-
     deployer = Deployer(jax_seed=jax_seed)
 
+    taskset = l2l.vision.benchmarks.get_tasksets(
+        name=dataset_name,
+        train_ways=n_ways,
+        train_samples=2 * n_shots,
+        test_ways=n_ways,
+        test_samples=2 * n_shots,
+        root='./data')
+
     model = CNN(n_classes=n_ways)
-    dummy_example = sample_tasks(tm_dataset=tm_dataset['train'], n_tasks=1)[0]
-    params = model.init(deployer.gen_rng(), np.array(
-        dummy_example['train']['inputs']))['params']
+    dummy_inputs = taskset.train.sample()[0].numpy().transpose((0, 2, 3, 1))
+    params = model.init(deployer.gen_rng(), dummy_inputs)['params']
     optimizer = optax.adam(learning_rate=learning_rate)
 
     trainer = Trainer(
         deployer=deployer,
-        collate_fn=partial(collate_fn, train_key=train_key, val_key=val_key),
+        collate_fn=collate_fn,
         apply_fn=model.apply,
         loss_fn=partial(
             loss_fn,
@@ -175,16 +184,18 @@ def main(dataset_name='omniglot',
             inner_learning_rate=inner_learning_rate,
             inner_n_steps=inner_n_steps))
 
-    eval_examples = sample_tasks(
-        tm_dataset=tm_dataset['val'], n_tasks=n_tasks_per_epoch)
-    train_examples_fn = partial(
-        sample_tasks, tm_dataset=tm_dataset['train'], n_tasks=n_tasks_per_epoch)
+    eval_examples = [
+        preprocess(taskset.validation.sample())
+        for _ in range(n_tasks_per_epoch)
+    ]
+    train_examples_fn = lambda epoch_idx: [
+        preprocess(taskset.train.sample()) for _ in range(n_tasks_per_epoch)]
     trainer.fit(
         train_examples=train_examples_fn,
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
         eval_examples=eval_examples,
-        eval_loss=True,
+        eval_loss=False,
         eval_predictor=predictor,
         eval_metric_fn=eval_metric_fn)
 
