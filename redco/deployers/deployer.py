@@ -310,8 +310,7 @@ class Deployer:
         if jax.process_index() == 0:
             filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
             opt_state = to_state_dict(opt_state)
-            open(filepath, "wb").write(
-                msgpack_serialize(unfreeze(opt_state)))
+            open(filepath, "wb").write(msgpack_serialize(unfreeze(opt_state)))
             self.log_info(f'opt_state saved into {filepath}')
 
     def save_rng(self, ckpt_dir, desc):
