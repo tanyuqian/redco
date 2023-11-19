@@ -301,36 +301,18 @@ class Deployer:
             self.log_info(f'params saved into {filepath}')
 
     def save_opt_state(self, opt_state, ckpt_dir, desc):
-        filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
         if self._mesh is None:
-            if jax.process_index() == 0:
-                opt_state = to_state_dict(unreplicate(opt_state))
-
-                open(filepath, "wb").write(
-                    msgpack_serialize(unfreeze(opt_state)))
-                self.log_info(f'opt_state saved into {filepath}')
+            opt_state = to_state_dict(unreplicate(opt_state))
         else:
-            opt_state = process_allgather(opt_state)
+            with jax.default_device(jax.devices('cpu')[0]):
+                opt_state = process_allgather(opt_state)
 
-            if jax.process_index() == 0:
-                opt_state = to_state_dict(opt_state)
-                open(filepath, "wb").write(
-                    msgpack_serialize(unfreeze(opt_state)))
-                self.log_info(f'opt_state saved into {filepath}')
-
-            # assert (jax.local_device_count() % self._mesh.shape['mp'] == 0 or
-            #         self._mesh.shape['mp'] % jax.local_device_count() == 0)
-            # n_processes_per_model = max(
-            #     1, self._mesh.shape['mp'] // jax.local_device_count())
-            #
-            # if jax.process_index() < n_processes_per_model:
-            #     opt_state = to_state_dict(opt_state)
-            #
-            #     filepath = (f'{ckpt_dir}/opt_state_{desc}'
-            #                 f'_process_{jax.process_index()}.msgpack')
-            #     open(filepath, "wb").write(
-            #         msgpack_serialize(unfreeze(opt_state)))
-            #     self.log_info(f'opt_state saved into {filepath}')
+        if jax.process_index() == 0:
+            filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
+            opt_state = to_state_dict(opt_state)
+            open(filepath, "wb").write(
+                msgpack_serialize(unfreeze(opt_state)))
+            self.log_info(f'opt_state saved into {filepath}')
 
     def save_rng(self, ckpt_dir, desc):
         if jax.process_index() == 0:
