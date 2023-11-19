@@ -14,10 +14,10 @@
 
 from functools import partial
 import fire
+import tqdm
 import numpy as np
 import jax
 import flax.linen as nn
-import jax.numpy as jnp
 import optax
 import learn2learn as l2l
 from redco import Deployer, Trainer
@@ -26,7 +26,7 @@ from redco import Deployer, Trainer
 class CNN(nn.Module):
     """
     A simple CNN model.
-    Copied from https://github.com/google/flax/blob/main/examples/mnist/train.py#L36
+    Copied from https://github.com/google/flax/blob/main/examples/mnist/train.py
     """
     n_labels: int = 1
 
@@ -61,14 +61,10 @@ def preprocess(l2l_example):
 
 def collate_fn(examples):
     return {
-        'train': {
-            key: np.stack([example['train'][key] for example in examples])
-            for key in examples[0]['train'].keys()
-        },
-        'val': {
-            key: np.stack([example['val'][key] for example in examples])
-            for key in examples[0]['val'].keys()
-        },
+        split: {
+            key: np.stack([example[split][key] for example in examples])
+            for key in examples[0][split].keys()
+        } for split in ['train', 'val']
     }
 
 
@@ -143,7 +139,7 @@ def eval_metric_fn(preds, examples):
 def main(dataset_name='omniglot',
          n_ways=5,
          n_shots=1,
-         n_tasks_per_epoch=1000,
+         n_tasks_per_epoch=1024,
          n_epochs=1000,
          per_device_batch_size=32,
          learning_rate=0.003,
@@ -186,10 +182,12 @@ def main(dataset_name='omniglot',
 
     eval_examples = [
         preprocess(taskset.validation.sample())
-        for _ in range(n_tasks_per_epoch)
+        for _ in tqdm.trange(n_tasks_per_epoch, desc='Sampling eval tasks')
     ]
     train_examples_fn = lambda epoch_idx: [
-        preprocess(taskset.train.sample()) for _ in range(n_tasks_per_epoch)]
+        preprocess(taskset.train.sample())
+        for _ in tqdm.trange(n_tasks_per_epoch, desc=f'Sampling training tasks')
+    ]
     trainer.fit(
         train_examples=train_examples_fn,
         per_device_batch_size=per_device_batch_size,
