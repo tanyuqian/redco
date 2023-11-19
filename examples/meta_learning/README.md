@@ -24,6 +24,6 @@ python main.py \
     --per_device_batch_size 32 \
     --learning_rate 0.003 \
     --inner_learning_rate 0.5 \
-    --inner_n_steps
+    --inner_n_steps 1
 ```
 With the default hyperparameters (`python main.py`), and a simple CNN modeling copied from [Flax MNIST example](https://github.com/google/flax/blob/main/examples/mnist/train.py#L36), this code gets an accuracy of `98%` on `omniglot (5-way, 1-shot)` .
