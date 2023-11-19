@@ -102,9 +102,10 @@ def eval_rouge(examples, preds, tgt_key):
         use_stemmer=True)
 
 
-def main(num_processes=1,
+def main(n_processes=1,
+         host0_address=None,
+         host0_port=11111,
          process_id=None,
-         coordinator_address=None,
          dataset_name='xsum',
          src_key='document',
          tgt_key='summary',
@@ -123,14 +124,15 @@ def main(num_processes=1,
          jax_seed=42,
          workdir='./workdir',
          run_tensorboard=False):
-    if num_processes > 1:
-        jax.distributed.initialize(
-            coordinator_address=coordinator_address,
-            num_processes=num_processes,
-            process_id=process_id)
-
-        print(f'PROCESS: {jax.process_index()}/{jax.process_count()}')
-        print(f'DEVICES: {jax.local_device_count()}/{jax.device_count()}')
+    deployer = Deployer(
+        n_model_shards=n_model_shards,
+        jax_seed=jax_seed,
+        workdir=workdir,
+        run_tensorboard=run_tensorboard,
+        n_processes=n_processes,
+        host0_address=host0_address,
+        host0_port=host0_port,
+        process_id=process_id)
 
     dataset = datasets.load_dataset(dataset_name)
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
@@ -142,13 +144,6 @@ def main(num_processes=1,
 
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         gen_kwargs = {'max_length': max_tgt_len, 'num_beams': num_beams}
-
-    deployer = Deployer(
-        jax_seed=jax_seed,
-        n_model_shards=n_model_shards,
-        workdir=workdir,
-        run_tensorboard=run_tensorboard,
-        verbose=True)
 
     lr_schedule_fn = deployer.get_lr_schedule_fn(
         train_size=len(dataset['train']),
@@ -178,6 +173,7 @@ def main(num_processes=1,
         params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
+        accumulate_grad_batches=accumulate_grad_batches,
         params_sharding_rules=deployer.get_sharding_rules(params=model.params))
 
     predictor = trainer.get_default_predictor(

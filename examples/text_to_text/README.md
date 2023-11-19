@@ -2,7 +2,7 @@
 
 This example implements seq2seq with Redco. 
 It supports 
-* assigning a dataset from [datasets](https://github.com/huggingface/datasets) (XSUM by default)
+* assigning a dataset from [datasets](https://github.com/huggingface/datasets) or customizing by yourself
 * assigning a seq2seq model from [transformers](https://github.com/huggingface/transformers) (bart-base by default)
 * multi-host running
 
@@ -10,7 +10,7 @@ It supports
 
 Install Redco
 ```shell
-pip install redco==0.4.8
+pip install redco==0.4.11
 ```
 
 ### Usage
