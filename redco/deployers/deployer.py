@@ -11,10 +11,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import json
 import os
 import jax
 import jax.numpy as jnp
+from jax.experimental.multihost_utils import process_allgather
 from flax.jax_utils import replicate, unreplicate
 from flax.training.common_utils import shard_prng_key
 from flax.core.frozen_dict import unfreeze
@@ -301,28 +301,36 @@ class Deployer:
             self.log_info(f'params saved into {filepath}')
 
     def save_opt_state(self, opt_state, ckpt_dir, desc):
+        filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
         if self._mesh is None:
             if jax.process_index() == 0:
                 opt_state = to_state_dict(unreplicate(opt_state))
 
-                filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
                 open(filepath, "wb").write(
                     msgpack_serialize(unfreeze(opt_state)))
                 self.log_info(f'opt_state saved into {filepath}')
         else:
-            assert (jax.local_device_count() % self._mesh.shape['mp'] == 0 or
-                    self._mesh.shape['mp'] % jax.local_device_count() == 0)
-            n_processes_per_model = max(
-                1, self._mesh.shape['mp'] // jax.local_device_count())
+            opt_state = process_allgather(opt_state)
 
-            if jax.process_index() < n_processes_per_model:
+            if jax.process_index() == 0:
                 opt_state = to_state_dict(opt_state)
-
-                filepath = (f'{ckpt_dir}/opt_state_{desc}'
-                            f'_process_{jax.process_index()}.msgpack')
                 open(filepath, "wb").write(
                     msgpack_serialize(unfreeze(opt_state)))
                 self.log_info(f'opt_state saved into {filepath}')
+
+            # assert (jax.local_device_count() % self._mesh.shape['mp'] == 0 or
+            #         self._mesh.shape['mp'] % jax.local_device_count() == 0)
+            # n_processes_per_model = max(
+            #     1, self._mesh.shape['mp'] // jax.local_device_count())
+            #
+            # if jax.process_index() < n_processes_per_model:
+            #     opt_state = to_state_dict(opt_state)
+            #
+            #     filepath = (f'{ckpt_dir}/opt_state_{desc}'
+            #                 f'_process_{jax.process_index()}.msgpack')
+            #     open(filepath, "wb").write(
+            #         msgpack_serialize(unfreeze(opt_state)))
+            #     self.log_info(f'opt_state saved into {filepath}')
 
     def save_rng(self, ckpt_dir, desc):
         if jax.process_index() == 0:
