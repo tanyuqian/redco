@@ -74,17 +74,16 @@ def collate_fn(examples):
 
 def inner_loss_fn(params, batch, model):
     logits = model.apply({'params': params}, batch['pixel_values'])
-    return jnp.mean(optax.softmax_cross_entropy_with_integer_labels(
-        logits=logits, labels=batch['labels']))
+    return optax.softmax_cross_entropy_with_integer_labels(
+        logits=logits, labels=batch['labels']).mean()
 
 
 def inner_step(params, model, inner_batch, inner_learning_rate, inner_n_steps):
-    grads = jax.grad(inner_loss_fn)(params, inner_batch, model)
-
     inner_optimizer = optax.sgd(learning_rate=inner_learning_rate)
     inner_opt_state = inner_optimizer.init(params)
 
     for _ in range(inner_n_steps):
+        grads = jax.grad(inner_loss_fn)(params, inner_batch, model)
         updates, inner_opt_state = inner_optimizer.update(
             updates=grads, state=inner_opt_state, params=params)
         params = optax.apply_updates(params, updates)
@@ -146,7 +145,7 @@ def main(dataset_name='omniglot',
          n_shots=1,
          n_tasks_per_epoch=1000,
          n_epochs=1000,
-         per_device_batch_size=16,
+         per_device_batch_size=32,
          learning_rate=0.003,
          inner_learning_rate=0.5,
          inner_n_steps=1,
