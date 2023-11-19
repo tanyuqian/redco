@@ -150,6 +150,7 @@ def main(n_processes=1,
         params=model.params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
+        accumulate_grad_batches=accumulate_grad_batches,
         params_sharding_rules=deployer.get_sharding_rules(params=model.params))
 
     predictor = trainer.get_default_predictor(
