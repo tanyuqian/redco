@@ -35,5 +35,5 @@ python glue_main.py \
 ...
 ```
 * `--n_processes`: number of hosts.
-* `--host0_address`: the ip of host 0 with an arbitrary available port number.
+* `--host0_address`: the ip of host 0.
 * `--process_id`: id of the current host (should vary across all hosts).

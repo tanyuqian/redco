@@ -29,12 +29,12 @@ See `def main(...)` in [main.py](main.py) for all the tunable arguments.
 #### For Multi-host Envs
 ```
 python main.py \
---coordinator_address 192.168.0.1:1234 \ 
---num_processes 2 \
+--host0_address 192.168.0.1 \ 
+--n_processes 2 \
 --process_id 1 \
 ...
 ```
-* `--num_processes`: number of hosts.
-* `--coordinator_address`: the ip of host 0 with an arbitrary available port number.
+* `--n_processes`: number of hosts.
+* `--host0_address`: the ip of host 0.
 * `--process_id`: id of the current host (should vary across all hosts).
 
