@@ -1,6 +1,6 @@
-## Redco: A Lightweight Tool to Automate Distributed Training
+![](images/redco_logo.png)
 
-Redco is a lightweight and user-friendly tool designed to automate distributed training and inference for large models while simplifying the ML pipeline development process without necessitating MLSys expertise from users.
+Red Coast (redco) is a lightweight and user-friendly tool designed to automate distributed training and inference for large models while simplifying the ML pipeline development process without necessitating MLSys expertise from users.
 
 Check out our [Tech Report Here](https://arxiv.org/pdf/2310.16355.pdf) for details! There is also a [quick tutorial](#quick-tutorial) below.
 
@@ -160,5 +160,4 @@ trainer.fit(
 
 The name of this package, *Redco*, is inspired by *Red Coast Base*, a key location in the story of Three-Body. From Red Coast Base, humanity broadcasts its first message into the vast universe. We thank Cixin Liu for such a masterpiece!
 
-![](https://preview.redd.it/vonp0gvw6sd61.jpg?width=1680&format=pjpg&auto=webp&s=ec76245e86fe1cdc70bad33adddb6794b5176051)
-(image: https://nhz123.lofter.com/post/1d7b3012_1c711d54c)
+![](images/red_coast.png)
