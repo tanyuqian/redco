@@ -20,7 +20,7 @@ import jax
 import jax.numpy as jnp
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
-from flax.jax_utils import replicate
+from flax.jax_utils import replicate, unreplicate
 from flax.training import train_state
 from flax.traverse_util import flatten_dict
 from flax.core.frozen_dict import freeze
@@ -64,19 +64,18 @@ class Trainer:
             desc = self._last_ckpt_info['last_desc']
             params = self._deployer.load_params(
                 filepath=f'{self.workdir}/ckpts/params_{desc}.msgpack')
+            opt_state = self._deployer.load_opt_state(
+                ckpt_dir=f'{self.workdir}/ckpts',
+                desc=desc,
+                params=params,
+                optimizer=optimizer)
 
             self.create_train_state(
                 apply_fn=self._apply_fn,
                 params=params,
                 optimizer=self._optimizer,
-                step=self._last_ckpt_info['last_step'])
-
-            opt_state = self._deployer.load_opt_state(
-                ckpt_dir=f'{self.workdir}/ckpts',
-                desc=desc,
-                target=self._state.opt_state)
-            if opt_state is not None:
-                self._state = self._state.replace(opt_state=opt_state)
+                step=self._last_ckpt_info['last_step'],
+                init_opt_state=opt_state)
 
             self._deployer._rng = jnp.load(
                 f'{self.workdir}/ckpts/rng_{desc}.npy')
@@ -98,17 +97,19 @@ class Trainer:
             collate_fn=collate_fn,
             params_sharding_rules=params_sharding_rules)
 
-    def create_train_state(self, apply_fn, params, optimizer, step):
+    def create_train_state(
+            self, apply_fn, params, optimizer, step, init_opt_state=None):
         params = freeze(params)
 
         if self._deployer.mesh is None:
+            opt_state = init_opt_state if init_opt_state is not None \
+                else optimizer.init(params)
             self._state = train_state.TrainState(
                 step=step,
                 apply_fn=apply_fn,
                 params=params,
                 tx=optimizer,
-                opt_state=optimizer.init(params)
-            )
+                opt_state=opt_state)
             self._state = replicate(self._state)
         else:
             params_spec = self._deployer.get_params_spec(
@@ -117,7 +118,10 @@ class Trainer:
 
             params, opt_state, opt_state_spec = \
                 self._deployer.shard_params_and_opt_state(
-                    params=params, params_spec=params_spec, optimizer=optimizer)
+                    params=params,
+                    params_spec=params_spec,
+                    optimizer=optimizer,
+                    init_opt_state=init_opt_state)
 
             self._state = train_state.TrainState(
                 apply_fn=apply_fn,
@@ -383,10 +387,7 @@ class Trainer:
             os.makedirs(ckpt_dir, exist_ok=True)
 
         self._deployer.save_params(
-            params=self._state.params,
-            ckpt_dir=ckpt_dir,
-            desc=desc,
-            params_sharding_rules=self._params_sharding_rules)
+            params=self._state.params, ckpt_dir=ckpt_dir, desc=desc)
         self._deployer.save_rng(ckpt_dir=ckpt_dir, desc=desc)
 
         if save_opt_state:

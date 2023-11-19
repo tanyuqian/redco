@@ -57,9 +57,14 @@ def shard_params(params, params_spec, mesh):
         return shard_fn(params)
 
 
-def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
+def shard_params_and_opt_state(
+        params, params_spec, mesh, optimizer, init_opt_state=None):
     def init_fn(params_):
-        opt_state_ = optimizer.init(params_)
+        if init_opt_state is None:
+            opt_state_ = optimizer.init(params_)
+        else:
+            opt_state_ = init_opt_state
+
         return opt_state_, params_
 
     def get_opt_spec(x):
@@ -84,24 +89,6 @@ def shard_params_and_opt_state(params, params_spec, mesh, optimizer):
         opt_state, params = p_get_initial_state(params)
 
     return params, opt_state, opt_state_spec
-
-
-def gather_params_to_cpu(params, params_spec, mesh):
-    def param_gather_fn(param_spec):
-        return pjit(
-            lambda x: x, in_shardings=(param_spec, ), out_shardings=None)
-
-    gather_fns = jax.tree_util.tree_map(
-        lambda param_spec: param_gather_fn(param_spec),
-        params_spec,
-        is_leaf=lambda x: x is None or isinstance(x, P))
-
-    with mesh:
-        with jax.default_device(jax.devices('cpu')[0]):
-            return jax.tree_util.tree_map(
-                lambda gather_fn, param: jax.device_get(gather_fn(param)),
-                gather_fns,
-                params)
 
 
 def get_sharding_rules(params, mesh_model_shards, investigate_depth=2):

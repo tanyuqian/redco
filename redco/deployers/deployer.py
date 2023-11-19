@@ -14,10 +14,10 @@
 import os
 import jax
 import jax.numpy as jnp
-from jax.experimental.multihost_utils import process_allgather
+from jax.experimental import multihost_utils
 from flax.jax_utils import replicate, unreplicate
 from flax.training.common_utils import shard_prng_key
-from flax.core.frozen_dict import unfreeze
+from flax.core.frozen_dict import freeze, unfreeze
 from flax.serialization import (
     msgpack_serialize, msgpack_restore, from_state_dict, to_state_dict)
 
@@ -28,7 +28,6 @@ from .model_parallel_utils.mesh_utils import (
     get_mesh,
     shard_params_and_opt_state,
     shard_params,
-    gather_params_to_cpu,
     get_param_spec,
     get_sharding_rules)
 
@@ -203,12 +202,14 @@ class Deployer:
         return shard_params(
             params=params, params_spec=params_spec, mesh=self._mesh)
 
-    def shard_params_and_opt_state(self, params, params_spec, optimizer):
+    def shard_params_and_opt_state(
+            self, params, params_spec, optimizer, init_opt_state):
         return shard_params_and_opt_state(
             params=params,
             params_spec=params_spec,
             mesh=self._mesh,
-            optimizer=optimizer)
+            optimizer=optimizer,
+            init_opt_state=init_opt_state)
 
     def run_model_step(self, step_fn, input_args):
         if self._mesh is None:
@@ -256,44 +257,26 @@ class Deployer:
         self.log_info(f'params loaded from {filepath}')
         return params
 
-    def load_opt_state(self, ckpt_dir, desc, target):
-        if self._mesh is None:
-            filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
+    def load_opt_state(self, ckpt_dir, desc, params, optimizer):
+        filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
+        if not os.path.exists(filepath):
             self.log_info(f'Skip loading opt_state (No file {filepath})')
-            if not os.path.exists(filepath):
-                return None
+            return None
 
+        with jax.default_device(jax.devices('cpu')[0]):
             opt_state = msgpack_restore(open(filepath, 'rb').read())
-            opt_state = from_state_dict(target=target, state=opt_state)
-            opt_state = replicate(opt_state)
-        else:
-            n_processes_per_model = max(
-                1, self._mesh.shape['mp'] // jax.local_device_count())
-            ckpt_process_idx = jax.process_index() % n_processes_per_model
-            filepath = (f'{ckpt_dir}/opt_state_{desc}'
-                        f'_process_{ckpt_process_idx}.msgpack')
-            if not os.path.exists(filepath):
-                self.log_info(f'Skip loading opt_state (No file {filepath})')
-                return None
-
-            opt_state = msgpack_restore(open(filepath, 'rb').read())
-            opt_state = from_state_dict(target=target, state=opt_state)
+            opt_state = from_state_dict(
+                target=optimizer.init(freeze(params)), state=opt_state)
 
         self.log_info(f'opt_state loaded from {filepath}.')
         return opt_state
 
-    def save_params(self,
-                    params,
-                    ckpt_dir,
-                    desc,
-                    params_sharding_rules=None):
+    def save_params(self, params, ckpt_dir, desc):
         if self._mesh is None:
             params = unreplicate(params)
         else:
-            params_spec = self.get_params_spec(
-                params=params, params_sharding_rules=params_sharding_rules)
-            params = gather_params_to_cpu(
-                params=params, params_spec=params_spec, mesh=self._mesh)
+            with jax.default_device(jax.devices('cpu')[0]):
+                params = multihost_utils.process_allgather(params)
 
         if jax.process_index() == 0:
             filepath = f'{ckpt_dir}/params_{desc}.msgpack'
@@ -302,10 +285,10 @@ class Deployer:
 
     def save_opt_state(self, opt_state, ckpt_dir, desc):
         if self._mesh is None:
-            opt_state = to_state_dict(unreplicate(opt_state))
+            opt_state = unreplicate(opt_state)
         else:
             with jax.default_device(jax.devices('cpu')[0]):
-                opt_state = process_allgather(opt_state)
+                opt_state = multihost_utils.process_allgather(opt_state)
 
         if jax.process_index() == 0:
             filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
