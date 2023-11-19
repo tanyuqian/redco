@@ -43,13 +43,15 @@ class Deployer:
                  host0_address=None,
                  host0_port=None,
                  process_id=None,
+                 local_device_ids=None,
                  run_tensorboard=False,
                  run_wandb=False):
         if n_processes > 1:
             jax.distributed.initialize(
                 coordinator_address=f'{host0_address}:{host0_port}',
                 num_processes=n_processes,
-                process_id=process_id)
+                process_id=process_id,
+                local_device_ids=local_device_ids)
 
             print(f'process_id: {jax.process_index()} / {jax.process_count()}')
             print(f'devices: {jax.local_device_count()} / {jax.device_count()}')
