@@ -7,7 +7,7 @@ Check out our [Tech Report Here](https://arxiv.org/pdf/2310.16355.pdf) for detai
 * Redco allows for the simple implementation of distributed training and inference, eliminating the need for additional coding efforts or complex configurations, but still exhibits efficiency comparable to the most advanced model parallel tools.
 * Redco enables customization of arbitrary ML pipelines within three functions, eliminating repetitive ans boilerplate coding, such as multi-host related processing, etc. We demonstrate that this mechanism is widely applicable to various ML algorithms
 
-![](https://bowentan.bitcron.com/redco_coding.png)
+![](images/redco_coding.png)
 
 ### Features
 
