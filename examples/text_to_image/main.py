@@ -114,6 +114,7 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
     predictor = Predictor(
         deployer=deployer,
         collate_fn=partial(
+            collate_fn,
             image_key=image_key,
             text_key=text_key,
             resolution=-1,
