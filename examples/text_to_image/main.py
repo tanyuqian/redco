@@ -42,7 +42,7 @@ def collate_fn(examples, image_key, text_key, resolution, tokenizer):
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5])])
 
-        images = [image.convert("RGB") for image in examples[image_key]]
+        images = [example[image_key].convert("RGB") for example in examples]
         batch['pixel_values'] = np.stack(
             [image_transforms(image) for image in images]).astype(np.float16)
 
