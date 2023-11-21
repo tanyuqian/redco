@@ -12,140 +12,124 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import glob
-from PIL import Image
 from functools import partial
 import os
 import fire
-import json
+import numpy as np
 import jax
+import jax.numpy as jnp
 import optax
+import datasets
+from torchvision import transforms
 from diffusers import FlaxStableDiffusionPipeline
 
-from redco import Deployer, Trainer
-from text_to_image_pipeline import collate_fn, loss_fn, pred_fn, output_fn
+from redco import Deployer, Trainer, Predictor
 
 
-def get_dreambooth_dataset(data_dir,
-                           instance_desc,
-                           class_desc,
-                           prompts,
-                           predictor,
-                           per_device_batch_size,
-                           n_instance_samples_per_epoch,
-                           n_class_samples_per_epoch,
-                           with_prior_preservation):
-    instance_images = []
-    for filename in glob.glob(f'{data_dir}/*'):
-        instance_images.append(Image.open(filename))
+def collate_fn(examples, image_key, text_key, resolution, tokenizer):
+    batch = tokenizer(
+        [example[text_key] for example in examples],
+        max_length=tokenizer.model_max_length,
+        padding="max_length",
+        truncation=True,
+        return_tensors='np')
 
-    instance_prompt = \
-        prompts['train'].format(instance_or_class_desc=instance_desc)
+    if image_key in examples[0]:
+        image_transforms = transforms.Compose([
+            transforms.Resize(resolution),
+            transforms.CenterCrop(resolution),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize([0.5], [0.5])])
 
-    dataset = {'train': []}
-    for idx in range(n_instance_samples_per_epoch):
-        dataset['train'].append({
-            'image': instance_images[idx % len(instance_images)],
-            'text': instance_prompt
-        })
+        images = [image.convert("RGB") for image in examples[image_key]]
+        batch['pixel_values'] = np.stack(
+            [image_transforms(image) for image in images]).astype(np.float16)
 
-    if with_prior_preservation:
-        class_prompt = prompts['train'].format(
-            instance_or_class_desc=class_desc)
-        examples_to_predict = \
-            [{'text': class_prompt}] * n_class_samples_per_epoch
-
-        images = predictor.predict(
-            examples=examples_to_predict,
-            per_device_batch_size=per_device_batch_size)
-
-        for image in images:
-            dataset['train'].append({'image': image, 'text': class_prompt})
-
-    dataset['test'] = [
-        {'text': test_prompt.format(instance_desc=instance_desc)}
-        for test_prompt in prompts['test']]
-
-    return dataset
+    return batch
 
 
-def main(data_dir='data/dataset/dog6',
-         instance_desc='skr dog',
-         class_desc='dog',
-         n_instance_samples_per_epoch=400,
-         n_class_samples_per_epoch=200,
-         model_name_or_path='runwayml/stable-diffusion-v1-5',
-         resolution=512,
-         n_infer_steps=50,
-         n_epochs=6,
-         with_prior_preservation=True,
-         train_text_encoder=False,
+def pred_fn(pred_rng,
+            batch,
+            params,
+            pipeline,
+            pipeline_params,
+            n_infer_steps,
+            guidance_scale):
+    resolution = pipeline.unet.config.sample_size * pipeline.vae_scale_factor
+
+    pred_params = {
+        'unet': params['unet'],
+        'text_encoder': pipeline_params['text_encoder'],
+        'vae': pipeline_params['vae'],
+        'scheduler': pipeline_params['scheduler']
+    }
+
+    return pipeline._generate(
+        prompt_ids=batch['input_ids'],
+        params=pred_params,
+        prng_seed=pred_rng,
+        num_inference_steps=n_infer_steps,
+        guidance_scale=guidance_scale,
+        height=resolution,
+        width=resolution)
+
+
+def output_fn(batch_preds, pipeline):
+    return pipeline.numpy_to_pil(np.asarray(batch_preds))
+
+
+def main(dataset_name='lambdalabs/pokemon-blip-captions',
+         image_key='image',
+         text_key='text',
+         model_name_or_path='duongna/stable-diffusion-v1-4-flax',
          per_device_batch_size=1,
-         eval_per_device_batch_size=2,
+         eval_per_device_batch_size=1,
          accumulate_grad_batches=1,
-         learning_rate=5e-6,
+         learning_rate=1e-5,
+         grad_norm_clip=1.,
          weight_decay=1e-2,
+         n_infer_steps=50,
+         guidance_scale=7.5,
          jax_seed=42):
+    deployer = Deployer(jax_seed=jax_seed)
+
+    dataset = list(datasets.load_dataset(dataset_name, split='train'))
+    cut = int(0.9 * len(dataset))
+    dataset = {'train': dataset[:cut], 'test': dataset[cut:]}
+
     with jax.default_device(jax.devices('cpu')[0]):
         pipeline, pipeline_params = FlaxStableDiffusionPipeline.from_pretrained(
-            model_name_or_path, revision="flax")
-
-        params = {}
-        for key in list(pipeline_params.keys()):
-            if key == 'unet' or (train_text_encoder and key == 'text_encoder'):
-                params[key] = pipeline_params.pop(key)
+            model_name_or_path, savety_checker=None)
+        params = {'unet': pipeline_params.pop('unet')}
 
         pipeline_params = pipeline.unet.to_fp16(pipeline_params)
         params = pipeline.unet.to_fp32(params)
 
-    optimizer = optax.MultiSteps(
-        optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay),
-        every_k_schedule=accumulate_grad_batches)
+    # optimizer = optax.MultiSteps(optax.chain(
+    #     optax.clip_by_global_norm(grad_norm_clip),
+    #     optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
+    # ), every_k_schedule=accumulate_grad_batches)
 
-    deployer = Deployer(jax_seed=jax_seed)
-
-    trainer = Trainer(
+    predictor = Predictor(
         deployer=deployer,
         collate_fn=partial(
-            collate_fn, resolution=resolution, pipeline=pipeline),
-        apply_fn=lambda x: None,
-        loss_fn=partial(
-            loss_fn,
-            pipeline=pipeline,
-            freezed_params=pipeline_params,
-            noise_scheduler_state=pipeline.scheduler.create_state()),
-        params=params,
-        optimizer=optimizer)
-
-    predictor = trainer.get_default_predictor(
+            image_key=image_key,
+            text_key=text_key,
+            resolution=-1,
+            tokenizer=pipeline.tokenizer),
         pred_fn=partial(
             pred_fn,
             pipeline=pipeline,
-            freezed_params=pipeline_params,
+            pipeline_params=pipeline_params,
             n_infer_steps=n_infer_steps,
-            resolution=resolution),
+            guidance_scale=guidance_scale),
         output_fn=partial(output_fn, pipeline=pipeline))
-
-    dataset = get_dreambooth_dataset(
-        dataset_name_or_path=dataset_name_or_path,
-        prompts=json.load(open('prompts.json')),
-        instance_desc=instance_desc,
-        class_desc=class_desc,
-        predictor=predictor,
-        per_device_batch_size=eval_per_device_batch_size,
-        n_instance_samples_per_epoch=n_instance_samples_per_epoch,
-        n_class_samples_per_epoch=n_class_samples_per_epoch,
-        with_prior_preservation=with_prior_preservation)
-
-    trainer.fit(
-        train_examples=dataset['train'],
-        per_device_batch_size=per_device_batch_size,
-        n_epochs=n_epochs)
 
     images = predictor.predict(
         examples=dataset['test'],
-        per_device_batch_size=eval_per_device_batch_size,
-        params=trainer.params)
+        params=params,
+        per_device_batch_size=eval_per_device_batch_size)
 
     output_dir = f'{deployer.workdir}/test_outputs'
     os.makedirs(output_dir, exist_ok=True)
