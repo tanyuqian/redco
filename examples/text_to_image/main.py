@@ -92,7 +92,7 @@ def loss_fn(train_rng,
     model_pred = state.apply_fn(
         {"params": params},
         sample=noisy_latents,
-        timestpes=timesteps,
+        timesteps=timesteps,
         encoder_hidden_states=encoder_hidden_states,
         train=True
     ).sample
