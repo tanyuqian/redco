@@ -58,13 +58,13 @@ def loss_fn(train_rng,
             params,
             batch,
             is_training,
-            frozen_params,
             vae,
+            frozen_params,
             noise_scheduler,
             noise_scheduler_state,
             text_encoder):
     vae_outputs = vae.apply(
-        {"params": frozen_params['vae']},
+        {"params": params['vae']},
         batch["pixel_values"],
         deterministic=True,
         method=vae.encode)
@@ -86,7 +86,7 @@ def loss_fn(train_rng,
         noise_scheduler_state, latents, noise, timesteps)
 
     encoder_hidden_states = text_encoder(
-        batch['input_ids'], params=frozen_params['text_encoder'], train=False
+        batch['input_ids'], params=params['text_encoder'], train=False
     )[0]
 
     model_pred = state.apply_fn(
@@ -180,10 +180,12 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
             feature_extractor=feature_extracter,
             safety_checker=None)
 
-        params = {'unet': unet_params}
-        frozen_params = {
+        params = {
+            'unet': unet_params,
             'text_encoder': text_encoder.params,
-            'vae': vae_params,
+            'vae': vae_params
+        }
+        frozen_params = {
             'scheduler': noise_scheduler_state
         }
 
@@ -234,7 +236,7 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
 
     images = predictor.predict(
         examples=dataset['test'],
-        params=params,
+        params=trainer.params,
         per_device_batch_size=eval_per_device_batch_size)
 
     output_dir = f'{deployer.workdir}/test_outputs'
