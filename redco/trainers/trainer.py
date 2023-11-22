@@ -168,14 +168,14 @@ class Trainer:
                 in_shardings=(self._state_spec, data_spec),
                 out_shardings=None)
 
-    def train(self, examples, per_device_batch_size, desc=''):
+    def train(self, examples, per_device_batch_size, desc=None):
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
             collate_fn=self._collate_fn,
             shuffle=True,
             shuffle_rng=self._deployer.gen_rng(),
-            desc=f'Training ({desc})',
+            desc=f'Training ({desc})' if desc is not None else 'Training',
             is_train=True,
             accumulate_grad_batches=self._accumulate_grad_batches)
 
@@ -193,14 +193,14 @@ class Trainer:
             data_batches.set_postfix(**metrics)
             self._deployer.log_metrics(metrics=metrics, step=self.step)
 
-    def eval_loss(self, examples, per_device_batch_size, desc=''):
+    def eval_loss(self, examples, per_device_batch_size, desc=None):
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
             collate_fn=self._collate_fn,
             shuffle=False,
             shuffle_rng=None,
-            desc=f'Evaluating ({desc})')
+            desc=f'Validating ({desc})' if desc is not None else 'Validating')
 
         losses = []
         for batch in data_batches:

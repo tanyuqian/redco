@@ -180,12 +180,10 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
             feature_extractor=feature_extracter,
             safety_checker=None)
 
-        params = {
-            'unet': unet_params,
-            'text_encoder': text_encoder.params,
-            'vae': vae_params
-        }
+        params = {'unet': unet_params}
         frozen_params = {
+            'text_encoder': text_encoder.params,
+            'vae': vae_params,
             'scheduler': noise_scheduler_state
         }
 
@@ -229,10 +227,13 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
             guidance_scale=guidance_scale),
         output_fn=partial(output_fn, pipeline=pipeline))
 
-    trainer.fit(
-        train_examples=dataset['train'],
-        per_device_batch_size=per_device_batch_size,
-        n_epochs=n_epochs)
+    # trainer.fit(
+    #     train_examples=dataset['train'],
+    #     per_device_batch_size=per_device_batch_size,
+    #     n_epochs=n_epochs)
+
+    loss = trainer.eval_loss(
+        examples=dataset['train'], per_device_batch_size=per_device_batch_size)
 
     images = predictor.predict(
         examples=dataset['test'],
