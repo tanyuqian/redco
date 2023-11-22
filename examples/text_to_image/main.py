@@ -177,7 +177,8 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
             tokenizer=tokenizer,
             unet=unet,
             scheduler=noise_scheduler,
-            feature_extractor=feature_extracter)
+            feature_extractor=feature_extracter,
+            safety_checker=None)
 
         params = {'unet': unet_params}
         frozen_params = {
