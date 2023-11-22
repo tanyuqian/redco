@@ -90,7 +90,7 @@ def loss_fn(train_rng,
     )[0]
 
     model_pred = state.apply_fn(
-        {"params": params},
+        {"params": params['unet']},
         sample=noisy_latents,
         timesteps=timesteps,
         encoder_hidden_states=encoder_hidden_states,
