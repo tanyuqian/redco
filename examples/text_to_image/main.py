@@ -187,7 +187,7 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
             'scheduler': noise_scheduler_state
         }
 
-        pipeline_params = pipeline.unet.to_fp16(frozen_params)
+        frozen_params = pipeline.unet.to_fp16(frozen_params)
         params = pipeline.unet.to_fp32(params)
 
     optimizer = optax.MultiSteps(optax.chain(
