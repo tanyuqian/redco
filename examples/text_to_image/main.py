@@ -140,7 +140,7 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
          image_key='image',
          text_key='text',
          model_name_or_path='duongna/stable-diffusion-v1-4-flax',
-         n_epochs=1,
+         n_epochs=3,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
          accumulate_grad_batches=1,
@@ -227,13 +227,10 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
             guidance_scale=guidance_scale),
         output_fn=partial(output_fn, pipeline=pipeline))
 
-    # trainer.fit(
-    #     train_examples=dataset['train'],
-    #     per_device_batch_size=per_device_batch_size,
-    #     n_epochs=n_epochs)
-
-    loss = trainer.eval_loss(
-        examples=dataset['train'], per_device_batch_size=per_device_batch_size)
+    trainer.fit(
+        train_examples=dataset['train'],
+        per_device_batch_size=per_device_batch_size,
+        n_epochs=n_epochs)
 
     images = predictor.predict(
         examples=dataset['test'],

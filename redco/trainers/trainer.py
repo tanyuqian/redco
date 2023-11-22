@@ -349,7 +349,8 @@ class Trainer:
                 save_ckpt_kwargs = {
                     'epoch_idx': epoch_idx,
                     'ckpt_dir': f'{self.workdir}/ckpts',
-                    'save_opt_state': save_opt_states}
+                    'save_opt_state': save_opt_states
+                }
 
                 for key in save_argmin_ckpt_by_metrics:
                     assert self.workdir is not None
