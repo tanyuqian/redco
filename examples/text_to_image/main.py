@@ -64,7 +64,7 @@ def loss_fn(train_rng,
             noise_scheduler_state,
             text_encoder):
     vae_outputs = vae.apply(
-        {"params": params['vae']},
+        {"params": frozen_params['vae']},
         batch["pixel_values"],
         deterministic=True,
         method=vae.encode)
@@ -86,7 +86,7 @@ def loss_fn(train_rng,
         noise_scheduler_state, latents, noise, timesteps)
 
     encoder_hidden_states = text_encoder(
-        batch['input_ids'], params=params['text_encoder'], train=False
+        batch['input_ids'], params=frozen_params['text_encoder'], train=False
     )[0]
 
     model_pred = state.apply_fn(
