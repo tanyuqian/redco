@@ -251,7 +251,7 @@ class Trainer:
                 f'{self.workdir}/max_metrics.json'))
             self._deployer.log_info(max_metrics, title='Detected max_metrics')
 
-        if eval_sanity_check:
+        if eval_sanity_check and eval_examples is not None:
             rng_backup = self._deployer._rng
             _, eval_global_batch_size = self._deployer.process_batch_size(
                 per_device_batch_size=eval_per_device_batch_size)
