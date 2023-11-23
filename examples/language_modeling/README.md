@@ -14,7 +14,7 @@ pip install redco==0.4.12
 ### Use
 
 ```
-python main.py \
+XLA_PYTHON_CLIENT_MEM_FRACTION=.92 python main.py \
     --model_name_or_path princeton-nlp/Sheared-LLaMA-1.3B \
     --n_epochs 3 \
     --per_device_batch_size 8 \
@@ -24,6 +24,7 @@ python main.py \
     --eval_src_length 256 \
     --n_model_shards 4 
 ```
+* `XLA_PYTHON_CLIENT_MEM_FRACTION=.92`: adjust the proportion of pre-allocated GPU memory to JAX.
 * `--model_name_or_path`: name or path of a CausalLM on HuggingFace, e.g., `huggyllama/llama-7b`.
 * `--max_length`: total length of instruction + response in training. 
 * `--eval_src_length`: length of instruction in inference.
