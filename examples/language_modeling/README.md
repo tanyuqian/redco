@@ -30,6 +30,7 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=.92 python main.py \
 * `--eval_src_length`: length of instruction in inference.
 * `--n_model_shards`: number of pieces to split your large model, `1` by default (pure data parallelism).
 
+See `def main(...)` in [main.py](main.py) for all the tunable arguments. 
 
 #### For Multi-host Envs
 ```
