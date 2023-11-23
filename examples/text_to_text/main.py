@@ -191,7 +191,8 @@ def main(n_processes=1,
         eval_loss=True,
         eval_predictor=predictor,
         eval_metric_fn=partial(eval_rouge, tgt_key=tgt_key),
-        save_last_ckpt=True)
+        save_last_ckpt=True,
+        save_argmax_ckpt_by_metrics=['rougeL'])
 
 
 if __name__ == '__main__':
