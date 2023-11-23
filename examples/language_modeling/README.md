@@ -24,7 +24,7 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=.92 python main.py \
     --eval_src_length 256 \
     --n_model_shards 4 
 ```
-* `XLA_PYTHON_CLIENT_MEM_FRACTION=.92`: adjust the proportion of pre-allocated GPU memory to JAX.
+* `XLA_PYTHON_CLIENT_MEM_FRACTION=.92` *(Optional)*: can adjust the proportion of pre-allocated GPU memory to JAX.
 * `--model_name_or_path`: name or path of a CausalLM on HuggingFace, e.g., `huggyllama/llama-7b`.
 * `--max_length`: total length of instruction + response in training. 
 * `--eval_src_length`: length of instruction in inference.
