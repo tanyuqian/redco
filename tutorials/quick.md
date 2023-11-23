@@ -8,7 +8,7 @@ Below is a template code to customize an arbitrary distributed training pipeline
 * No need MLSys knowledge: only specify a number `n_model_shards` to split your model
 * ONLY NEED to focus on your algorithm design!
 
-After checking out our [text classification example (glue_main.py)](examples/classification_regression/glue_main.py), you'll be an expert of redco!
+After checking out our [text classification example (glue_main.py)](../examples/classification_regression/glue_main.py), you'll be an expert of redco!
 
 ```python
 def collate_fn(examples, ...):
