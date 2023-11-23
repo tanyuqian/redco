@@ -10,7 +10,7 @@ It supports
 
 Install Redco
 ```shell
-pip install redco==0.4.11
+pip install redco==0.4.12
 ```
 
 ### Usage
@@ -29,12 +29,12 @@ See `def main(...)` in [main.py](main.py) for all the tunable arguments.
 #### For Multi-host Envs
 ```
 python main.py \
---host0_address 192.168.0.1 \ 
---n_processes 2 \
---process_id 1 \
-...
+    --host0_address 192.168.0.1 \ 
+    --n_processes 2 \
+    --process_id 1 \
+    --n_local_devices 4
 ```
 * `--n_processes`: number of hosts.
 * `--host0_address`: the ip of host 0.
 * `--process_id`: id of the current host (should vary across all hosts).
-
+* `--n_local_devices`: devices on the machine. (Only required on some special envs, e.g., SLURM) 

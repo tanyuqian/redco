@@ -97,20 +97,22 @@ def output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
 
 
-def main(num_processes=1,
+def main(n_processes=1,
+         host0_address=None,
+         host0_port=11111,
          process_id=None,
-         coordinator_address=None,
+         n_local_devices=None,
          dataset_name='tatsu-lab/alpaca',
          text_key='text',
          tgt_key='output',
          model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
-         n_model_shards=2,
+         n_model_shards=1,
          n_epochs=3,
-         per_device_batch_size=1,
-         eval_per_device_batch_size=1,
-         accumulate_grad_batches=1,
-         max_length=64,
-         eval_src_length=32,
+         per_device_batch_size=8,
+         eval_per_device_batch_size=16,
+         accumulate_grad_batches=4,
+         max_length=512,
+         eval_src_length=256,
          learning_rate=2e-5,
          lr_schedule_type='cosine',
          warmup_rate=0.03,
@@ -119,14 +121,16 @@ def main(num_processes=1,
          jax_seed=42,
          workdir='./workdir',
          run_tensorboard=False):
-    if num_processes > 1:
-        jax.distributed.initialize(
-            coordinator_address=coordinator_address,
-            num_processes=num_processes,
-            process_id=process_id)
-
-        print(f'PROCESS: {jax.process_index()}/{jax.process_count()}')
-        print(f'DEVICES: {jax.local_device_count()}/{jax.device_count()}')
+    deployer = Deployer(
+        n_model_shards=n_model_shards,
+        jax_seed=jax_seed,
+        workdir=workdir,
+        run_tensorboard=run_tensorboard,
+        n_processes=n_processes,
+        host0_address=host0_address,
+        host0_port=host0_port,
+        process_id=process_id,
+        n_local_devices=n_local_devices)
 
     dataset = list(datasets.load_dataset(dataset_name, split='train'))
     train_size = int(0.9 * len(dataset))
@@ -135,16 +139,9 @@ def main(num_processes=1,
         'validation': dataset[train_size:],
     }
 
-    deployer = Deployer(
-        jax_seed=jax_seed,
-        n_model_shards=n_model_shards,
-        workdir=workdir,
-        run_tensorboard=run_tensorboard,
-        verbose=True)
-
     with jax.default_device(jax.devices('cpu')[0]):
         tokenizer = AutoTokenizer.from_pretrained(
-            model_name_or_path, padding_side='right')
+            model_name_or_path, padding_side='left')
         tokenizer.pad_token = tokenizer.eos_token
 
         if 'llama' in model_name_or_path.lower():
@@ -191,6 +188,7 @@ def main(num_processes=1,
         params=params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
+        accumulate_grad_batches=accumulate_grad_batches,
         params_sharding_rules=params_sharding_rules)
 
     predictor = Predictor(
@@ -211,7 +209,9 @@ def main(num_processes=1,
         per_device_batch_size=per_device_batch_size,
         eval_examples=dataset['validation'],
         eval_per_device_batch_size=eval_per_device_batch_size,
-        eval_predictor=predictor)
+        eval_predictor=predictor,
+        save_last_ckpt=True,
+        save_opt_states=True)
 
 
 if __name__ == '__main__':

@@ -42,10 +42,13 @@ class Deployer:
                  host0_address=None,
                  host0_port=None,
                  process_id=None,
-                 local_device_ids=None,
+                 n_local_devices=None,
                  run_tensorboard=False,
                  run_wandb=False):
         if n_processes > 1:
+            local_device_ids = None if n_local_devices is None \
+                else list(range(n_local_devices))
+
             jax.distributed.initialize(
                 coordinator_address=f'{host0_address}:{host0_port}',
                 num_processes=n_processes,

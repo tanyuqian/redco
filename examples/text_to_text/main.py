@@ -106,7 +106,7 @@ def main(n_processes=1,
          host0_address=None,
          host0_port=11111,
          process_id=None,
-         n_local_devices=4,
+         n_local_devices=None,
          dataset_name='xsum',
          src_key='document',
          tgt_key='summary',
@@ -134,7 +134,7 @@ def main(n_processes=1,
         host0_address=host0_address,
         host0_port=host0_port,
         process_id=process_id,
-        local_device_ids=list(range(n_local_devices)))
+        n_local_devices=4)
 
     dataset = datasets.load_dataset(dataset_name)
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
@@ -190,7 +190,8 @@ def main(n_processes=1,
         eval_per_device_batch_size=eval_per_device_batch_size,
         eval_loss=True,
         eval_predictor=predictor,
-        eval_metric_fn=partial(eval_rouge, tgt_key=tgt_key))
+        eval_metric_fn=partial(eval_rouge, tgt_key=tgt_key),
+        save_last_ckpt=True)
 
 
 if __name__ == '__main__':

@@ -20,7 +20,7 @@ import jax
 import jax.numpy as jnp
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
-from flax.jax_utils import replicate, unreplicate
+from flax.jax_utils import replicate
 from flax.training import train_state
 from flax.traverse_util import flatten_dict
 from flax.core.frozen_dict import freeze
@@ -200,7 +200,7 @@ class Trainer:
             collate_fn=self._collate_fn,
             shuffle=False,
             shuffle_rng=None,
-            desc=f'Validating ({desc})' if desc is not None else 'Validating')
+            desc=f'Evaluating ({desc})' if desc is not None else 'Evaluating')
 
         losses = []
         for batch in data_batches:
