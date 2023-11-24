@@ -134,6 +134,9 @@ class Deployer:
             batch_preds = batch_preds_with_idxes['raw_preds']
             idxes = batch_preds_with_idxes['__idx__']
 
+            assert jax.tree_util.tree_all(jax.tree_util.tree_map(
+                lambda t: t.shape[0] * t.shape[1] == idxes.size, batch_preds))
+
             preds = jax.tree_util.tree_map(
                 lambda t: t.reshape((t.shape[0] * t.shape[1],) + t.shape[2:]),
                 batch_preds)
