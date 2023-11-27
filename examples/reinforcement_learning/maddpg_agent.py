@@ -189,12 +189,12 @@ class MADDPGAgent:
     def update_target(self, agent):
         self._target_actor_params[agent] = jax.tree_util.tree_map(
             lambda x, y: (1. - self._tau) * x + self._tau * y,
-            self._target_actor_params[agent],
+            unfreezeself._target_actor_params[agent]),
             unfreeze(self._trainer[agent].params['actor']))
 
         self._target_critic_params[agent] = jax.tree_util.tree_map(
             lambda x, y: (1. - self._tau) * x + self._tau * y,
-            self._target_critic_params[agent],
+            unfreeze(self._target_critic_params[agent],
             unfreeze(self._trainer[agent].params['critic']))
 
     def train(self):
