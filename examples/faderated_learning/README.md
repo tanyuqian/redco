@@ -5,6 +5,11 @@ It supports assigning a dataset from [torchvision](https://pytorch.org/vision/st
 
 ### Requirement
 
+Install TorchVision
+```shell
+pip install torchvision==0.16.1
+```
+
 Install Redco
 ```shell
 pip install redco==0.4.13
@@ -25,4 +30,9 @@ python main.py \
 ```
 See `def main(...)` in [glue_main.py](glue_main.py) for all the tunable arguments. 
 
+### Results
 
+| Setting           | Command                           | Accuracy |
+|-------------------|-----------------------------------|----------|
+| IID Partition     | `python main.py --do_iid_partition` | 98.82%   |
+| Non-IID Partition | `python main.py`                    | 97.53%   |
