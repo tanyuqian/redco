@@ -22,15 +22,15 @@ from maddpg_agent import MADDPGAgent
 
 
 def main(env_name='simple_adversary_v3',
-         n_episodes=50000,
+         n_episodes=5000,
          max_steps_per_episode=25,
          learning_rate=1e-2,
          critic_loss_weight=1.,
          gamma=0.95,
          tau=0.02,
          explore_eps=0.01,
-         replay_buffer_size=1000000,
-         warmup_steps=50000,
+         replay_buffer_size=100000,
+         minimal_buffer_size=4000,
          update_interval_steps=100,
          temperature=1.,
          action_reg=1e-3,
@@ -54,7 +54,7 @@ def main(env_name='simple_adversary_v3',
         learning_rate=learning_rate,
         critic_loss_weight=critic_loss_weight,
         replay_buffer_size=replay_buffer_size,
-        warmup_steps=warmup_steps,
+        minimal_buffer_size=minimal_buffer_size,
         update_interval_steps=update_interval_steps,
         tau=tau,
         gamma=gamma,
@@ -71,8 +71,7 @@ def main(env_name='simple_adversary_v3',
         sum_rewards = {agent: 0. for agent in env.agents}
 
         for _ in range(max_steps_per_episode):
-            explore_eps_ = explore_eps \
-                if maddpg.total_steps > warmup_steps else 1.
+            explore_eps_ = explore_eps
             action = {
                 agent: maddpg.predict_action(
                     agent=agent,
@@ -102,7 +101,7 @@ def main(env_name='simple_adversary_v3',
         episodes.set_postfix(**sum_rewards)
         episode_rewards.append(sum_rewards)
 
-        if episode_idx % 5000 == 0:
+        if episode_idx % 1000 == 0:
             maddpg.save(episode_idx=episode_idx)
 
     env.close()

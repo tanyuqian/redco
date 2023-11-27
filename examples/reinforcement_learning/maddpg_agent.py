@@ -43,8 +43,8 @@ class MADDPGAgent:
                  action_dims,
                  learning_rate=1e-2,
                  critic_loss_weight=1.,
-                 replay_buffer_size=1000000,
-                 warmup_steps=50000,
+                 replay_buffer_size=100000,
+                 minimal_buffer_size=4000,
                  update_interval_steps=100,
                  tau=0.02,
                  gamma=0.95,
@@ -127,7 +127,7 @@ class MADDPGAgent:
         self._replay_buffer = deque(maxlen=replay_buffer_size)
 
         self._update_interval_steps = update_interval_steps
-        self._warmup_steps = warmup_steps
+        self._minimal_buffer_size = minimal_buffer_size
         self._gamma = gamma
         self._tau = tau
         _, self._global_batch_size = self._deployer.process_batch_size(
@@ -182,7 +182,7 @@ class MADDPGAgent:
 
         self._total_steps += 1
 
-        if self._total_steps > self._warmup_steps and \
+        if len(self._replay_buffer) >= self._minimal_buffer_size and \
                 self._total_steps % self._update_interval_steps == 0:
             self.train()
 
