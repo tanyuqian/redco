@@ -21,7 +21,7 @@ from pettingzoo import mpe
 from maddpg_agent import MADDPGAgent
 
 
-def main(env_name='simple_adversary_v2',
+def main(env_name='simple_adversary_v3',
          n_episodes=50000,
          learning_rate=1e-2,
          critic_loss_weight=1.,
@@ -61,12 +61,12 @@ def main(env_name='simple_adversary_v2',
         action_reg=action_reg,
         per_device_batch_size=per_device_batch_size,
         jax_seed=jax_seed,
-        workdir=f'workdir_{env_name}')
+        workdir=f'workdir_maddpg_{env_name}')
 
     episode_rewards = []
     episodes = tqdm.trange(n_episodes, desc='Episodes')
     for episode_idx in episodes:
-        state = env.reset()
+        state, _ = env.reset()
         sum_rewards = {agent: 0. for agent in env.agents}
 
         while env.agents:

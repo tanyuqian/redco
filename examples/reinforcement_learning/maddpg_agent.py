@@ -18,6 +18,7 @@ import random
 import numpy as np
 import jax
 import jax.numpy as jnp
+from flax.core.frozen_dict import unfreeze
 import optax
 from scipy.special import softmax
 
@@ -189,12 +190,12 @@ class MADDPGAgent:
         self._target_actor_params[agent] = jax.tree_util.tree_map(
             lambda x, y: (1. - self._tau) * x + self._tau * y,
             self._target_actor_params[agent],
-            self._trainer[agent].params['actor'])
+            unfreeze(self._trainer[agent].params['actor']))
 
         self._target_critic_params[agent] = jax.tree_util.tree_map(
             lambda x, y: (1. - self._tau) * x + self._tau * y,
             self._target_critic_params[agent],
-            self._trainer[agent].params['critic'])
+            unfreeze(self._trainer[agent].params['critic']))
 
     def train(self):
         for agent in self._agents:
@@ -212,8 +213,8 @@ class MADDPGAgent:
             agent_dones = np.array(
                 [trans.done[agent] for trans in transitions])
 
-            td_targets = agent_rewards + \
-                         self._gamma * next_q_values * (1. - agent_dones)
+            td_targets = (agent_rewards +
+                          self._gamma * next_q_values * (1. - agent_dones))
 
             examples = [{
                 'states': self.get_state_input(trans.state),
@@ -242,10 +243,12 @@ class MADDPGAgent:
     def save(self, episode_idx):
         params = {agent: self._trainer[agent].params for agent in self._agents}
         save_dir = self._deployer.workdir
-        filepath = f'{save_dir}/maddpg_episode{episode_idx}.msgpack'
 
-        self._deployer.save_params(params=params, filepath=filepath)
-        print(f'MADDPG checkpoint saved into {filepath}')
+        self._deployer.save_params(
+            params=params,
+            ckpt_dir=save_dir,
+            desc=f'maddpg_episode{episode_idx}')
+        print(f'Checkpoint \"maddpg_episode{episode_idx}\" saved.')
 
     @property
     def total_steps(self):
