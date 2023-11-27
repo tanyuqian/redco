@@ -15,24 +15,23 @@
 from functools import partial
 import fire
 import tqdm
-
 import numpy as np
 from sklearn.metrics import confusion_matrix
 import jax
 import jax.numpy as jnp
+from flax.core.frozen_dict import freeze
 import optax
+from redco import Deployer, Trainer, Predictor
 
 from data_utils import get_dataset
 from model_utils import CNN, collate_fn, loss_fn, pred_fn
-
-from redco import Deployer, Trainer, Predictor
 
 
 class FedAvgServer:
     def __init__(self, deployer, model, params, n_clients):
         self._deployer = deployer
         self._model = model
-        self._params = params
+        self._params = freeze(params)
         self._n_clients = n_clients
 
         self._trainer = Trainer(
@@ -47,19 +46,18 @@ class FedAvgServer:
             deployer=self._deployer,
             collate_fn=collate_fn,
             pred_fn=partial(pred_fn, model=self._model),
-            output_fn=lambda x: x.tolist(),
-            params=self._params)
+            output_fn=lambda x: x.tolist())
 
     def train_client(self,
                      examples,
                      learning_rate,
                      per_device_batch_size,
                      n_epochs):
-        self._trainer.create_train_state(
+        self._trainer.set_train_state(
             apply_fn=self._model.apply,
             params=self._params,
-            params_shard_rules=None,
-            optimizer=optax.adam(learning_rate=learning_rate))
+            optimizer=optax.adam(learning_rate=learning_rate),
+            step=0)
 
         self._trainer.fit(
             train_examples=examples,
@@ -73,7 +71,7 @@ class FedAvgServer:
             examples=examples,
             per_device_batch_size=per_device_batch_size,
             params=self._params)
-        labels = [example[1] for example in examples]
+        labels = [example['label'] for example in examples]
 
         acc = np.mean(np.array(preds) == np.array(labels))
         conf_mat = confusion_matrix(y_true=labels, y_pred=preds)
@@ -128,13 +126,13 @@ def main(data_dir='./data',
          eval_per_device_batch_size=128,
          learning_rate=0.001,
          jax_seed=42):
+    deployer = Deployer(jax_seed=jax_seed, verbose=False)
+
     client_train_datasets, eval_dataset = get_dataset(
         data_dir=data_dir,
         dataset_name=dataset_name,
         n_clients=n_clients,
         n_data_shards=n_data_shards)
-
-    deployer = Deployer(jax_seed=jax_seed, verbose=False)
 
     model = CNN()
     dummy_batch = collate_fn([eval_dataset[0]])

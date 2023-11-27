@@ -70,7 +70,7 @@ class Trainer:
                 params=params,
                 optimizer=optimizer)
 
-            self.create_train_state(
+            self.set_train_state(
                 apply_fn=self._apply_fn,
                 params=params,
                 optimizer=self._optimizer,
@@ -88,7 +88,7 @@ class Trainer:
         else:
             self._last_ckpt_info = \
                 {'last_desc': None, 'last_step': 0, 'last_epoch_idx': -1}
-            self.create_train_state(
+            self.set_train_state(
                 apply_fn=apply_fn, params=params, optimizer=optimizer, step=0)
 
         self._default_predictor_fn = partial(
@@ -97,7 +97,7 @@ class Trainer:
             collate_fn=collate_fn,
             params_sharding_rules=params_sharding_rules)
 
-    def create_train_state(
+    def set_train_state(
             self, apply_fn, params, optimizer, step, init_opt_state=None):
         params = freeze(params)
 

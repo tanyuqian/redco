@@ -2,7 +2,7 @@
 
 This example implements classification/regression with Redco. 
 It supports 
-* assigning a dataset from [datasets](https://github.com/huggingface/datasets) for customize
+* assigning a dataset from [datasets](https://github.com/huggingface/datasets) or customizing by yourself
 * assigning a classfication model from [transformers](https://github.com/huggingface/transformers) 
 * multi-host running
 

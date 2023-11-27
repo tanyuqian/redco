@@ -35,16 +35,9 @@ class CNN(nn.Module):
 
 
 def collate_fn(examples):
-    images, labels = [], []
-    for image, label in examples:
-        if len(np.array(image).shape) == 2:
-            image = np.expand_dims(image, axis=-1)
-        images.append(np.array(image))
-        labels.append(label)
-
     return {
-        'images': np.stack(images),
-        'labels': np.array(labels)
+        'images': np.stack([example['image'] for example in examples]),
+        'labels': np.stack([example['label'] for example in examples])
     }
 
 

@@ -13,7 +13,6 @@
 #  limitations under the License.
 
 import numpy as np
-
 from torchvision import datasets
 
 
@@ -33,14 +32,30 @@ def get_dataset(data_dir, dataset_name, n_clients, n_data_shards):
         shards_size=len(dataset['train']) // n_data_shards,
         num_shards_per_client=n_data_shards // n_clients)
 
-    client_train_datasets = {
-        key: [dataset['train'][idx] for idx in client_data_idxes[key]]
-        for key in client_data_idxes
-    }
+    client_train_datasets = {}
+    for key in client_data_idxes:
+        client_train_datasets[key] = []
+        for idx in client_data_idxes[key]:
+            image = np.asarray(dataset['train'][idx][0])
+            if len(image.shape) == 2:
+                image = np.expand_dims(image, axis=-1)
 
-    return client_train_datasets, dataset['test']
+            client_train_datasets[key].append({
+                'image': image, 'label': dataset['train'][idx][1]
+            })
+
+    test_dataset = []
+    for image, label in dataset['test']:
+        image = np.asarray(image)
+        if len(image.shape) == 2:
+            image = np.expand_dims(image, axis=-1)
+        test_dataset.append({'image': image, 'label': label})
+
+    return client_train_datasets, test_dataset
 
 
+# copied from https://github.com/ayushm-agrawal/
+# Federated-Learning-Implementations/blob/master/FederatedAveraging.ipynb
 def iid_partition(dataset, clients):
     """
     I.I.D paritioning of data over clients
@@ -67,6 +82,8 @@ def iid_partition(dataset, clients):
     return client_dict
 
 
+# copied from https://github.com/ayushm-agrawal/
+# Federated-Learning-Implementations/blob/master/FederatedAveraging.ipynb
 def non_iid_partition(dataset, clients, total_shards, shards_size,
                       num_shards_per_client):
     """
@@ -111,5 +128,3 @@ def non_iid_partition(dataset, clients, total_shards, shards_size,
             ), axis=0)
 
     return client_dict
-
-
