@@ -59,6 +59,8 @@ class FedAvgServer:
             optimizer=optax.adam(learning_rate=learning_rate),
             step=0)
 
+        print(f'train size: {len(examples)}')
+
         self._trainer.fit(
             train_examples=examples,
             per_device_batch_size=per_device_batch_size,
@@ -122,8 +124,8 @@ def main(data_dir='./data',
          n_rounds=100,
          n_clients_per_round=10,
          n_client_epochs_per_round=5,
-         per_device_batch_size=64,
-         eval_per_device_batch_size=128,
+         per_device_batch_size=10,
+         eval_per_device_batch_size=100,
          learning_rate=0.001,
          jax_seed=42):
     deployer = Deployer(jax_seed=jax_seed, verbose=False)
