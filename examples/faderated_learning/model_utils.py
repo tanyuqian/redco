@@ -19,6 +19,10 @@ import optax
 
 
 class CNN(nn.Module):
+    """
+    A simple CNN model.
+    Copied from https://github.com/google/flax/blob/main/examples/mnist/train.py
+    """
     @nn.compact
     def __call__(self, x):
         x = nn.Conv(features=32, kernel_size=(3, 3))(x)

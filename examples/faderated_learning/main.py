@@ -59,8 +59,6 @@ class FedAvgServer:
             optimizer=optax.adam(learning_rate=learning_rate),
             step=0)
 
-        print(f'train size: {len(examples)}')
-
         self._trainer.fit(
             train_examples=examples,
             per_device_batch_size=per_device_batch_size,
@@ -124,6 +122,7 @@ def main(data_dir='./data',
          n_rounds=100,
          n_clients_per_round=10,
          n_client_epochs_per_round=5,
+         do_iid_partition=False,
          per_device_batch_size=10,
          eval_per_device_batch_size=100,
          learning_rate=0.001,
@@ -134,7 +133,8 @@ def main(data_dir='./data',
         data_dir=data_dir,
         dataset_name=dataset_name,
         n_clients=n_clients,
-        n_data_shards=n_data_shards)
+        n_data_shards=n_data_shards,
+        do_iid_partition=do_iid_partition)
 
     model = CNN()
     dummy_batch = collate_fn([eval_dataset[0]])

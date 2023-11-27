@@ -16,7 +16,8 @@ import numpy as np
 from torchvision import datasets
 
 
-def get_dataset(data_dir, dataset_name, n_clients, n_data_shards):
+def get_dataset(
+        data_dir, dataset_name, n_clients, n_data_shards, do_iid_partition):
     dataset = {
         'train': list(getattr(datasets, dataset_name)(
             data_dir, train=True, download=True)),
@@ -25,12 +26,17 @@ def get_dataset(data_dir, dataset_name, n_clients, n_data_shards):
     }
 
     data_class = getattr(datasets, dataset_name)
-    client_data_idxes = non_iid_partition(
-        dataset=data_class(data_dir, train=True, download=True),
-        clients=n_clients,
-        total_shards=n_data_shards,
-        shards_size=len(dataset['train']) // n_data_shards,
-        num_shards_per_client=n_data_shards // n_clients)
+    if do_iid_partition:
+        client_data_idxes = iid_partition(
+            dataset=data_class(data_dir, train=True, download=True),
+            clients=n_clients)
+    else:
+        client_data_idxes = non_iid_partition(
+            dataset=data_class(data_dir, train=True, download=True),
+            clients=n_clients,
+            total_shards=n_data_shards,
+            shards_size=len(dataset['train']) // n_data_shards,
+            num_shards_per_client=n_data_shards // n_clients)
 
     client_train_datasets = {}
     for key in client_data_idxes:
@@ -58,6 +64,9 @@ def get_dataset(data_dir, dataset_name, n_clients, n_data_shards):
 # Federated-Learning-Implementations/blob/master/FederatedAveraging.ipynb
 def iid_partition(dataset, clients):
     """
+    copied from https://github.com/ayushm-agrawal/
+    Federated-Learning-Implementations/blob/master/FederatedAveraging.ipynb
+
     I.I.D paritioning of data over clients
     Shuffle the data
     Split it between clients
@@ -82,11 +91,12 @@ def iid_partition(dataset, clients):
     return client_dict
 
 
-# copied from https://github.com/ayushm-agrawal/
-# Federated-Learning-Implementations/blob/master/FederatedAveraging.ipynb
 def non_iid_partition(dataset, clients, total_shards, shards_size,
                       num_shards_per_client):
     """
+    copied from https://github.com/ayushm-agrawal/
+    Federated-Learning-Implementations/blob/master/FederatedAveraging.ipynb
+
     non I.I.D parititioning of data over clients
     Sort the data by the digit label
     Divide the data into N shards of size S
