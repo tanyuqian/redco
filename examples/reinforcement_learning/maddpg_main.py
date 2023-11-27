@@ -23,6 +23,7 @@ from maddpg_agent import MADDPGAgent
 
 def main(env_name='simple_adversary_v3',
          n_episodes=50000,
+         max_steps_per_episode=25,
          learning_rate=1e-2,
          critic_loss_weight=1.,
          gamma=0.95,
@@ -69,7 +70,7 @@ def main(env_name='simple_adversary_v3',
         state, _ = env.reset()
         sum_rewards = {agent: 0. for agent in env.agents}
 
-        while env.agents:
+        for _ in range(max_steps_per_episode):
             explore_eps_ = explore_eps \
                 if maddpg.total_steps > warmup_steps else 1.
             action = {
@@ -94,6 +95,9 @@ def main(env_name='simple_adversary_v3',
                 done=done)
 
             state = next_state
+
+            if not env.agents:
+                break
 
         episodes.set_postfix(**sum_rewards)
         episode_rewards.append(sum_rewards)
