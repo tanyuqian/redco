@@ -45,8 +45,6 @@ class Predictor:
         else:
             self._output_fn = output_fn
 
-        self._cached_params = None
-
     def setup_running_step(self,
                            pred_fn,
                            dummy_batch,
@@ -70,22 +68,9 @@ class Predictor:
     def predict(self,
                 examples,
                 per_device_batch_size,
-                params=None,
+                params,
                 params_meshed=False,
-                use_cached_params=False,
                 desc=None):
-        if params is None:
-            assert use_cached_params and self._cached_params is not None
-            params = self._cached_params
-        else:
-            assert not use_cached_params
-            params = self._deployer.process_to_run_model(freeze(params))
-
-            if (self._params_spec is not None) and (not params_meshed):
-                params = self._deployer.shard_params(
-                    params=params, params_spec=self._params_spec)
-                params_meshed = True
-
         raw_n_inputs = len(examples)
         _, global_batch_size = self._deployer.process_batch_size(
             per_device_batch_size=per_device_batch_size)
@@ -100,6 +85,8 @@ class Predictor:
             shuffle_rng=None,
             desc=f'Predicting ({desc})' if desc is not None else 'Predicting')
 
+        params = self._deployer.process_to_run_model(freeze(params))
+
         preds = []
         for batch in data_batches:
             if self._p_pred_step is None:
@@ -109,10 +96,14 @@ class Predictor:
                     params=params,
                     params_sharding_rules=self._params_sharding_rules)
 
+            if (self._params_spec is not None) and (not params_meshed):
+                params = self._deployer.shard_params(
+                    params=params, params_spec=self._params_spec)
+                params_meshed = True
+
             pred_rng = self._deployer.process_to_run_model(
                 self._deployer.gen_rng(), is_prng_key=True)
 
-            self._cached_params = params
             batch_preds_with_idxes = self._deployer.run_model_step(
                 step_fn=self._p_pred_step,
                 input_args=(pred_rng, params, batch))
