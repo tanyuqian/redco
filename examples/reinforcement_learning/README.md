@@ -1,8 +1,8 @@
-## Reinforcement Learning (PPO/DDPG/MADDPG)
+## Reinforcement Learning (PPO/DDPG/Multi-Agent DDPG)
 
 This example implements common reinforcement learning algorithms. 
-* PPO (on Gym Games discrete action space).
-* DDPG (on Gym Games continuous action space).
+* PPO (on Gym Games with discrete action space).
+* DDPG (on Gym Games with continuous action space).
 * Multi-Agent DDPG (on Multi Particle Environments)
 
 
@@ -29,28 +29,25 @@ pip install pettingzoo[mpe]==1.24.2
 
 #### PPO
 ```shell
-python ppo_main.py \
-    --env_name Acrobot-v1 \
-    --n_episodes 1000
+python ppo_main.py --env_name Acrobot-v1 --n_episodes 1000
 ```
+* `--env_name` should a game in [Gymnasium](https://gymnasium.farama.org/index.html) with discrete action space.
 
 See `def main(...)` in [ppo_main.py](ppo_main.py) for all the tunable arguments. 
 
 #### DDPG
 ```shell
-python ddpg_main.py \
-    --env_name Pendulum-v1 \
-    --n_episodes 200
+python ddpg_main.py --env_name Pendulum-v1 --n_episodes 200
 ```
+* `--env_name` should a game in [Gymnasium](https://gymnasium.farama.org/index.html) with continuous action space.
 
 See `def main(...)` in [ddpg_main.py](ddpg_main.py) for all the tunable arguments.
 
 #### Multi-Agent DDPG
 ```shell
-python maddpg_main.py \
-    --env_name simple_adversary_v3 \
-    --n_episodes 50000
+python maddpg_main.py --env_name simple_adversary_v3 --n_episodes 50000
 ```
+* `--env_name` should a game in [PettingZoo-MPE](https://pettingzoo.farama.org/environments/mpe/).
 
 See `def main(...)` in [maddpg_main.py](maddpg_main.py) for all the tunable arguments.
 
