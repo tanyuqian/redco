@@ -278,9 +278,7 @@ class Deployer:
         return opt_state
 
     def save_params(self, params, ckpt_dir, desc):
-        if self._mesh is None:
-            params = unreplicate(params)
-        else:
+        if self._mesh is not None:
             with jax.default_device(jax.devices('cpu')[0]):
                 params = multihost_utils.process_allgather(params)
 

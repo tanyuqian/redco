@@ -388,7 +388,7 @@ class Trainer:
             os.makedirs(ckpt_dir, exist_ok=True)
 
         self._deployer.save_params(
-            params=self._state.params, ckpt_dir=ckpt_dir, desc=desc)
+            params=self.params, ckpt_dir=ckpt_dir, desc=desc)
         self._deployer.save_rng(ckpt_dir=ckpt_dir, desc=desc)
 
         if save_opt_state:
