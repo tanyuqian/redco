@@ -12,15 +12,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import time
 import fire
 from pettingzoo import mpe
 
 from maddpg_agent import MADDPGAgent
 
 
-def main(init_params_path, env_name='simple_adversary_v2', n_episodes=50000):
-    env = getattr(mpe, env_name).parallel_env(render_mode='human')
+def main(init_params_path, env_name='simple_adversary_v3', n_episodes=50000):
+    env = getattr(mpe, env_name).parallel_env(render_mode='human', max_cycles=25)
+    print(type(env))
+
     env.reset()
 
     state_dims = {
@@ -37,7 +38,7 @@ def main(init_params_path, env_name='simple_adversary_v2', n_episodes=50000):
         init_params_path=init_params_path)
 
     for episode_idx in range(n_episodes):
-        state = env.reset()
+        state, _ = env.reset()
         sum_rewards = {agent: 0. for agent in env.agents}
 
         while env.agents:
@@ -48,7 +49,6 @@ def main(init_params_path, env_name='simple_adversary_v2', n_episodes=50000):
             }
             next_state, reward, done, _, _ = env.step(action)
             env.render()
-            time.sleep(0.05)
 
             sum_rewards = {
                 agent: sum_rewards[agent] + reward[agent]

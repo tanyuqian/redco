@@ -44,7 +44,7 @@ class MADDPGAgent:
                  learning_rate=1e-2,
                  critic_loss_weight=1.,
                  replay_buffer_size=100000,
-                 minimal_buffer_size=4000,
+                 warmup_random_steps=50000,
                  update_interval_steps=100,
                  tau=0.02,
                  gamma=0.95,
@@ -127,7 +127,7 @@ class MADDPGAgent:
         self._replay_buffer = deque(maxlen=replay_buffer_size)
 
         self._update_interval_steps = update_interval_steps
-        self._minimal_buffer_size = minimal_buffer_size
+        self._warmup_random_steps = warmup_random_steps
         self._gamma = gamma
         self._tau = tau
         _, self._global_batch_size = self._deployer.process_batch_size(
@@ -135,13 +135,23 @@ class MADDPGAgent:
         self._per_device_batch_size = per_device_batch_size
         self._total_steps = 0
 
+        self._target_actor_updated = {agent: True for agent in self._agents}
+        self._target_critic_updated = {agent: True for agent in self._agents}
+
     def predict_action(self, agent, agent_state, explore_eps):
         if random.random() < explore_eps:
             return random.randint(0, self._action_dims[agent] - 1)
 
+        if self._target_actor_updated[agent]:
+            params, use_cached_params = self._target_actor_params[agent], False
+            self._target_actor_updated[agent] = False
+        else:
+            params, use_cached_params = None, True
+
         action_logits = self._actor_predictor[agent].predict(
             examples=[{'states': agent_state}],
-            params=self._trainer[agent].params['actor'],
+            params=params,
+            use_cached_params=use_cached_params,
             per_device_batch_size=1)[0]
 
         return np.random.choice(
@@ -150,9 +160,17 @@ class MADDPGAgent:
     def get_target_actions(self, states):
         actions = [{} for _ in range(len(states))]
         for agent in self._agents:
+            if self._target_actor_updated[agent]:
+                params, use_cached_params = (
+                    self._target_actor_params[agent], False)
+                self._target_actor_updated[agent] = False
+            else:
+                params, use_cached_params = None, True
+
             action_logits = self._actor_predictor[agent].predict(
                 examples=[{'states': state[agent]} for state in states],
-                params=self._target_actor_params[agent],
+                params=params,
+                use_cached_params=use_cached_params,
                 per_device_batch_size=self._per_device_batch_size)
 
             for i in range(len(states)):
@@ -167,9 +185,16 @@ class MADDPGAgent:
             'actions': self.get_action_input(action)
         } for state, action in zip(states, actions)]
 
+        if self._target_critic_updated[agent]:
+            params, use_cached_params = self._target_critic_params[agent], False
+            self._target_critic_updated[agent] = False
+        else:
+            params, use_cached_params = None, True
+
         return self._critic_predictor[agent].predict(
             examples=examples,
-            params=self._target_critic_params[agent],
+            params=params,
+            use_cached_params=use_cached_params,
             per_device_batch_size=self._per_device_batch_size)
 
     def add_step(self, state, action, reward, next_state, done):
@@ -182,7 +207,7 @@ class MADDPGAgent:
 
         self._total_steps += 1
 
-        if len(self._replay_buffer) >= self._minimal_buffer_size and \
+        if self._total_steps > self._warmup_random_steps and \
                 self._total_steps % self._update_interval_steps == 0:
             self.train()
 
@@ -197,7 +222,11 @@ class MADDPGAgent:
             unfreeze(self._target_critic_params[agent]),
             unfreeze(self._trainer[agent].params['critic']))
 
+        self._target_critic_updated[agent] = True
+        self._target_actor_updated[agent] = True
+
     def train(self):
+        print(jax.device_count())
         for agent in self._agents:
             transitions = random.sample(
                 self._replay_buffer, self._global_batch_size)
