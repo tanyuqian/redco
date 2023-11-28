@@ -33,10 +33,10 @@ def main(env_name='simple_adversary_v3',
          replay_buffer_size=100000,
          update_interval_steps=100,
          temperature=1.,
-         action_reg=1e-3,
+         action_regularization=1e-3,
          per_device_batch_size=1024,
+         save_every_n_episodes=5000,
          jax_seed=42):
-
     env = getattr(mpe, env_name).parallel_env(max_cycles=max_steps_per_episode)
     env.reset()
 
@@ -59,10 +59,10 @@ def main(env_name='simple_adversary_v3',
         tau=tau,
         gamma=gamma,
         temperature=temperature,
-        action_reg=action_reg,
+        action_regularization=action_regularization,
         per_device_batch_size=per_device_batch_size,
         jax_seed=jax_seed,
-        workdir=f'workdir_maddpg_{env_name}')
+        workdir=f'workdir_maddpg/{env_name}')
 
     episode_rewards = []
     episodes = tqdm.trange(n_episodes, desc='Episodes')
@@ -100,7 +100,7 @@ def main(env_name='simple_adversary_v3',
         episodes.set_postfix(**sum_rewards, n_steps=n_steps)
         episode_rewards.append(sum_rewards)
 
-        if episode_idx % 1000 == 0:
+        if episode_idx % save_every_n_episodes == 0:
             maddpg.save(episode_idx=episode_idx)
 
     env.close()

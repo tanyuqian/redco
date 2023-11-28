@@ -11,7 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import time
 from collections import deque, namedtuple
 from functools import partial
 import random
@@ -49,7 +49,7 @@ class MADDPGAgent:
                  tau=0.02,
                  gamma=0.95,
                  temperature=1.,
-                 action_reg=1e-3,
+                 action_regularization=1e-3,
                  per_device_batch_size=1024,
                  jax_seed=42,
                  workdir=None,
@@ -106,7 +106,7 @@ class MADDPGAgent:
                     critic=critic,
                     critic_loss_weight=critic_loss_weight,
                     temperature=temperature,
-                    action_reg=action_reg,
+                    action_regularization=action_regularization,
                     agent_action_idx_l=agent_action_idx_l,
                     agent_action_idx_r=agent_action_idx_r),
                 params={
@@ -142,16 +142,9 @@ class MADDPGAgent:
         if random.random() < explore_eps:
             return random.randint(0, self._action_dims[agent] - 1)
 
-        if self._target_actor_updated[agent]:
-            params, use_cached_params = self._target_actor_params[agent], False
-            self._target_actor_updated[agent] = False
-        else:
-            params, use_cached_params = None, True
-
         action_logits = self._actor_predictor[agent].predict(
             examples=[{'states': agent_state}],
-            params=params,
-            use_cached_params=use_cached_params,
+            params=self._target_actor_params[agent],
             per_device_batch_size=1)[0]
 
         return np.random.choice(
@@ -160,17 +153,9 @@ class MADDPGAgent:
     def get_target_actions(self, states):
         actions = [{} for _ in range(len(states))]
         for agent in self._agents:
-            if self._target_actor_updated[agent]:
-                params, use_cached_params = (
-                    self._target_actor_params[agent], False)
-                self._target_actor_updated[agent] = False
-            else:
-                params, use_cached_params = None, True
-
             action_logits = self._actor_predictor[agent].predict(
                 examples=[{'states': state[agent]} for state in states],
-                params=params,
-                use_cached_params=use_cached_params,
+                params=self._target_actor_params[agent],
                 per_device_batch_size=self._per_device_batch_size)
 
             for i in range(len(states)):
@@ -180,22 +165,18 @@ class MADDPGAgent:
         return actions
 
     def get_target_q_values(self, agent, states, actions):
+
         examples = [{
             'states': self.get_state_input(state),
             'actions': self.get_action_input(action)
         } for state, action in zip(states, actions)]
 
-        if self._target_critic_updated[agent]:
-            params, use_cached_params = self._target_critic_params[agent], False
-            self._target_critic_updated[agent] = False
-        else:
-            params, use_cached_params = None, True
-
-        return self._critic_predictor[agent].predict(
+        results = self._critic_predictor[agent].predict(
             examples=examples,
-            params=params,
-            use_cached_params=use_cached_params,
+            params=self._target_critic_params[agent],
             per_device_batch_size=self._per_device_batch_size)
+
+        return results
 
     def add_step(self, state, action, reward, next_state, done):
         self._replay_buffer.append(Transition(
@@ -226,14 +207,13 @@ class MADDPGAgent:
         self._target_actor_updated[agent] = True
 
     def train(self):
-        print(jax.device_count())
         for agent in self._agents:
             transitions = random.sample(
                 self._replay_buffer, self._global_batch_size)
 
             next_states = [trans.next_state for trans in transitions]
-
             next_actions = self.get_target_actions(states=next_states)
+
             next_q_values = np.array(self.get_target_q_values(
                 agent=agent, states=next_states, actions=next_actions))
 

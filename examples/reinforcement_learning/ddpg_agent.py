@@ -18,9 +18,10 @@ import random
 import numpy as np
 import jax
 import jax.numpy as jnp
+from flax.core.frozen_dict import unfreeze
 import optax
-
 from redco import Deployer, Trainer, Predictor
+
 from ddpg_pipeline import (
     Actor,
     Critic,
@@ -128,13 +129,13 @@ class DDPGAgent:
     def update_target(self):
         self._target_actor_params = jax.tree_util.tree_map(
             lambda x, y: (1. - self._tau) * x + self._tau * y,
-            self._target_actor_params,
-            self._trainer.params['actor'])
+            unfreeze(self._target_actor_params),
+            unfreeze(self._trainer.params['actor']))
 
         self._target_critic_params = jax.tree_util.tree_map(
             lambda x, y: (1. - self._tau) * x + self._tau * y,
-            self._target_critic_params,
-            self._trainer.params['critic'])
+            unfreeze(self._target_critic_params),
+            unfreeze(self._trainer.params['critic']))
 
     def train(self, transitions):
         states = [trans.state for trans in transitions]

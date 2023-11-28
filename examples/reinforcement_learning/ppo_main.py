@@ -74,6 +74,7 @@ def main(env_name='Acrobot-v1',
     plt.ylabel('Reward')
     plt.title(env_name)
     plt.legend()
+    plt.savefig(f'ppo_{env_name}.png')
     plt.show()
 
 

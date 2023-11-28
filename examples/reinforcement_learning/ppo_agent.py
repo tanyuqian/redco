@@ -14,14 +14,14 @@
 
 from collections import namedtuple
 from functools import partial
-
 import numpy as np
+from scipy.special import softmax
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
 import optax
-
 from redco import Deployer, Trainer, Predictor
+
 from ppo_pipeline import MLP, collate_fn, actor_loss_fn, critic_loss_fn, pred_fn
 
 
@@ -118,21 +118,20 @@ class PPOAgent:
             params=self._actor_trainer.params)
 
     def predict_action(self, state):
-        logits = jnp.array(self.get_actor_logits([state])[0])
-        return jax.random.categorical(
-            key=self._deployer.gen_rng(), logits=logits).item()
+        logits = self.get_actor_logits([state])[0]
+        return np.random.choice(len(logits), p=softmax(logits))
 
     def update(self, transitions):
         states = [trans.state for trans in transitions]
         next_states = [trans.next_state for trans in transitions]
-        actions = jnp.array([trans.action for trans in transitions])
+        actions = np.array([trans.action for trans in transitions])
 
         v_states = self.predict_values(states=states)
         v_next_states = self.predict_values(states=next_states)
 
-        log_probs0s = nn.log_softmax(
-            jnp.array(self.get_actor_logits(states=states)))
-        log_probs0s = jnp.take_along_axis(
+        log_probs0s = np.log(softmax(
+            self.get_actor_logits(states=states), axis=-1))
+        log_probs0s = np.take_along_axis(
             log_probs0s, actions[..., None], axis=-1)[..., 0]
 
         advantage = 0.

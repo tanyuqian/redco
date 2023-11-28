@@ -21,7 +21,7 @@ from ddpg_agent import DDPGAgent, Transition
 
 
 def main(env_name='Pendulum-v1',
-         n_episodes=200,
+         n_episodes=300,
          learning_rate=3e-4,
          critic_loss_weight=10.,
          gamma=0.98,
@@ -77,6 +77,7 @@ def main(env_name='Pendulum-v1',
     plt.ylabel('Reward')
     plt.title(env_name)
     plt.legend()
+    plt.savefig(f'ddpg_{env_name}.png')
     plt.show()
 
 

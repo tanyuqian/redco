@@ -76,7 +76,7 @@ def loss_fn(train_rng,
             critic,
             critic_loss_weight,
             temperature,
-            action_reg,
+            action_regularization,
             agent_action_idx_l,
             agent_action_idx_r):
     critic_loss = jnp.mean(jnp.square(critic.apply(
@@ -100,8 +100,10 @@ def loss_fn(train_rng,
         states=batch['states'],
         actions=actions)
 
-    actor_loss = \
-        -jnp.mean(q_values) + jnp.mean(jnp.square(action_logits)) * action_reg
+    actor_loss = (
+            -jnp.mean(q_values)
+            + action_regularization * jnp.mean(jnp.square(action_logits))
+    )
 
     return critic_loss * critic_loss_weight + actor_loss
 
