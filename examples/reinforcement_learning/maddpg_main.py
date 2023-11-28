@@ -30,10 +30,10 @@ def main(env_name='simple_adversary_v3',
          tau=0.02,
          explore_eps=0.01,
          warmup_random_steps=50000,
-         replay_buffer_size=100000,
+         replay_buffer_size=1000000,
          update_interval_steps=100,
          temperature=1.,
-         action_regularization=1e-3,
+         actor_weight_decay=1e-3,
          per_device_batch_size=1024,
          save_every_n_episodes=5000,
          jax_seed=42):
@@ -59,7 +59,7 @@ def main(env_name='simple_adversary_v3',
         tau=tau,
         gamma=gamma,
         temperature=temperature,
-        action_regularization=action_regularization,
+        actor_weight_decay=actor_weight_decay,
         per_device_batch_size=per_device_batch_size,
         jax_seed=jax_seed,
         workdir=f'workdir_maddpg/{env_name}')
@@ -97,7 +97,7 @@ def main(env_name='simple_adversary_v3',
 
             state = next_state
 
-        episodes.set_postfix(**sum_rewards, n_steps=n_steps)
+        episodes.set_postfix(**sum_rewards)
         episode_rewards.append(sum_rewards)
 
         if episode_idx % save_every_n_episodes == 0:

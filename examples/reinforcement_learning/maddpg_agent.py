@@ -43,13 +43,13 @@ class MADDPGAgent:
                  action_dims,
                  learning_rate=1e-2,
                  critic_loss_weight=1.,
-                 replay_buffer_size=100000,
+                 replay_buffer_size=1000000,
                  warmup_random_steps=50000,
                  update_interval_steps=100,
                  tau=0.02,
                  gamma=0.95,
                  temperature=1.,
-                 action_regularization=1e-3,
+                 actor_weight_decay=1e-3,
                  per_device_batch_size=1024,
                  jax_seed=42,
                  workdir=None,
@@ -106,7 +106,7 @@ class MADDPGAgent:
                     critic=critic,
                     critic_loss_weight=critic_loss_weight,
                     temperature=temperature,
-                    action_regularization=action_regularization,
+                    actor_weight_decay=actor_weight_decay,
                     agent_action_idx_l=agent_action_idx_l,
                     agent_action_idx_r=agent_action_idx_r),
                 params={
@@ -134,9 +134,6 @@ class MADDPGAgent:
             per_device_batch_size=per_device_batch_size)
         self._per_device_batch_size = per_device_batch_size
         self._total_steps = 0
-
-        self._target_actor_updated = {agent: True for agent in self._agents}
-        self._target_critic_updated = {agent: True for agent in self._agents}
 
     def predict_action(self, agent, agent_state, explore_eps):
         if random.random() < explore_eps:
@@ -202,9 +199,6 @@ class MADDPGAgent:
             lambda x, y: (1. - self._tau) * x + self._tau * y,
             unfreeze(self._target_critic_params[agent]),
             unfreeze(self._trainer[agent].params['critic']))
-
-        self._target_critic_updated[agent] = True
-        self._target_actor_updated[agent] = True
 
     def train(self):
         for agent in self._agents:
