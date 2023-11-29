@@ -28,6 +28,7 @@ def main(env_name='simple_adversary_v3',
          critic_loss_weight=1.,
          gamma=0.95,
          tau=0.02,
+         p_explore=0.01,
          warmup_random_steps=50000,
          replay_buffer_size=1000000,
          update_interval_steps=100,
@@ -68,7 +69,8 @@ def main(env_name='simple_adversary_v3',
 
         n_steps = 0
         while env.agents:
-            explore_eps = 0 if maddpg.total_steps > warmup_random_steps else 1.
+            explore_eps = p_explore \
+                if maddpg.total_steps > warmup_random_steps else 1.
             action = {
                 agent: maddpg.predict_action(
                     agent=agent,
