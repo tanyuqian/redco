@@ -47,7 +47,7 @@ Examples across a set of paradigms can be found in [examples/](examples/), inclu
 * [Image to text (Image captioning)](examples%2Fimage_to_text)
 * [Language modeling (Instruction Tuning of LLMs)](examples%2Flanguage_modeling)
 * [Meta learning (MAML)](examples%2Fmeta_learning)
-* [Reinforcement learning (PPO & DDPG & MADDPG)](examples%2Freinforcement_learning)
+* [Reinforcement learning (PPO & DDPG)](examples%2Freinforcement_learning)
 * [Text to image (StableDiffusion)](examples%2Ftext_to_image)
 * [Text to text (Seq2seq)](examples%2Ftext_to_text)
 
