@@ -44,7 +44,7 @@ class MADDPGAgent:
                  learning_rate=1e-2,
                  critic_loss_weight=1.,
                  actor_logits_reg=1e-3,
-                 grad_norm=0.5,
+                 grad_norm=1.,
                  replay_buffer_size=1000000,
                  warmup_random_steps=50000,
                  update_interval_steps=100,
