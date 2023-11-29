@@ -59,7 +59,7 @@ def collate_fn(examples):
     return batch
 
 
-def gumbel_softmax(rng, logits, temperature):
+def gumbel_softmax(rng, logits, temperature=1.):
     logits = logits + jax.random.gumbel(key=rng, shape=logits.shape)
     y = jax.nn.softmax(logits / temperature)
     y_hard = jax.nn.one_hot(jnp.argmax(y, axis=-1), num_classes=y.shape[-1])
@@ -75,8 +75,7 @@ def loss_fn(train_rng,
             actor,
             critic,
             critic_loss_weight,
-            temperature,
-            actor_weight_decay,
+            actor_logits_reg,
             agent_action_idx_l,
             agent_action_idx_r):
     critic_loss = jnp.mean(jnp.square(critic.apply(
@@ -90,8 +89,7 @@ def loss_fn(train_rng,
 
     actions = jnp.concatenate([
         batch['actions'][:, :agent_action_idx_l],
-        gumbel_softmax(
-            rng=train_rng, logits=action_logits, temperature=temperature),
+        gumbel_softmax(rng=train_rng, logits=action_logits),
         batch['actions'][:, agent_action_idx_r:]
     ], axis=-1)
 
@@ -102,7 +100,7 @@ def loss_fn(train_rng,
 
     actor_loss = (
             -jnp.mean(q_values)
-            + actor_weight_decay * jnp.mean(jnp.square(action_logits))
+            + actor_logits_reg * jnp.mean(jnp.square(action_logits))
     )
 
     return critic_loss * critic_loss_weight + actor_loss

@@ -53,7 +53,6 @@ See `def main(...)` in [maddpg_main.py](maddpg_main.py) for all the tunable argu
 
 ### Results
 
-#### PPO
 
 | PPO                                                               | DDPG                              | 
 |-------------------------------------------------------------------|-----------------------------------|

@@ -23,21 +23,18 @@ from maddpg_agent import MADDPGAgent
 
 def main(env_name='simple_adversary_v3',
          n_episodes=50000,
-         max_steps_per_episode=25,
          learning_rate=1e-2,
+         actor_logits_reg=1e-3,
          critic_loss_weight=1.,
          gamma=0.95,
          tau=0.02,
-         explore_eps=0.01,
          warmup_random_steps=50000,
          replay_buffer_size=1000000,
          update_interval_steps=100,
-         temperature=1.,
-         actor_weight_decay=1e-3,
          per_device_batch_size=1024,
          save_every_n_episodes=5000,
          jax_seed=42):
-    env = getattr(mpe, env_name).parallel_env(max_cycles=max_steps_per_episode)
+    env = getattr(mpe, env_name).parallel_env()
     env.reset()
 
     state_dims = {
@@ -58,8 +55,7 @@ def main(env_name='simple_adversary_v3',
         update_interval_steps=update_interval_steps,
         tau=tau,
         gamma=gamma,
-        temperature=temperature,
-        actor_weight_decay=actor_weight_decay,
+        actor_logits_reg=actor_logits_reg,
         per_device_batch_size=per_device_batch_size,
         jax_seed=jax_seed,
         workdir=f'workdir_maddpg/{env_name}')
@@ -72,12 +68,12 @@ def main(env_name='simple_adversary_v3',
 
         n_steps = 0
         while env.agents:
-            explore_eps_ = explore_eps if maddpg.total_steps > warmup_random_steps else 1.
+            explore_eps = 0 if maddpg.total_steps > warmup_random_steps else 1.
             action = {
                 agent: maddpg.predict_action(
                     agent=agent,
                     agent_state=state[agent],
-                    explore_eps=explore_eps_)
+                    explore_eps=explore_eps)
                 for agent in env.agents
             }
             next_state, reward, done, _, _ = env.step(action)
@@ -100,8 +96,8 @@ def main(env_name='simple_adversary_v3',
         episodes.set_postfix(**sum_rewards)
         episode_rewards.append(sum_rewards)
 
-        if episode_idx % save_every_n_episodes == 0:
-            maddpg.save(episode_idx=episode_idx)
+        if (episode_idx + 1) % save_every_n_episodes == 0:
+            maddpg.save(episode_idx=episode_idx + 1)
 
     env.close()
 

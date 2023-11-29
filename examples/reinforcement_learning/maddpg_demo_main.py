@@ -14,14 +14,13 @@
 
 import fire
 from pettingzoo import mpe
+from PIL import Image
 
 from maddpg_agent import MADDPGAgent
 
 
-def main(init_params_path, env_name='simple_adversary_v3', n_episodes=50000):
-    env = getattr(mpe, env_name).parallel_env(render_mode='human', max_cycles=25)
-    print(type(env))
-
+def main(init_params_path, env_name='simple_adversary_v3', n_episodes=10):
+    env = getattr(mpe, env_name).parallel_env(render_mode='rgb_array')
     env.reset()
 
     state_dims = {
@@ -37,6 +36,7 @@ def main(init_params_path, env_name='simple_adversary_v3', n_episodes=50000):
         action_dims=action_dims,
         init_params_path=init_params_path)
 
+    frame_list = []
     for episode_idx in range(n_episodes):
         state, _ = env.reset()
         sum_rewards = {agent: 0. for agent in env.agents}
@@ -44,11 +44,11 @@ def main(init_params_path, env_name='simple_adversary_v3', n_episodes=50000):
         while env.agents:
             action = {
                 agent: maddpg.predict_action(
-                    agent=agent, agent_state=state[agent], explore_eps=0)
+                    agent=agent, agent_state=state[agent], explore_eps=0.)
                 for agent in env.agents
             }
             next_state, reward, done, _, _ = env.step(action)
-            env.render()
+            frame_list.append(Image.fromarray(env.render()))
 
             sum_rewards = {
                 agent: sum_rewards[agent] + reward[agent]
@@ -60,6 +60,8 @@ def main(init_params_path, env_name='simple_adversary_v3', n_episodes=50000):
         print(f'Episode {episode_idx} Reward: {sum_rewards}')
 
     env.close()
+
+    frame_list[0].save('xx.gif', save_all=True, append_images=frame_list[1:], duration=1, loop=0)
 
 
 if __name__ == '__main__':

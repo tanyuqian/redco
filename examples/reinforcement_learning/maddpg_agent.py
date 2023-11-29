@@ -43,13 +43,13 @@ class MADDPGAgent:
                  action_dims,
                  learning_rate=1e-2,
                  critic_loss_weight=1.,
+                 actor_logits_reg=1e-3,
+                 grad_norm=0.5,
                  replay_buffer_size=1000000,
                  warmup_random_steps=50000,
                  update_interval_steps=100,
                  tau=0.02,
                  gamma=0.95,
-                 temperature=1.,
-                 actor_weight_decay=1e-3,
                  per_device_batch_size=1024,
                  jax_seed=42,
                  workdir=None,
@@ -105,14 +105,15 @@ class MADDPGAgent:
                     actor=actor,
                     critic=critic,
                     critic_loss_weight=critic_loss_weight,
-                    temperature=temperature,
-                    actor_weight_decay=actor_weight_decay,
+                    actor_logits_reg=actor_logits_reg,
                     agent_action_idx_l=agent_action_idx_l,
                     agent_action_idx_r=agent_action_idx_r),
                 params={
                     'actor': self._target_actor_params[agent],
                     'critic': self._target_critic_params[agent]},
-                optimizer=optax.adam(learning_rate=learning_rate))
+                optimizer=optax.chain(
+                    optax.clip_by_global_norm(grad_norm),
+                    optax.adam(learning_rate=learning_rate)))
 
             self._critic_predictor[agent] = Predictor(
                 deployer=self._deployer,
@@ -162,18 +163,15 @@ class MADDPGAgent:
         return actions
 
     def get_target_q_values(self, agent, states, actions):
-
         examples = [{
             'states': self.get_state_input(state),
             'actions': self.get_action_input(action)
         } for state, action in zip(states, actions)]
 
-        results = self._critic_predictor[agent].predict(
+        return self._critic_predictor[agent].predict(
             examples=examples,
             params=self._target_critic_params[agent],
             per_device_batch_size=self._per_device_batch_size)
-
-        return results
 
     def add_step(self, state, action, reward, next_state, done):
         self._replay_buffer.append(Transition(
@@ -184,7 +182,6 @@ class MADDPGAgent:
             done={agent: int(value) for agent, value in done.items()}))
 
         self._total_steps += 1
-
         if self._total_steps > self._warmup_random_steps and \
                 self._total_steps % self._update_interval_steps == 0:
             self.train()
@@ -248,10 +245,8 @@ class MADDPGAgent:
         save_dir = self._deployer.workdir
 
         self._deployer.save_params(
-            params=params,
-            ckpt_dir=save_dir,
-            desc=f'maddpg_episode{episode_idx}')
-        print(f'Checkpoint \"maddpg_episode{episode_idx}\" saved.')
+            params=params, ckpt_dir=save_dir, desc=f'episode{episode_idx}')
+        print(f'Checkpoint \"episode{episode_idx}\" saved.')
 
     @property
     def total_steps(self):
