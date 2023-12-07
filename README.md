@@ -17,17 +17,9 @@ Here is also a [Quick Tutorial](tutorials/quick.md) for you to become an expert 
 ```
 pip install redco
 ```
-For the most up-to-date version:
-```
-git clone https://github.com/tanyuqian/redco.git
-cd redco
-pip install -e .
-```
 
 #### Adjust Jax & Flax versions
-The command above would automatically install cpu version of jax, so the version of Jax need to be adjusted based on your device.
-
-For example,
+The command above would automatically install cpu version of jax, so the version of Jax need to be adjusted based on your device. For example,
 ```
 pip install --upgrade flax==0.7.0
 pip install --upgrade jax[cuda11_pip]==0.4.13 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
