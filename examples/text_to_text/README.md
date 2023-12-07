@@ -10,7 +10,7 @@ It supports
 
 Install Redco
 ```shell
-pip install redco==0.4.12
+pip install redco==0.4.14
 ```
 
 ### Usage
