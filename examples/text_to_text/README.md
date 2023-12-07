@@ -27,6 +27,8 @@ See `def main(...)` in [main.py](main.py) for all the tunable arguments.
 
 
 #### For Multi-host Envs
+
+##### General Case
 ```
 python main.py \
     --host0_address 192.168.0.1 \ 
@@ -37,4 +39,24 @@ python main.py \
 * `--n_processes`: number of hosts.
 * `--host0_address`: the ip of host 0.
 * `--process_id`: id of the current host (should vary across all hosts).
-* `--n_local_devices`: devices on the machine. (Only required on some special envs, e.g., SLURM) 
+* `--n_local_devices`: number of devices (e.g., GPUs) on the machine. (Only required on some special envs, e.g., SLURM) 
+
+##### Under SLURM
+If you are using Redco under SLURM, just leave `n_processes` to be `None`. 
+Below is an example of `run.sh` to submit, e.g., `sbatch run.sh`.
+
+```shell
+#!/bin/bash
+#SBATCH --job-name=red_coast
+#SBATCH --nodes=2
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:4
+#SBATCH --output=slurm_%j.out
+#SBATCH --error=slurm_%j.err
+#SBATCH --nodelist=node-[100-200]
+
+srun python main.py --host0_address <ip_node-100> --n_local_devices 4
+```
+* `--host0_address`: the ip of node 0 among your assigned nodes.
+* `--n_local_devices`: number of GPUs on every machine. 

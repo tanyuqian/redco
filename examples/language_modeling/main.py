@@ -97,9 +97,9 @@ def output_fn(batch_preds, tokenizer):
     return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
 
 
-def main(n_processes=1,
+def main(n_processes=None,
          host0_address=None,
-         host0_port=11111,
+         host0_port=None,
          process_id=None,
          n_local_devices=None,
          dataset_name='tatsu-lab/alpaca',

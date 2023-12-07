@@ -49,14 +49,15 @@ class Deployer:
             if 'SLURM_JOB_NUM_NODES' in os.environ:
                 n_processes = int(os.environ['SLURM_JOB_NUM_NODES'])
                 process_id = int(os.environ['SLURM_NODEID'])
-                if host0_port is None:
-                    host0_port = 11111
             else:
                 n_processes = 1
 
         if n_processes > 1:
             local_device_ids = None if n_local_devices is None \
                 else list(range(n_local_devices))
+
+            if host0_port is None:
+                host0_port = 11111
 
             jax.distributed.initialize(
                 coordinator_address=f'{host0_address}:{host0_port}',
