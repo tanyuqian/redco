@@ -102,9 +102,9 @@ def eval_rouge(examples, preds, tgt_key):
         use_stemmer=True)
 
 
-def main(n_processes=1,
+def main(n_processes=None,
          host0_address=None,
-         host0_port=11111,
+         host0_port=None,
          process_id=None,
          n_local_devices=None,
          dataset_name='xsum',
@@ -134,7 +134,7 @@ def main(n_processes=1,
         host0_address=host0_address,
         host0_port=host0_port,
         process_id=process_id,
-        n_local_devices=4)
+        n_local_devices=n_local_devices)
 
     dataset = datasets.load_dataset(dataset_name)
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
