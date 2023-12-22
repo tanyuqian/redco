@@ -94,7 +94,7 @@ def main(model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
 if __name__ == '__main__':
     fire.Fire(main)
 ```
-
+Note that this pytorch manner doesn't work for mistral models for now.
 
 #### Load in HuggingFace-Flax
 
