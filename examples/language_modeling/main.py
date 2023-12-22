@@ -22,8 +22,6 @@ import optax
 from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
 from redco import Deployer, Trainer, Predictor
 
-from modeling_flax_llama import FlaxLlamaForCausalLM
-
 
 def train_collate_fn(examples, tokenizer, max_length, text_key, tgt_key):
     batch = tokenizer(
@@ -106,6 +104,7 @@ def main(n_processes=None,
          text_key='text',
          tgt_key='output',
          model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
+         computation_dtype='float32',
          n_model_shards=1,
          n_epochs=3,
          per_device_batch_size=8,
@@ -144,12 +143,8 @@ def main(n_processes=None,
             model_name_or_path, padding_side='left')
         tokenizer.pad_token = tokenizer.eos_token
 
-        if 'llama' in model_name_or_path.lower():
-            model = FlaxLlamaForCausalLM.from_pretrained(
-                model_name_or_path, from_pt=True)
-        else:
-            model = FlaxAutoModelForCausalLM.from_pretrained(model_name_or_path)
-
+        model = FlaxAutoModelForCausalLM.from_pretrained(
+            model_name_or_path, dtype=getattr(jnp, computation_dtype))
         params = model.to_fp32(model.params)
 
         gen_kwargs = {
