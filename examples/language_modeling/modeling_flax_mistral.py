@@ -25,14 +25,14 @@ from flax.linen.attention import dot_product_attention_weights
 from flax.traverse_util import flatten_dict, unflatten_dict
 from jax import lax
 
-from ...modeling_flax_outputs import (
+from transformers.modeling_flax_outputs import (
     FlaxBaseModelOutputWithPast,
     FlaxCausalLMOutputWithCrossAttentions,
     FlaxSequenceClassifierOutput,
 )
-from ...modeling_flax_utils import ACT2FN, FlaxPreTrainedModel, append_call_sample_docstring, logging
-from ...utils import add_start_docstrings, add_start_docstrings_to_model_forward
-from .configuration_mistral import MistralConfig
+from transformers.modeling_flax_utils import ACT2FN, FlaxPreTrainedModel, append_call_sample_docstring, logging
+from transformers.utils import add_start_docstrings, add_start_docstrings_to_model_forward
+from transformers.models.mistral.configuration_mistral import MistralConfig
 
 
 logger = logging.get_logger(__name__)
