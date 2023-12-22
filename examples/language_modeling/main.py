@@ -144,7 +144,9 @@ def main(n_processes=None,
         tokenizer.pad_token = tokenizer.eos_token
 
         model = FlaxAutoModelForCausalLM.from_pretrained(
-            model_name_or_path, dtype=getattr(jnp, computation_dtype))
+            model_name_or_path,
+            dtype=getattr(jnp, computation_dtype),
+            from_pt=True)
         params = model.to_fp32(model.params)
 
         gen_kwargs = {
