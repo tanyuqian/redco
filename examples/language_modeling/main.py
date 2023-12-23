@@ -104,12 +104,11 @@ def main(n_processes=None,
          text_key='text',
          tgt_key='output',
          model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
-         computation_dtype='float32',
          n_model_shards=1,
          n_epochs=3,
          per_device_batch_size=8,
          eval_per_device_batch_size=16,
-         accumulate_grad_batches=4,
+         accumulate_grad_batches=1,
          max_length=512,
          eval_src_length=256,
          learning_rate=2e-5,
@@ -144,9 +143,7 @@ def main(n_processes=None,
         tokenizer.pad_token = tokenizer.eos_token
 
         model = FlaxAutoModelForCausalLM.from_pretrained(
-            model_name_or_path,
-            dtype=getattr(jnp, computation_dtype),
-            from_pt=True)
+            model_name_or_path, from_pt=True)
         params = model.to_fp32(model.params)
 
         gen_kwargs = {

@@ -22,14 +22,12 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=.92 python main.py \
     --accumulate_grad_batches 4 \
     --max_length 512 \
     --eval_src_length 256 \
-    --computation_dtype float32 \
     --n_model_shards 4 
 ```
 * `XLA_PYTHON_CLIENT_MEM_FRACTION=.92` *(Optional)*: can adjust the proportion of pre-allocated GPU memory to JAX.
 * `--model_name_or_path`: name or path of a CausalLM on HuggingFace, e.g., `huggyllama/llama-7b`.
 * `--max_length`: total length of instruction + response in training. 
 * `--eval_src_length`: length of instruction in inference.
-* `--computation_dtype`: `float32/float16/bfloat16`, indicating the dtype of model computation. Note that the dtype of parameters is always fp32 by default. See `main.py:Line146-148` for more details.
 * `--n_model_shards`: number of pieces to split your large model, `1` by default (pure data parallelism).
 
 See `def main(...)` in [main.py](main.py) for all the tunable arguments. 
@@ -82,14 +80,14 @@ from flax.serialization import msgpack_restore
 from transformers import AutoConfig, FlaxAutoModelForCausalLM, AutoModelForCausalLM
 
 def main(model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
-         msgpack_filepath='./workdir/ckpts/params_last.msgpack',
-         save_dir='./saved_model_hf'):
-    FlaxAutoModelForCausalLM(
-        config=AutoConfig.from_pretrained(model_name_or_path), _do_init=False
-    ).save_pretrained(
-        save_dir, params=msgpack_restore(open(msgpack_filepath, 'rb').read()))
+         msgpack_filepath='./workdir/ckpts/params_last.msgpack'):
+    flax_model = FlaxAutoModelForCausalLM(
+        config=AutoConfig.from_pretrained(model_name_or_path), _do_init=False)
+    params = msgpack_restore(open(msgpack_filepath, 'rb').read())
     
-    pytorch_model = AutoModelForCausalLM.from_pretrained(save_dir, from_flax=True)
+    flax_model.save_pretrained('./saved_model_hf', params=params)
+    
+    pytorch_model = AutoModelForCausalLM.from_pretrained('./saved_model_hf', from_flax=True)
 
 if __name__ == '__main__':
     fire.Fire(main)
@@ -102,15 +100,11 @@ import fire
 from flax.serialization import msgpack_restore
 from transformers import AutoConfig, AutoTokenizer, FlaxAutoModelForCausalLM
 
-
 def main(model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
          msgpack_filepath='./workdir/ckpts/params_last.msgpack'):
     model = FlaxAutoModelForCausalLM(
         config=AutoConfig.from_pretrained(model_name_or_path), _do_init=False)
     params = msgpack_restore(open(msgpack_filepath, 'rb').read())
-    
-    # if save as a HuggingFace dir
-    # model.save_pretrained('finetuned_llama', params=params)
     
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     inputs = tokenizer(
