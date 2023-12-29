@@ -14,12 +14,8 @@
 import os
 import jax
 import jax.numpy as jnp
-from jax.experimental import multihost_utils
 from flax.jax_utils import replicate, unreplicate
 from flax.training.common_utils import shard_prng_key
-from flax.core.frozen_dict import freeze, unfreeze
-from flax.serialization import (
-    msgpack_serialize, msgpack_restore, from_state_dict, to_state_dict)
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_lr_schedule_fn
@@ -30,6 +26,13 @@ from .model_parallel_utils.mesh_utils import (
     shard_params,
     get_param_spec,
     get_sharding_rules)
+from .ckpt_utils import (
+    save_params,
+    save_opt_state,
+    load_params,
+    load_opt_state,
+    save_rng,
+    load_rng)
 
 
 class Deployer:
@@ -265,54 +268,35 @@ class Deployer:
                 logger=self._logger,
                 summary_writer=self._summary_writer)
 
-    def load_params(self, filepath):
-        with jax.default_device(jax.devices('cpu')[0]):
-            params = msgpack_restore(open(filepath, 'rb').read())
-            params = jax.tree_util.tree_map(jnp.asarray, params)
-
-        self.log_info(f'params loaded from {filepath}')
+    def load_params(self, ckpt_dir):
+        params = load_params(ckpt_dir=ckpt_dir)
+        self.log_info(f'params loaded from {ckpt_dir}')
         return params
 
-    def load_opt_state(self, ckpt_dir, desc, params, optimizer):
-        filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
-        if not os.path.exists(filepath):
-            self.log_info(f'Skip loading opt_state (No file {filepath})')
-            return None
-
-        with jax.default_device(jax.devices('cpu')[0]):
-            opt_state = msgpack_restore(open(filepath, 'rb').read())
-            opt_state = from_state_dict(
-                target=optimizer.init(freeze(params)), state=opt_state)
-
-        self.log_info(f'opt_state loaded from {filepath}.')
+    def load_opt_state(self, ckpt_dir, params, optimizer):
+        opt_state = load_opt_state(
+            ckpt_dir=ckpt_dir, params=params, optimizer=optimizer)
+        if opt_state is None:
+            self.log_info(f'opt_state not found in {ckpt_dir}. skipped.')
+        else:
+            self.log_info(f'opt_state loaded from {ckpt_dir}')
         return opt_state
 
-    def save_params(self, params, ckpt_dir, desc):
-        if self._mesh is not None:
-            with jax.default_device(jax.devices('cpu')[0]):
-                params = multihost_utils.process_allgather(params)
+    def save_params(self, params, ckpt_dir):
+        save_params(mesh=self._mesh, params=params, ckpt_dir=ckpt_dir)
+        self.log_info(f'params saved into {ckpt_dir}')
 
-        if jax.process_index() == 0:
-            filepath = f'{ckpt_dir}/params_{desc}.msgpack'
-            open(filepath, "wb").write(msgpack_serialize(unfreeze(params)))
-            self.log_info(f'params saved into {filepath}')
+    def save_opt_state(self, opt_state, ckpt_dir):
+        save_opt_state(mesh=self._mesh, opt_state=opt_state, ckpt_dir=ckpt_dir)
+        self.log_info(f'opt_state saved into {ckpt_dir}')
 
-    def save_opt_state(self, opt_state, ckpt_dir, desc):
-        if self._mesh is None:
-            opt_state = unreplicate(opt_state)
-        else:
-            with jax.default_device(jax.devices('cpu')[0]):
-                opt_state = multihost_utils.process_allgather(opt_state)
+    def save_rng(self, ckpt_dir):
+        save_rng(rng=self._rng, ckpt_dir=ckpt_dir)
+        self.log_info(f'rng saved into {ckpt_dir}')
 
-        if jax.process_index() == 0:
-            filepath = f'{ckpt_dir}/opt_state_{desc}.msgpack'
-            opt_state = to_state_dict(opt_state)
-            open(filepath, "wb").write(msgpack_serialize(unfreeze(opt_state)))
-            self.log_info(f'opt_state saved into {filepath}')
-
-    def save_rng(self, ckpt_dir, desc):
-        if jax.process_index() == 0:
-            jnp.save(f'{ckpt_dir}/rng_{desc}.npy', self._rng)
+    def load_rng(self, ckpt_dir):
+        self._rng = load_rng(ckpt_dir=ckpt_dir)
+        self.log_info(f'rng updated by {ckpt_dir}.')
 
     @property
     def mesh(self):

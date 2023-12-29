@@ -17,7 +17,6 @@ from functools import partial
 import json
 import numpy as np
 import jax
-import jax.numpy as jnp
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
 from flax.jax_utils import replicate
@@ -61,14 +60,12 @@ class Trainer:
             f'{self.workdir}/ckpts/last_ckpt_info.json'
         if os.path.exists(last_ckpt_info_path):
             self._last_ckpt_info = json.load(open(last_ckpt_info_path))
-            desc = self._last_ckpt_info['last_desc']
-            params = self._deployer.load_params(
-                filepath=f'{self.workdir}/ckpts/params_{desc}.msgpack')
+            ckpt_name = self._last_ckpt_info['last_ckpt_name']
+            ckpt_dir = f'{self.workdir}/ckpts/{ckpt_name}'
+
+            params = self._deployer.load_params(ckpt_dir=ckpt_dir)
             opt_state = self._deployer.load_opt_state(
-                ckpt_dir=f'{self.workdir}/ckpts',
-                desc=desc,
-                params=params,
-                optimizer=optimizer)
+                ckpt_dir=ckpt_dir, params=params, optimizer=optimizer)
 
             self.set_train_state(
                 apply_fn=self._apply_fn,
@@ -77,17 +74,16 @@ class Trainer:
                 step=self._last_ckpt_info['last_step'],
                 init_opt_state=opt_state)
 
-            self._deployer._rng = jnp.load(
-                f'{self.workdir}/ckpts/rng_{desc}.npy')
+            self._deployer.load_rng(ckpt_dir=ckpt_dir)
 
             self._deployer.log_info(
-                'loaded last_ckpt \"{last_desc}\",'
+                'loaded last_ckpt \"{last_ckpt_name}\",'
                 ' last_step={last_step},'
                 ' last_epoch_idx={last_epoch_idx}'.format(
                     **self._last_ckpt_info))
         else:
             self._last_ckpt_info = \
-                {'last_desc': None, 'last_step': 0, 'last_epoch_idx': -1}
+                {'last_ckpt_name': None, 'last_step': 0, 'last_epoch_idx': -1}
             self.set_train_state(
                 apply_fn=apply_fn, params=params, optimizer=optimizer, step=0)
 
@@ -295,6 +291,12 @@ class Trainer:
                 per_device_batch_size=per_device_batch_size,
                 desc=f'epoch {epoch_idx} / {n_epochs}')
 
+            save_ckpt_kwargs = {
+                'epoch_idx': epoch_idx,
+                'ckpt_dir_prefix': f'{self.workdir}/ckpts',
+                'save_opt_state': save_opt_states
+            }
+
             if eval_examples is None:
                 self._deployer.log_info(
                     'No evaluation cuz \'eval_examples\' is None.')
@@ -346,12 +348,6 @@ class Trainer:
                     self._deployer.log_info(
                         f'eval_results saved into {result_filepath}.')
 
-                save_ckpt_kwargs = {
-                    'epoch_idx': epoch_idx,
-                    'ckpt_dir': f'{self.workdir}/ckpts',
-                    'save_opt_state': save_opt_states
-                }
-
                 for key in save_argmin_ckpt_by_metrics:
                     assert self.workdir is not None
                     if eval_metrics[key] < min_metrics.get(key, float('inf')):
@@ -363,7 +359,8 @@ class Trainer:
                             json.dump(max_metrics, open(
                                 f'{self.workdir}/max_metrics.json', 'w'))
 
-                        self.save_ckpt(desc=f'min_{key}', **save_ckpt_kwargs)
+                        self.save_ckpt(
+                            ckpt_name=f'min_{key}', **save_ckpt_kwargs)
 
                 for key in save_argmax_ckpt_by_metrics:
                     assert self.workdir is not None
@@ -376,34 +373,37 @@ class Trainer:
                             json.dump(max_metrics, open(
                                 f'{self.workdir}/max_metrics.json', 'w'))
 
-                        self.save_ckpt(desc=f'max_{key}', **save_ckpt_kwargs)
+                        self.save_ckpt(
+                            ckpt_name=f'max_{key}', **save_ckpt_kwargs)
 
             if save_every_ckpt:
-                self.save_ckpt(desc=f'epoch_{epoch_idx}', **save_ckpt_kwargs)
+                self.save_ckpt(
+                    ckpt_name=f'epoch_{epoch_idx}', **save_ckpt_kwargs)
             elif save_last_ckpt:
-                self.save_ckpt(desc=f'last', **save_ckpt_kwargs)
+                self.save_ckpt(ckpt_name='last', **save_ckpt_kwargs)
 
-    def save_ckpt(self, epoch_idx, desc, ckpt_dir, save_opt_state):
+    def save_ckpt(self, epoch_idx, ckpt_dir_prefix, ckpt_name, save_opt_state):
+        ckpt_dir = f'{ckpt_dir_prefix}/{ckpt_name}'
         if jax.process_index() == 0:
             os.makedirs(ckpt_dir, exist_ok=True)
 
-        self._deployer.save_params(
-            params=self.params, ckpt_dir=ckpt_dir, desc=desc)
-        self._deployer.save_rng(ckpt_dir=ckpt_dir, desc=desc)
+        self._deployer.save_params(params=self.params, ckpt_dir=ckpt_dir)
+        self._deployer.save_rng(ckpt_dir=ckpt_dir)
 
         if save_opt_state:
             self._deployer.save_opt_state(
-                opt_state=self._state.opt_state, ckpt_dir=ckpt_dir, desc=desc)
+                opt_state=self._state.opt_state, ckpt_dir=ckpt_dir)
 
         if jax.process_index() == 0:
             last_ckpt_info = {
-                'last_desc': desc,
+                'last_ckpt_name': ckpt_name,
                 'last_step': self.step,
                 'last_epoch_idx': epoch_idx
             }
             json.dump(last_ckpt_info, open(
-                f'{ckpt_dir}/last_ckpt_info.json', 'w'), indent=4)
-            self._deployer.log_info(f'{ckpt_dir}/last_ckpt_info.json updated.')
+                f'{ckpt_dir_prefix}/last_ckpt_info.json', 'w'), indent=4)
+            self._deployer.log_info(
+                f'{ckpt_dir_prefix}/last_ckpt_info.json updated.')
 
     def get_default_predictor(self, pred_fn, output_fn=None):
         return self._default_predictor_fn(pred_fn=pred_fn, output_fn=output_fn)
