@@ -19,13 +19,13 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=.92 python main.py \
     --n_epochs 3 \
     --per_device_batch_size 8 \
     --eval_per_device_batch_size 16 \
-    --accumulate_grad_batches 4 \
+    --accumulate_grad_batches 1 \
     --max_length 512 \
     --eval_src_length 256 \
     --n_model_shards 4 
 ```
 * `XLA_PYTHON_CLIENT_MEM_FRACTION=.92` *(Optional)*: can adjust the proportion of pre-allocated GPU memory to JAX.
-* `--model_name_or_path`: name or path of a CausalLM on HuggingFace, e.g., `huggyllama/llama-7b`.
+* `--model_name_or_path`: name or path of a CausalLM on HuggingFace, e.g., `huggyllama/llama-7b` / `mistralai/Mistral-7B-v0.1`.
 * `--max_length`: total length of instruction + response in training. 
 * `--eval_src_length`: length of instruction in inference.
 * `--n_model_shards`: number of pieces to split your large model, `1` by default (pure data parallelism).
