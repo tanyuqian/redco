@@ -20,12 +20,14 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=.92 python main.py \
     --per_device_batch_size 8 \
     --eval_per_device_batch_size 16 \
     --accumulate_grad_batches 1 \
+    --computation_dtype float32 \
     --max_length 512 \
     --eval_src_length 256 \
     --n_model_shards 4 
 ```
 * `XLA_PYTHON_CLIENT_MEM_FRACTION=.92` *(Optional)*: can adjust the proportion of pre-allocated GPU memory to JAX.
 * `--model_name_or_path`: name or path of a CausalLM on HuggingFace, e.g., `huggyllama/llama-7b` / `mistralai/Mistral-7B-v0.1`.
+* `--computation_dtype`: dtype for model computation (might be different from dtype of parameters), `float32` by default.
 * `--max_length`: total length of instruction + response in training. 
 * `--eval_src_length`: length of instruction in inference.
 * `--n_model_shards`: number of pieces to split your large model, `1` by default (pure data parallelism).
@@ -70,9 +72,26 @@ srun python main.py --host0_address <ip_node-100> --n_local_devices 4
 
 
 
-### Use saved params in HuggingFace 
+### Use saved params  
 
-#### Load into HuggingFace-PyTorch
+#### Option 1. Run distributed generation
+
+```shell
+XLA_PYTHON_CLIENT_MEM_FRACTION=.92 python generate.py \
+    --model_name_or_path huggyllama/llama-7b \
+    --params_path ./workdir/last_params.msgpack \
+    --per_device_batch_size 8 \
+    --n_model_shards 1 \
+    --computation_dtype float16
+```
+* `XLA_PYTHON_CLIENT_MEM_FRACTION=.92` *(Optional)*: can adjust the proportion of pre-allocated GPU memory to JAX.
+* `--model_name_or_path`: name or path of a CausalLM on HuggingFace, e.g., `huggyllama/llama-7b` / `mistralai/Mistral-7B-v0.1`.
+* `--params_path`: the path to saved params. If it's `None`, the pretrained model weights will be used. 
+* `--n_model_shards`: number of pieces to split your large model, `1` by default (pure data parallelism).
+* `--computation_dtype`: dtype for model computation (might be different from dtype of parameters), `float16` by default. 
+
+
+#### Option 2. Load into a HuggingFace model (PyTorch)
 
 ```python
 import fire
@@ -93,7 +112,7 @@ if __name__ == '__main__':
     fire.Fire(main)
 ```
 
-#### Load in HuggingFace-Flax
+#### Option 3. Load into a HuggingFace model (Jax/Flax)
 
 ```python
 import fire

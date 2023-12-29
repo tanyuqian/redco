@@ -16,6 +16,7 @@ from functools import partial
 import fire
 import datasets
 import jax
+import jax.numpy as jnp
 from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
 from redco import Deployer, Predictor
 
@@ -60,6 +61,7 @@ def main(n_processes=None,
          tgt_key='tgt',
          model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
          params_path=None,
+         computation_dtype='float16',
          per_device_batch_size=8,
          n_model_shards=1,
          max_length=512,
@@ -97,14 +99,18 @@ def main(n_processes=None,
 
         if 'mistral' in model_name_or_path.lower():
             model = FlaxMistralForCausalLM.from_pretrained(
-                model_name_or_path, from_pt=True)
+                model_name_or_path,
+                from_pt=True,
+                dtype=getattr(jnp, computation_dtype))
         else:
             model = FlaxAutoModelForCausalLM.from_pretrained(
-                model_name_or_path, from_pt=True)
+                model_name_or_path,
+                from_pt=True,
+                dtype=getattr(jnp, computation_dtype))
 
         params = model.params if params_path is None \
             else deployer.load_params(params_path)
-        params = model.to_fp32(params)
+        params = model.to_fp16(params)
 
         gen_kwargs = {
             'do_sample': True,
@@ -128,21 +134,18 @@ def main(n_processes=None,
         ('Below is an instruction that describes a task. Write a response that '
          'appropriately completes the request. '
          '### Instruction: Find the capital of Spain. ### Response:')
-
     demo_gen = predictor.predict(
         examples=[{src_key: demo_src}],
         params=params,
         per_device_batch_size=per_device_batch_size,
         desc='demo')[0]
-
-    print(f'DEMO_SRC: {demo_src}\n\nDEMO GENERATION: {demo_gen}')
+    print(json.dumps({'demo': {'src': demo_src, 'gen': demo_gen}}, indent=4))
 
     outputs = predictor.predict(
         examples=dataset['validation'],
         params=params,
         per_device_batch_size=per_device_batch_size,
         desc='Validation set')
-
     gens = [
         {'example': example, 'generation': output}
         for example, output in zip(dataset['validation'], outputs)

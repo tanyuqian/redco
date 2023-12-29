@@ -106,6 +106,7 @@ def main(n_processes=None,
          per_device_batch_size=8,
          eval_per_device_batch_size=16,
          accumulate_grad_batches=1,
+         computation_dtype='float32',
          max_length=512,
          eval_src_length=256,
          learning_rate=2e-5,
@@ -148,11 +149,17 @@ def main(n_processes=None,
 
         if 'mistral' in model_name_or_path.lower():
             model = FlaxMistralForCausalLM.from_pretrained(
-                model_name_or_path, from_pt=True)
+                model_name_or_path,
+                from_pt=True,
+                dtype=getattr(jnp, computation_dtype))
         else:
             model = FlaxAutoModelForCausalLM.from_pretrained(
-                model_name_or_path, from_pt=True)
+                model_name_or_path,
+                from_pt=True,
+                dtype=getattr(jnp, computation_dtype))
 
+        # usually dtype for parameters is float32 to ensure training convergence
+        # while dtype for computation can be float32/float16/bfloat16
         params = model.to_fp32(model.params)
 
         gen_kwargs = {
