@@ -82,14 +82,15 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=.92 python generate.py \
     --params_path ./workdir/last_params.msgpack \
     --per_device_batch_size 8 \
     --n_model_shards 1 \
-    --computation_dtype float16
+    --computation_dtype float32
 ```
 * `XLA_PYTHON_CLIENT_MEM_FRACTION=.92` *(Optional)*: can adjust the proportion of pre-allocated GPU memory to JAX.
 * `--model_name_or_path`: name or path of a CausalLM on HuggingFace, e.g., `huggyllama/llama-7b` / `mistralai/Mistral-7B-v0.1`.
 * `--params_path`: the path to saved params. If it's `None`, the pretrained model weights will be used. 
 * `--n_model_shards`: number of pieces to split your large model, `1` by default (pure data parallelism).
-* `--computation_dtype`: dtype for model computation (might be different from dtype of parameters), `float16` by default. 
+* `--computation_dtype`: dtype for model computation (might be different from dtype of parameters), `float32` by default. 
 
+See `def main(...)` in [generate.py](generate.py) for all the tunable arguments. See line 116 of [generate.py](generate.py) for changing dtype of inference parameters. 
 
 #### Option 2. Load into a HuggingFace model (PyTorch)
 

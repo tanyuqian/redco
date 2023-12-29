@@ -61,7 +61,7 @@ def main(n_processes=None,
          tgt_key='tgt',
          model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
          params_path=None,
-         computation_dtype='float16',
+         computation_dtype='float32',
          per_device_batch_size=8,
          n_model_shards=1,
          max_length=512,
@@ -110,7 +110,10 @@ def main(n_processes=None,
 
         params = model.params if params_path is None \
             else deployer.load_params(params_path)
-        params = model.to_fp16(params)
+
+        # Sometimes params_dtype for inference can be fp16 for speed
+        params = model.to_fp32(params)
+        # params = model.to_fp16(params)
 
         gen_kwargs = {
             'do_sample': True,
