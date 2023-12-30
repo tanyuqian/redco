@@ -227,7 +227,8 @@ class Trainer:
             save_last_ckpt=False,
             save_argmin_ckpt_by_metrics=None,
             save_argmax_ckpt_by_metrics=None,
-            save_opt_states=True):
+            save_opt_states=True,
+            ckpt_max_shard_size='10GB'):
         if eval_per_device_batch_size is None:
             eval_per_device_batch_size = per_device_batch_size
 
@@ -294,7 +295,8 @@ class Trainer:
             save_ckpt_kwargs = {
                 'epoch_idx': epoch_idx,
                 'ckpt_dir_prefix': f'{self.workdir}/ckpts',
-                'save_opt_state': save_opt_states
+                'save_opt_state': save_opt_states,
+                'max_shard_size': ckpt_max_shard_size
             }
 
             if eval_examples is None:
@@ -382,17 +384,27 @@ class Trainer:
             elif save_last_ckpt:
                 self.save_ckpt(ckpt_name='last', **save_ckpt_kwargs)
 
-    def save_ckpt(self, epoch_idx, ckpt_dir_prefix, ckpt_name, save_opt_state):
+    def save_ckpt(self,
+                  epoch_idx,
+                  ckpt_dir_prefix,
+                  ckpt_name,
+                  save_opt_state,
+                  max_shard_size):
         ckpt_dir = f'{ckpt_dir_prefix}/{ckpt_name}'
         if jax.process_index() == 0:
             os.makedirs(ckpt_dir, exist_ok=True)
 
-        self._deployer.save_params(params=self.params, ckpt_dir=ckpt_dir)
+        self._deployer.save_params(
+            params=self.params,
+            ckpt_dir=ckpt_dir,
+            max_shard_size=max_shard_size)
         self._deployer.save_rng(ckpt_dir=ckpt_dir)
 
         if save_opt_state:
             self._deployer.save_opt_state(
-                opt_state=self._state.opt_state, ckpt_dir=ckpt_dir)
+                opt_state=self._state.opt_state,
+                ckpt_dir=ckpt_dir,
+                max_shard_size=max_shard_size)
 
         if jax.process_index() == 0:
             last_ckpt_info = {
