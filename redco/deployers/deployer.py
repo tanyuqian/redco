@@ -269,11 +269,13 @@ class Deployer:
                 summary_writer=self._summary_writer)
 
     def load_params(self, ckpt_dir):
+        self.log_info(f'loading params from {ckpt_dir} ...')
         params = load_params(ckpt_dir=ckpt_dir)
         self.log_info(f'params loaded from {ckpt_dir}')
         return params
 
     def load_opt_state(self, ckpt_dir, params, optimizer):
+        self.log_info(f'loading opt_state from {ckpt_dir} ...')
         opt_state = load_opt_state(
             ckpt_dir=ckpt_dir, params=params, optimizer=optimizer)
         if opt_state is None:
@@ -283,6 +285,7 @@ class Deployer:
         return opt_state
 
     def save_params(self, params, ckpt_dir, max_shard_size):
+        self.log_info(f'saving params into {ckpt_dir} ...')
         save_params(
             mesh=self._mesh,
             params=params,
@@ -291,6 +294,7 @@ class Deployer:
         self.log_info(f'params saved into {ckpt_dir}')
 
     def save_opt_state(self, opt_state, ckpt_dir, max_shard_size):
+        self.log_info(f'saving opt_state into {ckpt_dir} ...')
         save_opt_state(
             mesh=self._mesh,
             opt_state=opt_state,
