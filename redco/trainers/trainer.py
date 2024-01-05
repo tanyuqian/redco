@@ -94,12 +94,13 @@ class Trainer:
             params_sharding_rules=params_sharding_rules)
 
     def set_train_state(
-            self, apply_fn, params, optimizer, step, init_opt_state=None):
+            self, apply_fn, params, optimizer, step, opt_state=None):
         params = freeze(params)
+        if opt_state is None:
+            with jax.default_device(jax.devices('cpu')[0]):
+                opt_state = optimizer.init(params)
 
         if self._deployer.mesh is None:
-            opt_state = init_opt_state if init_opt_state is not None \
-                else optimizer.init(params)
             self._state = train_state.TrainState(
                 step=step,
                 apply_fn=apply_fn,
@@ -111,13 +112,13 @@ class Trainer:
             params_spec = self._deployer.get_params_spec(
                 params=params,
                 params_sharding_rules=self._params_sharding_rules)
+            opt_state_spec = self._deployer.shard_params_and_opt_state(
+                params=params, params_spec=params_spec, optimizer=optimizer)
 
-            params, opt_state, opt_state_spec = \
-                self._deployer.shard_params_and_opt_state(
-                    params=params,
-                    params_spec=params_spec,
-                    optimizer=optimizer,
-                    init_opt_state=init_opt_state)
+            params = self._deployer.shard_params(
+                params=params, params_spec=params_spec)
+            opt_state = self._deployer.shard_params(
+                params=opt_state, params_spec=opt_state_spec)
 
             self._state = train_state.TrainState(
                 apply_fn=apply_fn,

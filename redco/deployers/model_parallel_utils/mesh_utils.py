@@ -57,15 +57,9 @@ def shard_params(params, params_spec, mesh):
         return shard_fn(params)
 
 
-def shard_params_and_opt_state(
-        params, params_spec, mesh, optimizer, init_opt_state=None):
+def get_opt_state_spec(params, params_spec, optimizer):
     def init_fn(params_):
-        if init_opt_state is None:
-            opt_state_ = optimizer.init(params_)
-        else:
-            opt_state_ = init_opt_state
-
-        return opt_state_, params_
+        return optimizer.init(params_)
 
     def get_opt_spec(x):
         if isinstance(x, (dict, FrozenDict,)):
@@ -74,21 +68,10 @@ def shard_params_and_opt_state(
 
     params_shapes = jax.tree_util.tree_map(
         lambda x: ShapeDtypeStruct(x.shape, x.dtype), params)
-    state_shapes = jax.eval_shape(init_fn, params_shapes)
 
-    opt_state_spec, _ = jax.tree_util.tree_map(
-        get_opt_spec, state_shapes,
+    return jax.tree_util.tree_map(
+        get_opt_spec, jax.eval_shape(init_fn, params_shapes),
         is_leaf=lambda x: isinstance(x, (dict, FrozenDict, optax.EmptyState,)))
-
-    p_get_initial_state = pjit(
-        init_fn,
-        in_shardings=(params_spec,),
-        out_shardings=(opt_state_spec, params_spec))
-
-    with mesh:
-        opt_state, params = p_get_initial_state(params)
-
-    return params, opt_state, opt_state_spec
 
 
 def get_sharding_rules(params, mesh_model_shards, investigate_depth=2):
