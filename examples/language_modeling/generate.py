@@ -153,7 +153,7 @@ def main(n_processes=None,
         {'example': example, 'generation': output}
         for example, output in zip(dataset['validation'], outputs)
     ]
-    json.dump(gens, open(output_filename, 'w'))
+    json.dump(gens, open(output_filename, 'w'), indent=4)
     print(f'Outputs saved in to {output_filename}.')
 
 
