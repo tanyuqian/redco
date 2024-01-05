@@ -72,7 +72,7 @@ class Trainer:
                 params=params,
                 optimizer=self._optimizer,
                 step=self._last_ckpt_info['last_step'],
-                init_opt_state=opt_state)
+                opt_state=opt_state)
 
             self._deployer.load_rng(ckpt_dir=ckpt_dir)
 
