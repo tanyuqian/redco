@@ -22,9 +22,9 @@ from .opt_utils import get_lr_schedule_fn
 from .log_utils import get_logger, log_info, save_outputs
 from .model_parallel_utils.mesh_utils import (
     get_mesh,
-    shard_params_and_opt_state,
     shard_params,
     get_param_spec,
+    get_opt_state_spec,
     get_sharding_rules)
 from .ckpt_utils import (
     save_params,
@@ -217,18 +217,13 @@ class Deployer:
         return get_param_spec(
             params=params, params_sharding_rules=params_sharding_rules)
 
+    def get_opt_state_spec(self, params, params_spec, optimizer):
+        return get_opt_state_spec(
+            params=params, params_spec=params_spec, optimizer=optimizer)
+
     def shard_params(self, params, params_spec):
         return shard_params(
             params=params, params_spec=params_spec, mesh=self._mesh)
-
-    def shard_params_and_opt_state(
-            self, params, params_spec, optimizer, init_opt_state):
-        return shard_params_and_opt_state(
-            params=params,
-            params_spec=params_spec,
-            mesh=self._mesh,
-            optimizer=optimizer,
-            init_opt_state=init_opt_state)
 
     def run_model_step(self, step_fn, input_args):
         if self._mesh is None:

@@ -112,7 +112,7 @@ class Trainer:
             params_spec = self._deployer.get_params_spec(
                 params=params,
                 params_sharding_rules=self._params_sharding_rules)
-            opt_state_spec = self._deployer.shard_params_and_opt_state(
+            opt_state_spec = self._deployer.get_opt_state_spec(
                 params=params, params_spec=params_spec, optimizer=optimizer)
 
             params = self._deployer.shard_params(
