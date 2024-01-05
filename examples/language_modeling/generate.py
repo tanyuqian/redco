@@ -60,7 +60,7 @@ def main(n_processes=None,
          src_key='src',
          tgt_key='tgt',
          model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
-         params_path=None,
+         params_dir=None,
          computation_dtype='float32',
          per_device_batch_size=8,
          n_model_shards=1,
@@ -101,15 +101,17 @@ def main(n_processes=None,
             model = FlaxMistralForCausalLM.from_pretrained(
                 model_name_or_path,
                 from_pt=True,
+                _do_init=params_dir is None,
                 dtype=getattr(jnp, computation_dtype))
         else:
             model = FlaxAutoModelForCausalLM.from_pretrained(
                 model_name_or_path,
                 from_pt=True,
+                _do_init=params_dir is None,
                 dtype=getattr(jnp, computation_dtype))
 
-        params = model.params if params_path is None \
-            else deployer.load_params(params_path)
+        params = model.params if params_dir is None \
+            else deployer.load_params(params_dir)
 
         # Sometimes params_dtype for inference can be fp16 for speed
         params = model.to_fp32(params)

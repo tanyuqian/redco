@@ -8,7 +8,7 @@ This example implements instruction finetuning of Causal LLMs.
 ### Requirement
 Install Redco
 ```shell
-pip install redco==0.4.14
+pip install redco==0.4.15
 ```
 
 ### Use
@@ -79,14 +79,14 @@ srun python main.py --host0_address <ip_node-100> --n_local_devices 4
 ```shell
 XLA_PYTHON_CLIENT_MEM_FRACTION=.92 python generate.py \
     --model_name_or_path huggyllama/llama-7b \
-    --params_path ./workdir/last_params.msgpack \
+    --params_dir ./workdir/ckpts/last \
     --per_device_batch_size 8 \
     --n_model_shards 1 \
     --computation_dtype float32
 ```
 * `XLA_PYTHON_CLIENT_MEM_FRACTION=.92` *(Optional)*: can adjust the proportion of pre-allocated GPU memory to JAX.
 * `--model_name_or_path`: name or path of a CausalLM on HuggingFace, e.g., `huggyllama/llama-7b` / `mistralai/Mistral-7B-v0.1`.
-* `--params_path`: the path to saved params. If it's `None`, the pretrained model weights will be used. 
+* `--params_dir`: the path to saved params. If it's `None`, the pretrained model weights will be used. 
 * `--n_model_shards`: number of pieces to split your large model, `1` by default (pure data parallelism).
 * `--computation_dtype`: dtype for model computation (might be different from dtype of parameters), `float32` by default. 
 
