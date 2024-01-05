@@ -101,13 +101,11 @@ def main(n_processes=None,
             model = FlaxMistralForCausalLM.from_pretrained(
                 model_name_or_path,
                 from_pt=True,
-                _do_init=params_dir is None,
                 dtype=getattr(jnp, computation_dtype))
         else:
             model = FlaxAutoModelForCausalLM.from_pretrained(
                 model_name_or_path,
                 from_pt=True,
-                _do_init=params_dir is None,
                 dtype=getattr(jnp, computation_dtype))
 
         params = model.params if params_dir is None \
