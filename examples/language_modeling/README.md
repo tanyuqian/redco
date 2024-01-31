@@ -63,9 +63,12 @@ Below is an example of `run.sh` to submit, e.g., `sbatch run.sh`.
 #SBATCH --gres=gpu:4
 #SBATCH --output=slurm_%j.out
 #SBATCH --error=slurm_%j.err
-#SBATCH --nodelist=node-[100-200]
 
-srun python main.py --host0_address <ip_node-100> --n_local_devices 4
+nodes_array=($(scontrol show hostnames "$SLURM_JOB_NODELIST"))
+head_node=${nodes_array[0]}
+master_addr=$(srun --nodes=1 --ntasks=1 -w "$head_node" hostname --ip-address)
+
+srun python main.py --host0_address ${master_addr} --n_local_devices 4
 ```
 * `--host0_address`: the ip of node 0 among your assigned nodes.
 * `--n_local_devices`: number of GPUs on every machine. 
