@@ -37,14 +37,6 @@ def get_mesh(n_model_shards):
     return mesh
 
 
-class ShapeDtypeStruct:
-    __slots__ = ["shape", "dtype"]
-
-    def __init__(self, shape, dtype):
-        self.shape = shape
-        self.dtype = dtype
-
-
 def get_param_spec(params, params_sharding_rules):
     return set_partitions(unfreeze(params), params_sharding_rules)
 
@@ -67,7 +59,7 @@ def get_opt_state_spec(params, params_spec, optimizer):
         return None
 
     params_shapes = jax.tree_util.tree_map(
-        lambda x: ShapeDtypeStruct(x.shape, x.dtype), params)
+        lambda x: jax.ShapeDtypeStruct(x.shape, x.dtype), params)
 
     return jax.tree_util.tree_map(
         get_opt_spec, jax.eval_shape(init_fn, params_shapes),
