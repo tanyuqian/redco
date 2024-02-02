@@ -78,7 +78,7 @@ class Deployer:
         self._workdir = workdir
         self._logger = get_logger(verbose=verbose, workdir=workdir)
 
-        if run_wandb:
+        if run_wandb and jax.process_index() == 0:
             import wandb
             self._wandb_log_fn = wandb.log
         else:
@@ -250,7 +250,7 @@ class Deployer:
             for metric_name, value in metrics.items():
                 self._summary_writer.scalar(metric_name, value, step=step)
 
-        if self._wandb_log_fn is not None and jax.process_index() == 0:
+        if self._wandb_log_fn is not None:
             self._wandb_log_fn(metrics, step)
 
     def save_outputs(self, outputs, desc, step):
