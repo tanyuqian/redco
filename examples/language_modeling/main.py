@@ -22,8 +22,6 @@ import optax
 from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
 from redco import Deployer, Trainer, Predictor
 
-from modeling_flax_mistral import FlaxMistralForCausalLM
-
 
 def train_collate_fn(examples, tokenizer, max_length, src_key, tgt_key):
     batch = tokenizer(
@@ -147,16 +145,10 @@ def main(n_processes=None,
             model_name_or_path, padding_side='left')
         tokenizer.pad_token = tokenizer.eos_token
 
-        if 'mistral' in model_name_or_path.lower():
-            model = FlaxMistralForCausalLM.from_pretrained(
-                model_name_or_path,
-                from_pt=True,
-                dtype=getattr(jnp, computation_dtype))
-        else:
-            model = FlaxAutoModelForCausalLM.from_pretrained(
-                model_name_or_path,
-                from_pt=True,
-                dtype=getattr(jnp, computation_dtype))
+        model = FlaxAutoModelForCausalLM.from_pretrained(
+            model_name_or_path,
+            from_pt=True,
+            dtype=getattr(jnp, computation_dtype))
 
         # usually dtype for parameters is float32 to ensure training convergence
         # while dtype for computation can be float32/float16/bfloat16

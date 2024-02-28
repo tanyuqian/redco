@@ -20,8 +20,6 @@ import jax.numpy as jnp
 from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
 from redco import Deployer, Predictor
 
-from modeling_flax_mistral import FlaxMistralForCausalLM
-
 
 def collate_fn(examples, tokenizer, src_length, src_key):
     batch = tokenizer(
@@ -97,17 +95,10 @@ def main(n_processes=None,
             model_name_or_path, padding_side='left')
         tokenizer.pad_token = tokenizer.eos_token
 
-        if 'mistral' in model_name_or_path.lower():
-            model = FlaxMistralForCausalLM.from_pretrained(
-                model_name_or_path,
-                from_pt=True,
-                dtype=getattr(jnp, computation_dtype))
-        else:
-            model = FlaxAutoModelForCausalLM.from_pretrained(
-                model_name_or_path,
-                from_pt=True,
-                dtype=getattr(jnp, computation_dtype))
-
+        model = FlaxAutoModelForCausalLM.from_pretrained(
+            model_name_or_path,
+            from_pt=True,
+            dtype=getattr(jnp, computation_dtype))
         params = model.params if params_dir is None \
             else deployer.load_params(params_dir)
 
