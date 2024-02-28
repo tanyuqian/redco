@@ -60,12 +60,12 @@ Go to [example/language_modeling](examples%2Flanguage_modeling) and [examples/te
 We now have a [paper](https://arxiv.org/pdf/2310.16355.pdf) you can cite for the Red Coast library:
 
 ```
-Redco: A Lightweight Tool to Automate Distributed Training of LLMs on Any GPU/TPUs
+RedCoast: A Lightweight Tool to Automate Distributed Training of LLMs on Any GPU/TPUs
 Bowen Tan, Yun Zhu, Lijuan Liu, Hongyi Wang, Yonghao Zhuang, Jindong Chen, Eric Xing, Zhiting Hu
 Mlsys Workshop @ NeurIPS 2023
 
 @article{tan2023redco,
-  title={Redco: A Lightweight Tool to Automate Distributed Training of LLMs on Any GPU/TPUs},
+  title={RedCoast: A Lightweight Tool to Automate Distributed Training of LLMs on Any GPU/TPUs},
   author={Tan, Bowen and Zhu, Yun and Liu, Lijuan and Wang, Hongyi and Zhuang, Yonghao and Chen, Jindong and Xing, Eric and Hu, Zhiting},
   journal={arXiv preprint arXiv:2310.16355},
   year={2023}
