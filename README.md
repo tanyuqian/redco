@@ -13,7 +13,7 @@ Here is also a [Quick Tutorial](tutorials/quick.md) for you to become an expert 
 
 ### Installation
 
-#### Install Redco
+#### Install RedCoast
 ```
 pip install redco
 ```
@@ -75,6 +75,6 @@ Mlsys Workshop @ NeurIPS 2023
 ## Acknowledgement
 
 
-The name of this package, *Redco*, is inspired by *Red Coast Base*, a key location in the story of Three-Body. From Red Coast Base, humanity broadcasts its first message into the vast universe. We thank Cixin Liu for such a masterpiece!
+The name of this package is inspired by *Red Coast Base*, a key location in the story of Three-Body. From Red Coast Base, humanity broadcasts its first message into the vast universe. We thank Cixin Liu for such a masterpiece!
 
 ![](images/red_coast.png)
