@@ -114,7 +114,6 @@ def get_sharding_rules(params, n_model_shards):
                 rule_key[0][0] == 'o' or rule_key[0][-1] == 'o'):
             sharding_rules[rule_key] = P('mp', None)
         else:
-            assert flat_key[-1] == 'kernel'
             if flat_key[-2].startswith('up') or \
                     flat_key[-2].startswith('gate') or \
                     flat_key[-2].startswith('wi'):
