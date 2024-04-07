@@ -90,7 +90,7 @@ def get_sharding_rules(params, n_model_shards):
                     sharding_rules[rule_key] = None
                 else:
                     rule_tuple = [None] * len(param.shape)
-                    rule_tuple[valid_mp_dims[0]] = 'mp'
+                    rule_tuple[valid_mp_dims[-1]] = 'mp'
                     sharding_rules[rule_key] = P(*rule_tuple)
             else:
                 sharding_rules[rule_key] = None
@@ -110,13 +110,16 @@ def get_sharding_rules(params, n_model_shards):
                 sharding_rules[rule_key] = P('mp', None)
         else:
             assert flat_key[-1] == 'kernel'
-            if flat_key[-2].startswith('up') or flat_key[-2].startswith('gate'):
+            if flat_key[-2].startswith('up') or \
+                    flat_key[-2].startswith('gate') or \
+                    flat_key[-2].startswith('wi'):
                 sharding_rules[rule_key] = P(None, 'mp')
-            elif flat_key[-2].startswith('down'):
+            elif flat_key[-2].startswith('down') or \
+                    flat_key[-2].startswith('wo'):
                 sharding_rules[rule_key] = P('mp', None)
             elif flat_key[-2].startswith('head') or \
                     flat_key[-2].endswith('head'):
-                sharding_rules[rule_key] = P('mp', None)
+                sharding_rules[rule_key] = P(None, 'mp')
             else:
                 shard_dim = None
                 valid_mp_dims = get_valid_mp_dims(param)

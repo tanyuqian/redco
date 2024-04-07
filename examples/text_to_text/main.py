@@ -116,6 +116,7 @@ def main(n_processes=None,
          per_device_batch_size=8,
          eval_per_device_batch_size=16,
          accumulate_grad_batches=2,
+         computation_dtype='float16',
          max_src_len=512,
          max_tgt_len=64,
          num_beams=4,
@@ -141,7 +142,9 @@ def main(n_processes=None,
 
     with jax.default_device(jax.devices('cpu')[0]):
         model = FlaxAutoModelForSeq2SeqLM.from_pretrained(
-            model_name_or_path, from_pt=True)
+            model_name_or_path,
+            from_pt=True,
+            dtype=getattr(jnp, computation_dtype))
         model.params = model.to_fp32(model.params)
 
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
