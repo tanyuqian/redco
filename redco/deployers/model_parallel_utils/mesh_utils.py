@@ -74,6 +74,12 @@ def get_sharding_rules(params, n_model_shards):
                 result.append(i)
         return result
 
+    def inside_attention(flat_key):
+        for k in flat_key:
+            if 'attention' in k.lower() or 'attn' in k.lower():
+                return True
+        return False
+
     sharding_rules = {}
     flat_params = flatten_dict(params)
     last_shard_dim = None
@@ -100,14 +106,13 @@ def get_sharding_rules(params, n_model_shards):
             for dim_size, rule_str in zip(
                     param.shape, sharding_rules[rule_key]):
                 assert rule_str != 'mp' or dim_size % n_model_shards == 0
-        elif any([
-            'attention' in k.lower() or 'attn' in k.lower() for k in flat_key]):
-            if rule_key[0][0] in ['q', 'k', 'v'] or \
-                    rule_key[0][-1] in ['q', 'k', 'v']:
+        elif inside_attention(flat_key) and (
+                rule_key[0][0] in ['q', 'k', 'v'] or \
+                rule_key[0][-1] in ['q', 'k', 'v']):
                 sharding_rules[rule_key] = P(None, 'mp')
-            else:
-                assert rule_key[0][0] == 'o' or rule_key[0][-1] == 'o'
-                sharding_rules[rule_key] = P('mp', None)
+        elif inside_attention(flat_key) and (
+                rule_key[0][0] == 'o' or rule_key[0][-1] == 'o'):
+            sharding_rules[rule_key] = P('mp', None)
         else:
             assert flat_key[-1] == 'kernel'
             if flat_key[-2].startswith('up') or \
