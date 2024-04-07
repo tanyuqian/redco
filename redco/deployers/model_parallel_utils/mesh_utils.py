@@ -66,69 +66,69 @@ def get_opt_state_spec(params, params_spec, optimizer):
         is_leaf=lambda x: isinstance(x, (dict, FrozenDict, optax.EmptyState,)))
 
 
-def get_sharding_rules(params, mesh_model_shards, investigate_depth=2):
-    sharding_rules = {
-        ('(bias|scale)',): None,
-        ('embedding',): P('mp', None),
-    }
+def get_sharding_rules(params, n_model_shards):
+    def get_valid_mp_dims(param):
+        result = []
+        for i in reversed(range(len(param.shape))):
+            if param.shape[i] % n_model_shards == 0:
+                result.append(i)
+        return result
 
-    last_dense_mp_dim = None
+    sharding_rules = {}
     flat_params = flatten_dict(params)
-    for key in sorted(flat_params.keys(), key=lambda t: (len(t), t)):
-        param = flat_params[key]
+    last_shard_dim = None
+    for flat_key in sorted(flat_params.keys(), key=lambda t: (len(t), t[-2:])):
+        rule_key, param = flat_key[-2:], flat_params[flat_key]
 
-        rule_key = key[-investigate_depth:]
-
-        if key[-1] in ['bias', 'scale']:
-            assert len(param.shape) == 1
-
-        elif key[-1] == 'embedding':
-            assert len(param.shape) == 2
-            if param.shape[0] % mesh_model_shards != 0:
-                sharding_rules[('embedding',)] = P(None, 'mp')
-
-        else:
-            if len(param.squeeze().shape) == 1:
-                sharding_rules[rule_key] = None
-
-            elif rule_key in sharding_rules:
-                for dim_size, rule_str in zip(
-                        param.shape, sharding_rules[rule_key]):
-                    assert rule_str != 'mp' or dim_size % mesh_model_shards == 0
-
-            elif under_attention(key) and rule_key[0][0] == 'o':
-                sharding_rules[rule_key] = P('mp', None)
-
-            elif under_attention(key) and rule_key[0][0] in ['q', 'k', 'v']:
-                sharding_rules[rule_key] = P(None, 'mp')
-
-            elif under_attention(key) and rule_key[0][-1] == 'o':
-                sharding_rules[rule_key] = P('mp', None)
-
-            elif under_attention(key) and rule_key[0][-1] in ['q', 'k', 'v']:
-                sharding_rules[rule_key] = P(None, 'mp')
-
+        if flat_key[-1] != 'kernel':
+            rule_key = flat_key[-1:]
+            if flat_key[-1] in sharding_rules:
+                continue
+            if flat_key[-1] == 'embedding':
+                valid_mp_dims = get_valid_mp_dims(param)
+                if len(valid_mp_dims) == 0:
+                    sharding_rules[rule_key] = None
+                else:
+                    rule_tuple = [None] * len(param.shape)
+                    rule_tuple[valid_mp_dims[0]] = 'mp'
+                    sharding_rules[rule_key] = P(*rule_tuple)
             else:
-                rule_tuple = [None for _ in range(len(param.shape))]
-                for dim in range(-1, -len(param.shape) - 1, -1):
-                    if dim != last_dense_mp_dim and \
-                            param.shape[dim] % mesh_model_shards == 0:
-                        last_dense_mp_dim = dim
-                        rule_tuple[dim] = 'mp'
-                        break
-                if all([t is None for t in rule_tuple]):
-                    if last_dense_mp_dim is not None and \
-                            param.shape[last_dense_mp_dim] % \
-                            mesh_model_shards == 0:
-                        rule_tuple[last_dense_mp_dim] = 'mp'
+                sharding_rules[rule_key] = None
+        elif len(param.squeeze().shape) != 2:
+            sharding_rules[rule_key] = None
+        elif rule_key in sharding_rules:
+            for dim_size, rule_str in zip(
+                    param.shape, sharding_rules[rule_key]):
+                assert rule_str != 'mp' or dim_size % n_model_shards == 0
+        elif any([
+            'attention' in k.lower() or 'attn' in k.lower() for k in flat_key]):
+            if rule_key[0][0] in ['q', 'k', 'v'] or \
+                    rule_key[0][-1] in ['q', 'k', 'v']:
+                sharding_rules[rule_key] = P(None, 'mp')
+            else:
+                assert rule_key[0][0] == 'o' or rule_key[0][-1] == 'o'
+                sharding_rules[rule_key] = P('mp', None)
+        else:
+            assert flat_key[-1] == 'kernel'
+            if flat_key[-2].startswith('up') or flat_key[-2].startswith('gate'):
+                sharding_rules[rule_key] = P(None, 'mp')
+            elif flat_key[-2].startswith('down'):
+                sharding_rules[rule_key] = P('mp', None)
+            elif flat_key[-2].startswith('head') or \
+                    flat_key[-2].endswith('head'):
+                sharding_rules[rule_key] = P('mp', None)
+            else:
+                shard_dim = None
+                valid_mp_dims = get_valid_mp_dims(param)
+                if len(valid_mp_dims) > 0:
+                    shard_dim = valid_mp_dims[0]
+                    if shard_dim == last_shard_dim and len(valid_mp_dims) > 1:
+                        shard_dim = valid_mp_dims[1]
 
+                rule_tuple = [None] * len(param.shape)
+                if shard_dim is not None:
+                    rule_tuple[shard_dim] = 'mp'
                 sharding_rules[rule_key] = P(*rule_tuple)
+                last_shard_dim = shard_dim
 
     return list(sharding_rules.items())
-
-
-def under_attention(flat_param_key):
-    for key in flat_param_key:
-        if 'attention' in key.lower() or 'attn' in key.lower():
-            return True
-    return False

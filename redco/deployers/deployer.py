@@ -205,7 +205,7 @@ class Deployer:
             return None
         else:
             sharding_rules = get_sharding_rules(
-                params=params, mesh_model_shards=self._mesh.shape['mp'])
+                params=params, n_model_shards=self._mesh.shape['mp'])
 
             self.log_info(
                 info='\n'.join([f'{t}' for t in sharding_rules]),
