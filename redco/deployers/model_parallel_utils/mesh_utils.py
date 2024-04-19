@@ -69,9 +69,10 @@ def get_opt_state_spec(params, params_spec, optimizer):
 def get_sharding_rules(params, n_model_shards):
     def get_valid_mp_dims(param):
         result = []
-        for i in reversed(range(len(param.shape))):
-            if param.shape[i] % n_model_shards == 0:
+        for i, dim in enumerate(param.shape):
+            if dim % n_model_shards == 0:
                 result.append(i)
+        result.reverse()
         return result
 
     def inside_attention(flat_key):
@@ -113,7 +114,7 @@ def get_sharding_rules(params, n_model_shards):
             elif inside_attention(flat_key) and (
                     rule_key[0][0] == 'o' or rule_key[0][-1] == 'o'):
                 is_special = True
-                valid_mp_dims = reversed(valid_mp_dims)
+                valid_mp_dims.reverse()
             elif flat_key[-2].startswith('up') or \
                     flat_key[-2].startswith('gate') or \
                     flat_key[-2].startswith('wi'):
@@ -121,7 +122,7 @@ def get_sharding_rules(params, n_model_shards):
             elif flat_key[-2].startswith('down') or \
                     flat_key[-2].startswith('wo'):
                 is_special = True
-                valid_mp_dims = reversed(valid_mp_dims)
+                valid_mp_dims.reverse()
             elif flat_key[-2].startswith('head') or \
                     flat_key[-2].endswith('head'):
                 is_special = True
