@@ -107,7 +107,9 @@ def get_sharding_rules(params, n_model_shards):
             valid_mp_dims = get_valid_mp_dims(param)
             is_special = False
 
-            if inside_attention(flat_key) and (
+            if rule_key[-1] == 'embedding':
+                is_special = True
+            elif inside_attention(flat_key) and (
                     rule_key[0][0] in ['q', 'k', 'v'] or \
                     rule_key[0][-1] in ['q', 'k', 'v']):
                 is_special = True
