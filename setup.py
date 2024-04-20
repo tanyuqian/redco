@@ -17,7 +17,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="redco",
-    version="0.4.16dev",
+    version="0.4.16",
     author="Bowen Tan",
     packages=find_packages(),
     install_requires=['jax', 'flax', 'optax', 'numpy'],
