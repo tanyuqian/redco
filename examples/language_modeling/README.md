@@ -8,7 +8,7 @@ This example implements instruction finetuning of Causal LLMs.
 ### Requirement
 Install Redco
 ```shell
-pip install redco==0.4.15
+pip install redco==0.4.16
 ```
 
 ### Use
