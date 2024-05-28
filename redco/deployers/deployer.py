@@ -279,7 +279,7 @@ class Deployer:
             self.log_info(f'opt_state loaded from {ckpt_dir}')
         return opt_state
 
-    def save_params(self, params, ckpt_dir, max_shard_size):
+    def save_params(self, params, ckpt_dir, max_shard_size='10GB'):
         self.log_info(f'saving params into {ckpt_dir} ...')
         save_params(
             mesh=self._mesh,
@@ -288,7 +288,7 @@ class Deployer:
             max_shard_size=max_shard_size)
         self.log_info(f'params saved into {ckpt_dir}')
 
-    def save_opt_state(self, opt_state, ckpt_dir, max_shard_size):
+    def save_opt_state(self, opt_state, ckpt_dir, max_shard_size='10GB'):
         self.log_info(f'saving opt_state into {ckpt_dir} ...')
         save_opt_state(
             mesh=self._mesh,

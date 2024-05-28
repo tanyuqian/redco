@@ -36,6 +36,7 @@ class Trainer:
                  loss_fn,
                  params,
                  optimizer,
+                 opt_state=None,
                  lr_schedule_fn=None,
                  accumulate_grad_batches=None,
                  params_sharding_rules=None):
@@ -85,7 +86,11 @@ class Trainer:
             self._last_ckpt_info = \
                 {'last_ckpt_name': None, 'last_step': 0, 'last_epoch_idx': -1}
             self.set_train_state(
-                apply_fn=apply_fn, params=params, optimizer=optimizer, step=0)
+                apply_fn=apply_fn,
+                params=params,
+                optimizer=optimizer,
+                opt_state=opt_state,
+                step=0)
 
         self._default_predictor_fn = partial(
             Predictor,
@@ -98,6 +103,7 @@ class Trainer:
         params = freeze(params)
         if opt_state is None:
             with jax.default_device(jax.devices('cpu')[0]):
+                self._deployer.log_info('Initalizing opt_state ...')
                 opt_state = optimizer.init(params)
 
         if self._deployer.mesh is None:
