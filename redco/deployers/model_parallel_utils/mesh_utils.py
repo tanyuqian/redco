@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from functools import partial
 import numpy as np
 import jax
 from jax.experimental.pjit import pjit
@@ -42,11 +43,16 @@ def get_param_spec(params, params_sharding_rules):
 
 
 def shard_params(params, params_spec, mesh):
-    shard_fn = pjit(
-        lambda x: x, in_shardings=(params_spec,), out_shardings=params_spec)
+    def callback(index, param):
+        return param[index]
 
-    with mesh:
-        return shard_fn(params)
+    return jax.tree_util.tree_map(
+        lambda param, param_spec: jax.make_array_from_callback(
+            shape=param.shape,
+            sharding=jax.sharding.NamedSharding(mesh=mesh, spec=param_spec),
+            data_callback=partial(callback, param=param)),
+        params, params_spec)
+
 
 
 def get_opt_state_spec(params, params_spec, optimizer):
