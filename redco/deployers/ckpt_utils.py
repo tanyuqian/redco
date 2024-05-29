@@ -90,8 +90,6 @@ def load_params(ckpt_dir):
         else:
             params = msgpack_restore(open(filepath, 'rb').read())
 
-        params = jax.tree_util.tree_map(jnp.asarray, params)
-
     return params
 
 

@@ -36,7 +36,6 @@ class Trainer:
                  loss_fn,
                  params,
                  optimizer,
-                 opt_state=None,
                  lr_schedule_fn=None,
                  accumulate_grad_batches=None,
                  params_sharding_rules=None):
@@ -89,7 +88,6 @@ class Trainer:
                 apply_fn=apply_fn,
                 params=params,
                 optimizer=optimizer,
-                opt_state=opt_state,
                 step=0)
 
         self._default_predictor_fn = partial(
@@ -101,12 +99,11 @@ class Trainer:
     def set_train_state(
             self, apply_fn, params, optimizer, step, opt_state=None):
         params = freeze(params)
-        if opt_state is None:
-            with jax.default_device(jax.devices('cpu')[0]):
-                self._deployer.log_info('Initalizing opt_state ...')
-                opt_state = optimizer.init(params)
 
         if self._deployer.mesh is None:
+            self._deployer.log_info('Initalizing opt_state ...')
+            params = jax.device_put(params, jax.local_devices()[0])
+            opt_state = optimizer.init(params)
             self._state = train_state.TrainState(
                 step=step,
                 apply_fn=apply_fn,
@@ -118,13 +115,12 @@ class Trainer:
             params_spec = self._deployer.get_params_spec(
                 params=params,
                 params_sharding_rules=self._params_sharding_rules)
-            opt_state_spec = self._deployer.get_opt_state_spec(
-                params=params, params_spec=params_spec, optimizer=optimizer)
-
             params = self._deployer.shard_params(
                 params=params, params_spec=params_spec)
-            opt_state = self._deployer.shard_params(
-                params=opt_state, params_spec=opt_state_spec)
+            opt_state = optimizer.init(params)
+
+            opt_state_spec = self._deployer.get_opt_state_spec(
+                params=params, params_spec=params_spec, optimizer=optimizer)
 
             self._state = train_state.TrainState(
                 apply_fn=apply_fn,
