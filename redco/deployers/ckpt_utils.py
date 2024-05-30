@@ -29,7 +29,7 @@ PARAMS_FILENAME = 'params.msgpack'
 PARAMS_INDEX_FILENAME = 'params_index.json'
 OPT_STATE_FILENAME = 'opt_state.msgpack'
 OPT_STATE_INDEX_FILENAME = 'opt_state_index.json'
-RNG_FILENAME = 'rng.npy'
+RNG_FILENAME = 'rng.msgpack'
 
 
 def save_params(mesh, params, ckpt_dir, max_shard_size):
@@ -76,7 +76,7 @@ def save_opt_state(mesh, opt_state, ckpt_dir, max_shard_size):
 
 def save_rng(rng, ckpt_dir):
     if jax.process_index() == 0:
-        jnp.save(f'{ckpt_dir}/rng.npy', rng)
+        open(f'{ckpt_dir}/{RNG_FILENAME}', "wb").write(msgpack_serialize(rng))
 
 
 def load_params(ckpt_dir):
@@ -108,13 +108,16 @@ def load_opt_state(ckpt_dir, params, optimizer):
         else:
             opt_state = msgpack_restore(open(filepath, 'rb').read())
 
+        params_shapes = jax.tree_util.tree_map(
+            lambda x: jax.ShapeDtypeStruct(x.shape, x.dtype), params)
+
         opt_state = from_state_dict(
-            target=optimizer.init(freeze(params)), state=opt_state)
+            target=jax.eval_shape(optimizer.init, params_shapes), state=opt_state)
     return opt_state
 
 
 def load_rng(ckpt_dir):
-    return jnp.load(f'{ckpt_dir}/{RNG_FILENAME}')
+    return msgpack_restore(open(f'{ckpt_dir}/{RNG_FILENAME}', 'rb').read())
 
 
 def load_flax_sharded_weights(shard_files):

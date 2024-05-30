@@ -43,22 +43,14 @@ def get_param_spec(params, params_sharding_rules):
 
 
 def shard_params(params, params_spec, mesh):
-    def callback(index, param):
-        return param[index]
-
     return jax.tree_util.tree_map(
         lambda param, param_spec: jax.make_array_from_callback(
             shape=param.shape,
             sharding=jax.sharding.NamedSharding(mesh=mesh, spec=param_spec),
-            data_callback=partial(callback, param=param)),
+            data_callback=lambda index: param[index]),
         params, params_spec)
 
-
-
 def get_opt_state_spec(params, params_spec, optimizer):
-    def init_fn(params_):
-        return optimizer.init(params_)
-
     def get_opt_spec(x):
         if isinstance(x, (dict, FrozenDict,)):
             return params_spec
@@ -68,7 +60,7 @@ def get_opt_state_spec(params, params_spec, optimizer):
         lambda x: jax.ShapeDtypeStruct(x.shape, x.dtype), params)
 
     return jax.tree_util.tree_map(
-        get_opt_spec, jax.eval_shape(init_fn, params_shapes),
+        get_opt_spec, jax.eval_shape(optimizer.init, params_shapes),
         is_leaf=lambda x: isinstance(x, (dict, FrozenDict, optax.EmptyState,)))
 
 

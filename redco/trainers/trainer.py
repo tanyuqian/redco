@@ -117,6 +117,8 @@ class Trainer:
                 params_sharding_rules=self._params_sharding_rules)
             params = self._deployer.shard_params(
                 params=params, params_spec=params_spec)
+
+            self._deployer.log_info('Initalizing opt_state ...')
             opt_state = optimizer.init(params)
 
             opt_state_spec = self._deployer.get_opt_state_spec(

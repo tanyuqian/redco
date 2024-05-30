@@ -214,14 +214,17 @@ class Deployer:
             return sharding_rules
 
     def get_params_spec(self, params, params_sharding_rules):
+        self.log_info(info='Getting params spec ...')
         return get_param_spec(
             params=params, params_sharding_rules=params_sharding_rules)
 
     def get_opt_state_spec(self, params, params_spec, optimizer):
+        self.log_info(info='Getting opt_state spec ...')
         return get_opt_state_spec(
             params=params, params_spec=params_spec, optimizer=optimizer)
 
     def shard_params(self, params, params_spec):
+        self.log_info(info='Sharding params ...')
         return shard_params(
             params=params, params_spec=params_spec, mesh=self._mesh)
 
