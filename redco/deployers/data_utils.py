@@ -48,7 +48,7 @@ def get_data_batches(examples,
         data_loader,
         total=len(examples) // batch_size,
         desc=desc,
-        disable=(not verbose))
+        disable=(jax.process_index() > 0 or not verbose))
 
 
 def get_host_examples(examples, global_batch_size, shuffle, shuffle_rng, mesh):

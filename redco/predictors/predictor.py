@@ -18,6 +18,8 @@ import jax
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
 from flax.core.frozen_dict import freeze
+from flax.training.common_utils import shard_prng_key
+from flax.jax_utils import replicate
 from .utils import \
     add_idxes, collate_fn_wrapper, pred_fn_wrapper, default_output_fn
 
@@ -36,7 +38,7 @@ class Predictor:
         self._pred_fn = partial(
             pred_fn_wrapper,
             pred_fn=pred_fn,
-            under_pmap=self._deployer.mesh is None)
+            under_pmap=self.mesh is None)
         self._params_spec = None
         self._p_pred_step = None
 
@@ -50,7 +52,7 @@ class Predictor:
                            dummy_batch,
                            params,
                            params_sharding_rules):
-        if self._deployer.mesh is None:
+        if self.mesh is None:
             self._p_pred_step = jax.pmap(pred_fn, axis_name='batch')
         else:
             data_spec = jax.tree_util.tree_map(
@@ -69,6 +71,7 @@ class Predictor:
                 examples,
                 per_device_batch_size,
                 params,
+                params_replicated=False,
                 params_meshed=False,
                 desc=None):
         raw_n_inputs = len(examples)
@@ -85,8 +88,7 @@ class Predictor:
             shuffle_rng=None,
             desc=f'Predicting ({desc})' if desc is not None else 'Predicting')
 
-        params = self._deployer.process_to_run_model(freeze(params))
-
+        params = freeze(params)
         preds = []
         for batch in data_batches:
             if self._p_pred_step is None:
@@ -96,13 +98,17 @@ class Predictor:
                     params=params,
                     params_sharding_rules=self._params_sharding_rules)
 
-            if (self._params_spec is not None) and (not params_meshed):
+            if (self.mesh is None) and (not params_replicated):
+                params = replicate(params)
+                params_replicated = True
+            if (self.mesh is not None) and (not params_meshed):
                 params = self._deployer.shard_params(
                     params=params, params_spec=self._params_spec)
                 params_meshed = True
 
-            pred_rng = self._deployer.process_to_run_model(
-                self._deployer.gen_rng(), is_prng_key=True)
+            pred_rng = self._deployer.gen_rng()
+            if self.mesh is None:
+                pred_rng = shard_prng_key(pred_rng)
 
             batch_preds_with_idxes = self._deployer.run_model_step(
                 step_fn=self._p_pred_step,
@@ -118,3 +124,7 @@ class Predictor:
             preds.extend(batch_preds)
 
         return preds[:raw_n_inputs]
+
+    @property
+    def mesh(self):
+        return self._deployer.mesh

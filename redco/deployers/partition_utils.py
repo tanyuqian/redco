@@ -11,18 +11,50 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#
+#  adapted from https://github.com/google-research/google-research/blob/fce923e9dad97cd67492c2a65b9ecdc4b2495204/flax_models/t5x/partitions.py
+"""Utilities for constructing PyTrees of PartitionSpecs."""
 
-from functools import partial
+import re
 import numpy as np
 import jax
-from jax.experimental.pjit import pjit
 from jax.sharding import Mesh
 from jax.sharding import PartitionSpec as P
-from flax.core.frozen_dict import FrozenDict, unfreeze
-from flax.traverse_util import flatten_dict
+from flax.traverse_util import flatten_dict, unflatten_dict
+from flax.core.frozen_dict import FrozenDict, freeze, unfreeze
 import optax
 
-from .partition_utils import set_partitions
+# Sentinels
+_unmatched = object()
+
+
+def _match(qs, ks):
+    """Return True if regexes in qs match any window of strings in tuple ks."""
+    # compile regexes and force complete match
+    qts = tuple(map(lambda x: re.compile(x + "$"), qs))
+    for i in range(len(ks) - len(qs) + 1):
+        matches = [x.match(y) for x, y in zip(qts, ks[i:])]
+        if matches and all(matches):
+            return True
+    return False
+
+
+def _replacement_rules(rules):
+    def replace(key, val):
+        for rule, replacement in rules:
+            if _match(rule, key):
+                return replacement
+        return val
+
+    return replace
+
+
+def set_partitions(in_dict, rules):
+    replace = _replacement_rules(rules)
+    initd = {k: _unmatched for k in flatten_dict(in_dict)}
+    result = {k: replace(k, v) for k, v in initd.items()}
+    assert _unmatched not in result.values(), "Incomplete partition spec."
+    return freeze(unflatten_dict(result))
 
 
 def get_mesh(n_model_shards):
@@ -49,6 +81,7 @@ def shard_params(params, params_spec, mesh):
             sharding=jax.sharding.NamedSharding(mesh=mesh, spec=param_spec),
             data_callback=lambda index: param[index]),
         params, params_spec)
+
 
 def get_opt_state_spec(params, params_spec, optimizer):
     def get_opt_spec(x):
@@ -98,7 +131,9 @@ def get_sharding_rules(params, n_model_shards):
             else:
                 for dim_size, rule_str in zip(
                         param.shape, sharding_rules[rule_key]):
-                    assert rule_str != 'mp' or dim_size % n_model_shards == 0
+                    if rule_str == 'mp' and dim_size % n_model_shards != 0:
+                        sharding_rules[rule_key] = None
+                        break
         elif len(param.shape) != 2:
             sharding_rules[rule_key] = None
         else:

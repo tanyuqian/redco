@@ -18,9 +18,11 @@ import json
 import numpy as np
 import jax
 from jax.experimental.pjit import pjit
+from jax.experimental import multihost_utils
 from jax.sharding import PartitionSpec as P
-from flax.jax_utils import replicate
+from flax.jax_utils import replicate, unreplicate
 from flax.training import train_state
+from flax.training.common_utils import shard_prng_key
 from flax.traverse_util import flatten_dict
 from flax.core.frozen_dict import freeze
 
@@ -36,6 +38,8 @@ class Trainer:
                  loss_fn,
                  params,
                  optimizer,
+                 opt_state=None,
+                 last_ckpt_info=None,
                  lr_schedule_fn=None,
                  accumulate_grad_batches=None,
                  params_sharding_rules=None):
@@ -56,39 +60,18 @@ class Trainer:
         n_params = sum([param.size for param in flatten_dict(params).values()])
         self._deployer.log_info(f'{n_params:,}', title='Training parameters')
 
-        last_ckpt_info_path = \
-            f'{self.workdir}/ckpts/last_ckpt_info.json'
-        if os.path.exists(last_ckpt_info_path):
-            self._last_ckpt_info = json.load(open(last_ckpt_info_path))
-            ckpt_name = self._last_ckpt_info['last_ckpt_name']
-            ckpt_dir = f'{self.workdir}/ckpts/{ckpt_name}'
-
-            params = self._deployer.load_params(ckpt_dir=ckpt_dir)
-            opt_state = self._deployer.load_opt_state(
-                ckpt_dir=ckpt_dir, params=params, optimizer=optimizer)
-
-            self.set_train_state(
-                apply_fn=self._apply_fn,
-                params=params,
-                optimizer=self._optimizer,
-                step=self._last_ckpt_info['last_step'],
-                opt_state=opt_state)
-
-            self._deployer.load_rng(ckpt_dir=ckpt_dir)
-
-            self._deployer.log_info(
-                'loaded last_ckpt \"{last_ckpt_name}\",'
-                ' last_step={last_step},'
-                ' last_epoch_idx={last_epoch_idx}'.format(
-                    **self._last_ckpt_info))
-        else:
+        if last_ckpt_info is None:
             self._last_ckpt_info = \
                 {'last_ckpt_name': None, 'last_step': 0, 'last_epoch_idx': -1}
-            self.set_train_state(
-                apply_fn=apply_fn,
-                params=params,
-                optimizer=optimizer,
-                step=0)
+        else:
+            self._last_ckpt_info = last_ckpt_info
+
+        self.set_train_state(
+            apply_fn=self._apply_fn,
+            params=params,
+            optimizer=self._optimizer,
+            step=self._last_ckpt_info['last_step'],
+            opt_state=opt_state)
 
         self._default_predictor_fn = partial(
             Predictor,
@@ -98,12 +81,17 @@ class Trainer:
 
     def set_train_state(
             self, apply_fn, params, optimizer, step, opt_state=None):
+        self._deployer.log_info('Setting train_state ...')
         params = freeze(params)
 
-        if self._deployer.mesh is None:
-            self._deployer.log_info('Initalizing opt_state ...')
+        if self.mesh is None:
             params = jax.device_put(params, jax.local_devices()[0])
-            opt_state = optimizer.init(params)
+            if opt_state is None:
+                self._deployer.log_info('Initializing opt_state ...')
+                opt_state = optimizer.init(params)
+            else:
+                opt_state = jax.device_put(opt_state, jax.local_devices()[0])
+
             self._state = train_state.TrainState(
                 step=step,
                 apply_fn=apply_fn,
@@ -118,11 +106,16 @@ class Trainer:
             params = self._deployer.shard_params(
                 params=params, params_spec=params_spec)
 
-            self._deployer.log_info('Initalizing opt_state ...')
-            opt_state = optimizer.init(params)
-
             opt_state_spec = self._deployer.get_opt_state_spec(
                 params=params, params_spec=params_spec, optimizer=optimizer)
+            if opt_state is None:
+                self._deployer.log_info('Initializing opt_state ...')
+                opt_state = optimizer.init(params)
+            else:
+                opt_state = self._deployer.shard_params(
+                    params=opt_state,
+                    params_spec=opt_state_spec,
+                    desc='opt_state')
 
             self._state = train_state.TrainState(
                 apply_fn=apply_fn,
@@ -143,14 +136,14 @@ class Trainer:
             default_train_step,
             loss_fn=self._loss_fn,
             lr_schedule_fn=self._lr_schedule_fn,
-            under_pmap=(self._deployer.mesh is None))
+            under_pmap=(self.mesh is None))
 
         eval_step_fn = partial(
             default_eval_step,
             loss_fn=self._loss_fn,
-            under_pmap=(self._deployer.mesh is None))
+            under_pmap=(self.mesh is None))
 
-        if self._deployer.mesh is None:
+        if self.mesh is None:
             self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
             self._p_eval_step = jax.pmap(eval_step_fn, axis_name='batch')
         else:
@@ -180,17 +173,20 @@ class Trainer:
             is_train=True,
             accumulate_grad_batches=self._accumulate_grad_batches)
 
+        multihost_utils.sync_global_devices(f'Training ({desc})')
         for batch in data_batches:
             if self._p_train_step is None:
                 self.setup_running_step(dummy_batch=batch)
 
-            train_rng = self._deployer.process_to_run_model(
-                self._deployer.gen_rng(), is_prng_key=True)
+            train_rng = self._deployer.gen_rng()
+            if self.mesh is None:
+                train_rng = shard_prng_key(train_rng)
             self._state, metrics = self._deployer.run_model_step(
                 step_fn=self._p_train_step,
                 input_args=(train_rng, self._state, batch))
 
-            metrics = self._deployer.process_to_deliver(metrics)
+            if self.mesh is None:
+                metrics = unreplicate(metrics)
             data_batches.set_postfix(**metrics)
             self._deployer.log_metrics(metrics=metrics, step=self.step)
 
@@ -203,6 +199,8 @@ class Trainer:
             shuffle_rng=None,
             desc=f'Evaluating ({desc})' if desc is not None else 'Evaluating')
 
+        multihost_utils.sync_global_devices(f'Evaluating ({desc})')
+
         losses = []
         for batch in data_batches:
             if self._p_eval_step is None:
@@ -211,10 +209,10 @@ class Trainer:
             metrics = self._deployer.run_model_step(
                 step_fn=self._p_eval_step, input_args=(self._state, batch))
 
-            metrics = self._deployer.process_to_deliver(metrics)
-            data_batches.set_postfix(**metrics)
-
+            if self.mesh is None:
+                metrics = unreplicate(metrics)
             losses.append(metrics['loss'].item())
+            data_batches.set_postfix(**metrics)
 
         return np.mean(losses).item()
 
@@ -246,12 +244,14 @@ class Trainer:
         if os.path.exists(f'{self.workdir}/min_metrics.json'):
             min_metrics = json.load(open(
                 f'{self.workdir}/min_metrics.json'))
-            self._deployer.log_info(min_metrics, title='Detected min_metrics')
+            self._deployer.log_info(
+                json.dumps(min_metrics, indent=4), title='Detected min_metrics')
 
         if os.path.exists(f'{self.workdir}/max_metrics.json'):
             max_metrics = json.load(open(
                 f'{self.workdir}/max_metrics.json'))
-            self._deployer.log_info(max_metrics, title='Detected max_metrics')
+            self._deployer.log_info(
+                json.dumps(max_metrics, indent=4), title='Detected max_metrics')
 
         if eval_sanity_check and eval_examples is not None:
             rng_backup = self._deployer._rng
@@ -269,8 +269,9 @@ class Trainer:
             if eval_predictor is not None:
                 preds = eval_predictor.predict(
                     examples=eval_examples[:eval_global_batch_size],
-                    params=self.params,
-                    params_meshed=(self._deployer.mesh is not None),
+                    params=self._state.params,
+                    params_replicated=(self.mesh is None),
+                    params_meshed=(self.mesh is not None),
                     per_device_batch_size=eval_per_device_batch_size,
                     desc=f'Sanity check')
                 self._deployer.log_info(
@@ -320,8 +321,9 @@ class Trainer:
                 if eval_predictor is not None:
                     preds = eval_predictor.predict(
                         examples=eval_examples,
-                        params=self.params,
-                        params_meshed=(self._deployer.mesh is not None),
+                        params=self._state.params,
+                        params_replicated=(self.mesh is None),
+                        params_meshed=(self.mesh is not None),
                         per_device_batch_size=eval_per_device_batch_size,
                         desc=f'epoch {epoch_idx} / {n_epochs}')
 
@@ -357,14 +359,15 @@ class Trainer:
 
                 for key in save_argmin_ckpt_by_metrics:
                     assert self.workdir is not None
+                    print('asdfasdfasdf')
                     if eval_metrics[key] < min_metrics.get(key, float('inf')):
                         min_metrics[key] = eval_metrics[key]
 
                         if jax.process_index() == 0:
                             self._deployer.log_info(
                                 f'minimal {key} updated to {min_metrics[key]}')
-                            json.dump(max_metrics, open(
-                                f'{self.workdir}/max_metrics.json', 'w'))
+                            json.dump(min_metrics, open(
+                                f'{self.workdir}/min_metrics.json', 'w'))
 
                         self.save_ckpt(
                             ckpt_name=f'min_{key}', **save_ckpt_kwargs)
@@ -400,7 +403,7 @@ class Trainer:
             os.makedirs(ckpt_dir, exist_ok=True)
 
         self._deployer.save_params(
-            params=self.params,
+            params=self._state.params,
             ckpt_dir=ckpt_dir,
             max_shard_size=max_shard_size)
         self._deployer.save_rng(ckpt_dir=ckpt_dir)
@@ -426,13 +429,16 @@ class Trainer:
         return self._default_predictor_fn(pred_fn=pred_fn, output_fn=output_fn)
 
     @property
-    def params(self):
-        return self._deployer.process_to_deliver(self._state.params)
-
-    @property
     def step(self):
-        return self._deployer.process_to_deliver(self._state.step).item()
+        if self.mesh is None:
+            return unreplicate(self._state.step).item()
+        else:
+            return self._state.step.item()
 
     @property
     def workdir(self):
         return self._deployer.workdir
+
+    @property
+    def mesh(self):
+        return self._deployer.mesh

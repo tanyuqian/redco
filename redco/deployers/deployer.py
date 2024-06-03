@@ -14,19 +14,14 @@
 import os
 import jax
 import jax.numpy as jnp
-from flax.jax_utils import replicate, unreplicate
-from flax.training.common_utils import shard_prng_key
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_lr_schedule_fn
 from .log_utils import get_logger, log_info, save_outputs
-from .model_parallel_utils.mesh_utils import (
-    get_mesh,
-    shard_params,
-    get_param_spec,
-    get_opt_state_spec,
-    get_sharding_rules)
+from .partition_utils import (
+    get_mesh, get_param_spec, get_sharding_rules, get_opt_state_spec)
 from .ckpt_utils import (
+    load_ckpt,
     save_params,
     save_opt_state,
     load_params,
@@ -68,9 +63,6 @@ class Deployer:
                 process_id=process_id,
                 local_device_ids=local_device_ids)
 
-            print(f'process_id: {jax.process_index()} / {jax.process_count()}')
-            print(f'devices: {jax.local_device_count()} / {jax.device_count()}')
-
         if workdir is not None:
             os.makedirs(workdir, exist_ok=True)
 
@@ -89,6 +81,9 @@ class Deployer:
             self._summary_writer = tensorboard.SummaryWriter(workdir)
         else:
             self._summary_writer = None
+
+        self.log_info(
+            f'Local Devices: {jax.local_device_count()} / {jax.device_count()}')
 
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._mesh = get_mesh(n_model_shards=n_model_shards)
@@ -160,21 +155,6 @@ class Deployer:
         else:
             return batch_preds_with_idxes['raw_preds']
 
-    def process_to_run_model(self, x, is_prng_key=False):
-        if self._mesh is None:
-            if is_prng_key:
-                return shard_prng_key(x)
-            else:
-                return replicate(x)
-        else:
-            return x
-
-    def process_to_deliver(self, x):
-        if self._mesh is None:
-            return unreplicate(x)
-        else:
-            return x
-
     def get_lr_schedule_fn(self,
                            train_size,
                            per_device_batch_size,
@@ -206,11 +186,9 @@ class Deployer:
         else:
             sharding_rules = get_sharding_rules(
                 params=params, n_model_shards=self._mesh.shape['mp'])
-
             self.log_info(
                 info='\n'.join([f'{t}' for t in sharding_rules]),
                 title='Sharding rules')
-
             return sharding_rules
 
     def get_params_spec(self, params, params_sharding_rules):
@@ -223,10 +201,15 @@ class Deployer:
         return get_opt_state_spec(
             params=params, params_spec=params_spec, optimizer=optimizer)
 
-    def shard_params(self, params, params_spec):
-        self.log_info(info='Sharding params ...')
-        return shard_params(
-            params=params, params_spec=params_spec, mesh=self._mesh)
+    def shard_params(self, params, params_spec, desc='params'):
+        self.log_info(info=f'Sharding {desc} ...')
+        return jax.tree_util.tree_map(
+            lambda param, param_spec: jax.make_array_from_callback(
+                shape=param.shape,
+                sharding=jax.sharding.NamedSharding(
+                    mesh=self._mesh, spec=param_spec),
+                data_callback=lambda index: param[index]),
+            params, params_spec)
 
     def run_model_step(self, step_fn, input_args):
         if self._mesh is None:
@@ -266,10 +249,17 @@ class Deployer:
                 logger=self._logger,
                 summary_writer=self._summary_writer)
 
+    def load_ckpt(self, optimizer, ckpt_dir=None):
+        return load_ckpt(
+            optimizer=optimizer, ckpt_dir=ckpt_dir, workdir=self._workdir)
+
     def load_params(self, ckpt_dir):
         self.log_info(f'loading params from {ckpt_dir} ...')
         params = load_params(ckpt_dir=ckpt_dir)
-        self.log_info(f'params loaded from {ckpt_dir}')
+        if params is None:
+            self.log_info(f'params not found in {ckpt_dir}. skipped.')
+        else:
+            self.log_info(f'params loaded from {ckpt_dir}')
         return params
 
     def load_opt_state(self, ckpt_dir, params, optimizer):
@@ -282,31 +272,42 @@ class Deployer:
             self.log_info(f'opt_state loaded from {ckpt_dir}')
         return opt_state
 
+    def update_rng(self, rng):
+        self._rng = rng
+        self.log_info(f'rng updated (to {rng}).')
+
+    def load_rng(self, ckpt_dir):
+        rng = load_rng(ckpt_dir=ckpt_dir)
+        self.log_info(f'rng loaded from {ckpt_dir} ({rng})')
+        return rng
+
     def save_params(self, params, ckpt_dir, max_shard_size='10GB'):
         self.log_info(f'saving params into {ckpt_dir} ...')
+        do_process_allgather = (
+                jax.process_count() > 1 and (self._mesh is not None))
         save_params(
-            mesh=self._mesh,
             params=params,
             ckpt_dir=ckpt_dir,
-            max_shard_size=max_shard_size)
+            max_shard_size=max_shard_size,
+            do_unreplicate=(self._mesh is None),
+            do_process_allgather=do_process_allgather)
         self.log_info(f'params saved into {ckpt_dir}')
 
     def save_opt_state(self, opt_state, ckpt_dir, max_shard_size='10GB'):
         self.log_info(f'saving opt_state into {ckpt_dir} ...')
+        do_process_allgather = (
+                jax.process_count() > 1 and (self._mesh is not None))
         save_opt_state(
-            mesh=self._mesh,
             opt_state=opt_state,
             ckpt_dir=ckpt_dir,
-            max_shard_size=max_shard_size)
+            max_shard_size=max_shard_size,
+            do_unreplicate=(self._mesh is None),
+            do_process_allgather=do_process_allgather)
         self.log_info(f'opt_state saved into {ckpt_dir}')
 
     def save_rng(self, ckpt_dir):
         save_rng(rng=self._rng, ckpt_dir=ckpt_dir)
         self.log_info(f'rng saved into {ckpt_dir}')
-
-    def load_rng(self, ckpt_dir):
-        self._rng = load_rng(ckpt_dir=ckpt_dir)
-        self.log_info(f'rng updated by {ckpt_dir}.')
 
     @property
     def mesh(self):

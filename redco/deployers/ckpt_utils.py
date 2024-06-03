@@ -11,12 +11,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from collections import namedtuple
 import json
 import os
 import re
 import gc
 import jax
-import jax.numpy as jnp
 from jax.experimental import multihost_utils
 from flax.jax_utils import unreplicate
 from flax.core.frozen_dict import freeze, unfreeze
@@ -24,53 +24,91 @@ from flax.serialization import (
     msgpack_serialize, msgpack_restore, from_state_dict, to_state_dict)
 from flax.traverse_util import flatten_dict, unflatten_dict, empty_node
 
-
 PARAMS_FILENAME = 'params.msgpack'
 PARAMS_INDEX_FILENAME = 'params_index.json'
 OPT_STATE_FILENAME = 'opt_state.msgpack'
 OPT_STATE_INDEX_FILENAME = 'opt_state_index.json'
 RNG_FILENAME = 'rng.msgpack'
 
+RedcoCheckpoint = namedtuple(
+    'RedcoCheckpoint', ['params', 'opt_state', 'rng', 'info'])
 
-def save_params(mesh, params, ckpt_dir, max_shard_size):
-    filepath = f'{ckpt_dir}/{PARAMS_FILENAME}'
-    if mesh is not None:
+
+def load_ckpt(optimizer, ckpt_dir=None, workdir=None):
+    if ckpt_dir is None:
+        last_ckpt_info_path = f'{workdir}/ckpts/last_ckpt_info.json'
+        if not os.path.exists(last_ckpt_info_path):
+            return RedcoCheckpoint(None, None, None, None)
+        last_ckpt_info = json.load(open(last_ckpt_info_path))
+        ckpt_name = last_ckpt_info['last_ckpt_name']
+        ckpt_dir = f'{workdir}/ckpts/{ckpt_name}'
+    else:
+        last_ckpt_info = None
+
+    params = load_params(ckpt_dir=ckpt_dir)
+    opt_state = load_opt_state(
+        ckpt_dir=ckpt_dir, params=params, optimizer=optimizer)
+    rng = load_rng(ckpt_dir=ckpt_dir)
+
+    return RedcoCheckpoint(
+        params=params, opt_state=opt_state, rng=rng, info=last_ckpt_info)
+
+
+def save_params(params,
+                ckpt_dir,
+                max_shard_size,
+                do_unreplicate=False,
+                do_process_allgather=False):
+    assert not (do_unreplicate and do_process_allgather)
+    if do_unreplicate:
+        params = unreplicate(params)
+        print('UNREPLICATED......')
+    if do_process_allgather:
         params = multihost_utils.process_allgather(params)
 
     if jax.process_index() == 0:
         shards, index = flax_shard_checkpoint(
-            params=params, filepath=filepath, max_shard_size=max_shard_size)
+            params=params,
+            filename=PARAMS_FILENAME,
+            max_shard_size=max_shard_size)
 
         if index is None:
-            open(filepath, "wb").write(msgpack_serialize(unfreeze(params)))
+            open(f'{ckpt_dir}/{PARAMS_FILENAME}', "wb").write(
+                msgpack_serialize(unfreeze(params)))
         else:
             json.dump(index, open(
                 f'{ckpt_dir}/{PARAMS_INDEX_FILENAME}', 'w'), indent=4)
             for shard_file, shard in shards.items():
-                open(shard_file, "wb").write(msgpack_serialize(
+                open(f'{ckpt_dir}/{shard_file}', "wb").write(msgpack_serialize(
                     unfreeze(unflatten_dict(shard, sep='/'))))
 
 
-def save_opt_state(mesh, opt_state, ckpt_dir, max_shard_size):
-    filepath = f'{ckpt_dir}/{OPT_STATE_FILENAME}'
-
-    if mesh is None:
+def save_opt_state(opt_state,
+                   ckpt_dir,
+                   max_shard_size,
+                   do_unreplicate=False,
+                   do_process_allgather=False):
+    assert not (do_unreplicate and do_process_allgather)
+    if do_unreplicate:
         opt_state = unreplicate(opt_state)
-    else:
+    if do_process_allgather:
         opt_state = multihost_utils.process_allgather(opt_state)
 
     if jax.process_index() == 0:
         opt_state = to_state_dict(opt_state)
         shards, index = flax_shard_checkpoint(
-            params=opt_state, filepath=filepath, max_shard_size=max_shard_size)
+            params=opt_state,
+            filename=OPT_STATE_FILENAME,
+            max_shard_size=max_shard_size)
 
         if index is None:
-            open(filepath, "wb").write(msgpack_serialize(unfreeze(opt_state)))
+            open(f'{ckpt_dir}/{OPT_STATE_FILENAME}', "wb").write(
+                msgpack_serialize(unfreeze(opt_state)))
         else:
             json.dump(index, open(
                 f'{ckpt_dir}/{OPT_STATE_INDEX_FILENAME}', 'w'), indent=4)
             for shard_file, shard in shards.items():
-                open(shard_file, "wb").write(
+                open(f'{ckpt_dir}/{shard_file}', "wb").write(
                     msgpack_serialize(unfreeze(unflatten_dict(shard, sep='/'))))
 
 
@@ -80,40 +118,46 @@ def save_rng(rng, ckpt_dir):
 
 
 def load_params(ckpt_dir):
-    filepath = f'{ckpt_dir}/{PARAMS_FILENAME}'
-    with jax.default_device(jax.devices('cpu')[0]):
+    with jax.default_device(jax.local_devices(backend='cpu')[0]):
         if os.path.exists(f'{ckpt_dir}/{PARAMS_INDEX_FILENAME}'):
             weight_map = json.load(
                 open(f'{ckpt_dir}/{PARAMS_INDEX_FILENAME}'))['weight_map']
-            params = load_flax_sharded_weights(
-                shard_files=list(set(weight_map.values())))
+            shard_files = [
+                f'{ckpt_dir}/{filename}'
+                for filename in sorted(list(set(weight_map.values())))
+            ]
+            params = load_flax_sharded_weights(shard_files=shard_files)
         else:
-            params = msgpack_restore(open(filepath, 'rb').read())
+            params = msgpack_restore(
+                open(f'{ckpt_dir}/{PARAMS_FILENAME}', 'rb').read())
 
     return params
 
 
 def load_opt_state(ckpt_dir, params, optimizer):
-    filepath = f'{ckpt_dir}/{OPT_STATE_FILENAME}'
-    if (not os.path.exists(filepath) and
+    if (not os.path.exists(f'{ckpt_dir}/{OPT_STATE_FILENAME}') and
             not os.path.exists(f'{ckpt_dir}/{OPT_STATE_INDEX_FILENAME}')):
         return None
 
-    with jax.default_device(jax.devices('cpu')[0]):
+    with jax.default_device(jax.local_devices(backend='cpu')[0]):
         if os.path.exists(f'{ckpt_dir}/{OPT_STATE_INDEX_FILENAME}'):
-            weight_map = json.load(
-                open(f'{ckpt_dir}/{OPT_STATE_INDEX_FILENAME}'))['weight_map']
-            opt_state = load_flax_sharded_weights(
-                shard_files=sorted(list(set(weight_map.values()))))
+            weight_map = json.load(open(
+                f'{ckpt_dir}/{OPT_STATE_INDEX_FILENAME}'))['weight_map']
+            shard_files = [
+                f'{ckpt_dir}/{filename}'
+                for filename in sorted(list(set(weight_map.values())))
+            ]
+            opt_state = load_flax_sharded_weights(shard_files=shard_files)
         else:
-            opt_state = msgpack_restore(open(filepath, 'rb').read())
+            opt_state = msgpack_restore(
+                open(f'{ckpt_dir}/{OPT_STATE_FILENAME}', 'rb').read())
 
         params_shapes = jax.tree_util.tree_map(
-            lambda x: jax.ShapeDtypeStruct(x.shape, x.dtype), params)
+            lambda x: jax.ShapeDtypeStruct(x.shape, x.dtype), freeze(params))
 
-        opt_state = from_state_dict(
-            target=jax.eval_shape(optimizer.init, params_shapes), state=opt_state)
-    return opt_state
+        return from_state_dict(
+            target=jax.eval_shape(optimizer.init, params_shapes),
+            state=opt_state)
 
 
 def load_rng(ckpt_dir):
@@ -171,21 +215,22 @@ def convert_file_size_to_int(size):
     if isinstance(size, int):
         return size
     if size.upper().endswith("GIB"):
-        return int(size[:-3]) * (2**30)
+        return int(size[:-3]) * (2 ** 30)
     if size.upper().endswith("MIB"):
-        return int(size[:-3]) * (2**20)
+        return int(size[:-3]) * (2 ** 20)
     if size.upper().endswith("KIB"):
-        return int(size[:-3]) * (2**10)
+        return int(size[:-3]) * (2 ** 10)
     if size.upper().endswith("GB"):
-        int_size = int(size[:-2]) * (10**9)
+        int_size = int(size[:-2]) * (10 ** 9)
         return int_size // 8 if size.endswith("b") else int_size
     if size.upper().endswith("MB"):
-        int_size = int(size[:-2]) * (10**6)
+        int_size = int(size[:-2]) * (10 ** 6)
         return int_size // 8 if size.endswith("b") else int_size
     if size.upper().endswith("KB"):
-        int_size = int(size[:-2]) * (10**3)
+        int_size = int(size[:-2]) * (10 ** 3)
         return int_size // 8 if size.endswith("b") else int_size
-    raise ValueError("`size` is not in a valid format. Use an integer followed by the unit, e.g., '5GB'.")
+    raise ValueError(
+        "`size` is not in a valid format. Use an integer followed by the unit, e.g., '5GB'.")
 
 
 def dtype_byte_size(dtype):
@@ -207,11 +252,8 @@ def dtype_byte_size(dtype):
     return bit_size // 8
 
 
-
-def flax_shard_checkpoint(params, filepath, max_shard_size="10GB"):
+def flax_shard_checkpoint(params, filename, max_shard_size="10GB"):
     """
-    Copied from https://github.com/huggingface/transformers/blob/main/src/transformers/modeling_flax_utils.py#L101
-
     Splits a model state dictionary in sub-checkpoints so that the final size of each sub-checkpoint does not exceed a
     given size. The sub-checkpoints are determined by iterating through the `state_dict` in the order of its keys, so
     there is no optimization made to make each sub-checkpoint as close as possible to the maximum size passed. For
@@ -262,15 +304,15 @@ def flax_shard_checkpoint(params, filepath, max_shard_size="10GB"):
 
     # If we only have one shard, we return it
     if len(sharded_state_dicts) == 1:
-        return {filepath: sharded_state_dicts[0]}, None
+        return {filename: sharded_state_dicts[0]}, None
 
     # Otherwise, let's build the index
     weight_map = {}
     shards = {}
     for idx, shard in enumerate(sharded_state_dicts):
-        shard_file = filepath.replace(
+        shard_file = filename.replace(
             ".msgpack",
-            f"-{idx+1:05d}-of-{len(sharded_state_dicts):05d}.msgpack")
+            f"-{idx + 1:05d}-of-{len(sharded_state_dicts):05d}.msgpack")
         shards[shard_file] = shard
         for weight_name in shard.keys():
             weight_map[weight_name] = shard_file
@@ -279,4 +321,3 @@ def flax_shard_checkpoint(params, filepath, max_shard_size="10GB"):
     metadata = {"total_size": total_size}
     index = {"metadata": metadata, "weight_map": weight_map}
     return shards, index
-

@@ -18,7 +18,10 @@ import jax
 
 
 def get_logger(verbose, workdir):
-    logger = logging.getLogger('redco')
+    logger = logging.getLogger(' - '.join([
+        'RedCoast',
+        f'Process Index: {jax.process_index()}',
+        f'Process Count: {jax.process_count()}']))
 
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter(
@@ -34,12 +37,7 @@ def get_logger(verbose, workdir):
         logger.addHandler(handler)
 
     logger.propagate = False
-
-    if verbose and jax.process_index() == 0:
-        logger.setLevel(logging.INFO)
-    else:
-        logger.setLevel(logging.ERROR)
-
+    logger.setLevel(logging.INFO if verbose else logging.ERROR)
     for handler in logging.root.handlers:
         logging.root.removeHandler(handler)
 
@@ -56,17 +54,16 @@ def log_info(info, title, logger, summary_writer, step):
             title_ = title
             step = 0
 
-        if summary_writer is not None:
-            summary_writer.text(title, info.replace('\n', '\n\n'), step=step)
-
         max_len = max(max([len(t) for t in info.split('\n')]), len(title_) + 4)
-
         logger.info('=' * max_len)
         logger.info(f'### {title_}')
         logger.info('-' * max_len)
         for t in info.split('\n'):
             logger.info(t)
         logger.info('=' * max_len)
+
+        if summary_writer is not None:
+            summary_writer.text(title, info.replace('\n', '\n\n'), step=step)
 
     else:
         logger.info(info)
@@ -80,6 +77,6 @@ def save_outputs(outputs, workdir, desc, logger, summary_writer, step):
 
     if summary_writer is not None:
         samples_str = json.dumps(outputs[:10], indent=4).replace('\n', '\n\n')
-        summary_writer.text('outputs', samples_str, step=step)
+        summary_writer.text('Output Samples', samples_str, step=step)
 
     return f'{workdir}/outputs_{desc}.json'
