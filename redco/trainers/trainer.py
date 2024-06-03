@@ -425,9 +425,6 @@ class Trainer:
             self._deployer.log_info(
                 f'{ckpt_dir_prefix}/last_ckpt_info.json updated.')
 
-    def get_default_predictor(self, pred_fn, output_fn=None):
-        return self._default_predictor_fn(pred_fn=pred_fn, output_fn=output_fn)
-
     @property
     def step(self):
         if self.mesh is None:

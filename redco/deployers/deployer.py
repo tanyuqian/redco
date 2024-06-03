@@ -223,13 +223,12 @@ class Deployer:
         return new_rng
 
     def log_info(self, info, title=None, step=None):
-        if jax.process_index() == 0:
-            log_info(
-                info=info,
-                title=title,
-                logger=self._logger,
-                summary_writer=self._summary_writer,
-                step=step)
+        log_info(
+            info=info,
+            title=title,
+            logger=self._logger,
+            summary_writer=self._summary_writer,
+            step=step)
 
     def log_metrics(self, metrics, step):
         if self._summary_writer is not None:
