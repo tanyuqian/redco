@@ -11,23 +11,18 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import json
 import os
 import jax
 import jax.numpy as jnp
+import orbax.checkpoint
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_lr_schedule_fn
 from .log_utils import get_logger, log_info, save_outputs
+from .ckpt_utils import save_ckpt, load_ckpt
 from .partition_utils import (
     get_mesh, get_param_spec, get_sharding_rules, get_opt_state_spec)
-from .ckpt_utils import (
-    load_ckpt,
-    save_params,
-    save_opt_state,
-    load_params,
-    load_opt_state,
-    save_rng,
-    load_rng)
 
 
 class Deployer:
@@ -67,7 +62,7 @@ class Deployer:
             os.makedirs(workdir, exist_ok=True)
 
         self._verbose = verbose
-        self._workdir = workdir
+        self._workdir = os.path.abspath(workdir)
         self._logger = get_logger(verbose=verbose, workdir=workdir)
 
         if run_wandb and jax.process_index() == 0:
@@ -87,6 +82,7 @@ class Deployer:
 
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._mesh = get_mesh(n_model_shards=n_model_shards)
+        self._checkpointer = orbax.checkpoint.PyTreeCheckpointer()
 
     def process_batch_size(self, per_device_batch_size):
         if self._mesh is None:
@@ -248,65 +244,44 @@ class Deployer:
                 logger=self._logger,
                 summary_writer=self._summary_writer)
 
-    def load_ckpt(self, optimizer, ckpt_dir=None):
-        return load_ckpt(
-            optimizer=optimizer, ckpt_dir=ckpt_dir, workdir=self._workdir)
-
-    def load_params(self, ckpt_dir):
-        self.log_info(f'loading params from {ckpt_dir} ...')
-        params = load_params(ckpt_dir=ckpt_dir)
-        if params is None:
-            self.log_info(f'params not found in {ckpt_dir}. skipped.')
-        else:
-            self.log_info(f'params loaded from {ckpt_dir}')
-        return params
-
-    def load_opt_state(self, ckpt_dir, params, optimizer):
-        self.log_info(f'loading opt_state from {ckpt_dir} ...')
-        opt_state = load_opt_state(
-            ckpt_dir=ckpt_dir, params=params, optimizer=optimizer)
-        if opt_state is None:
-            self.log_info(f'opt_state not found in {ckpt_dir}. skipped.')
-        else:
-            self.log_info(f'opt_state loaded from {ckpt_dir}')
-        return opt_state
-
-    def update_rng(self, rng):
-        self._rng = rng
-        self.log_info(f'rng updated (to {rng}).')
-
-    def load_rng(self, ckpt_dir):
-        rng = load_rng(ckpt_dir=ckpt_dir)
-        self.log_info(f'rng loaded from {ckpt_dir} ({rng})')
-        return rng
-
-    def save_params(self, params, ckpt_dir, max_shard_size='10GB'):
-        self.log_info(f'saving params into {ckpt_dir} ...')
-        do_process_allgather = (
-                jax.process_count() > 1 and (self._mesh is not None))
-        save_params(
+    def save_ckpt(self, ckpt_dir, params, opt_state):
+        self.log_info(f'Saving ckpt to {ckpt_dir} ...')
+        save_ckpt(
+            ckpt_dir=ckpt_dir,
+            checkpointer=self._checkpointer,
             params=params,
-            ckpt_dir=ckpt_dir,
-            max_shard_size=max_shard_size,
-            do_unreplicate=(self._mesh is None),
-            do_process_allgather=do_process_allgather)
-        self.log_info(f'params saved into {ckpt_dir}')
-
-    def save_opt_state(self, opt_state, ckpt_dir, max_shard_size='10GB'):
-        self.log_info(f'saving opt_state into {ckpt_dir} ...')
-        do_process_allgather = (
-                jax.process_count() > 1 and (self._mesh is not None))
-        save_opt_state(
             opt_state=opt_state,
-            ckpt_dir=ckpt_dir,
-            max_shard_size=max_shard_size,
-            do_unreplicate=(self._mesh is None),
-            do_process_allgather=do_process_allgather)
-        self.log_info(f'opt_state saved into {ckpt_dir}')
+            rng=self._rng)
+        self.log_info(f'Ckpt saved into {ckpt_dir}')
 
-    def save_rng(self, ckpt_dir):
-        save_rng(rng=self._rng, ckpt_dir=ckpt_dir)
-        self.log_info(f'rng saved into {ckpt_dir}')
+    def load_ckpt(self, ckpt_dir, optimizer):
+        self.log_info(f'Loading ckpt from {ckpt_dir} ...')
+        ckpt = load_ckpt(
+            ckpt_dir=ckpt_dir,
+            checkpointer=self._checkpointer,
+            optimizer=optimizer)
+        self.log_info(f'Ckpt loaded from {ckpt_dir}')
+
+        return ckpt
+
+    def load_last_ckpt(self, optimizer, update_rng=True):
+        last_ckpt_info_path = f'{self._workdir}/ckpts/last_ckpt_info.json'
+        if not os.path.exists(last_ckpt_info_path):
+            self.log_info(f'{last_ckpt_info_path} not found, no ckpt loaded.')
+            return None, None
+
+        last_ckpt_info = json.load(open(last_ckpt_info_path))
+        ckpt_name = last_ckpt_info['ckpt_name']
+        last_ckpt = self.load_ckpt(
+            ckpt_dir=f'{self._workdir}/ckpts/{ckpt_name}',
+            optimizer=optimizer)
+
+        if update_rng:
+            self._rng = last_ckpt['rng']
+            self.log_info(f'rng updated from ckpt:{ckpt_name}.')
+
+        return last_ckpt, last_ckpt_info
+
 
     @property
     def mesh(self):

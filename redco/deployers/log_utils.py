@@ -18,10 +18,9 @@ import jax
 
 
 def get_logger(verbose, workdir):
-    logger = logging.getLogger(' - '.join([
-        'RedCoast',
-        f'Process Index: {jax.process_index()}',
-        f'Process Count: {jax.process_count()}']))
+    logger = logging.getLogger(
+        f'RedCoast - Process Index: {jax.process_index()} '
+        f'(#Processes: {jax.process_count()})')
 
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter(

@@ -62,7 +62,7 @@ class Trainer:
 
         if last_ckpt_info is None:
             self._last_ckpt_info = \
-                {'last_ckpt_name': None, 'last_step': 0, 'last_epoch_idx': -1}
+                {'ckpt_name': None, 'step': 0, 'epoch_idx': -1}
         else:
             self._last_ckpt_info = last_ckpt_info
 
@@ -70,7 +70,7 @@ class Trainer:
             apply_fn=self._apply_fn,
             params=params,
             optimizer=self._optimizer,
-            step=self._last_ckpt_info['last_step'],
+            step=self._last_ckpt_info['step'],
             opt_state=opt_state)
 
         self._default_predictor_fn = partial(
@@ -230,8 +230,7 @@ class Trainer:
             save_last_ckpt=False,
             save_argmin_ckpt_by_metrics=None,
             save_argmax_ckpt_by_metrics=None,
-            save_opt_states=True,
-            ckpt_max_shard_size='10GB'):
+            save_opt_states=True):
         if eval_per_device_batch_size is None:
             eval_per_device_batch_size = per_device_batch_size
 
@@ -287,7 +286,7 @@ class Trainer:
             self._deployer._rng = rng_backup
 
         for epoch_idx in range(
-                self._last_ckpt_info['last_epoch_idx'] + 1, n_epochs):
+                self._last_ckpt_info['epoch_idx'] + 1, n_epochs):
             if isinstance(train_examples, list):
                 epoch_train_examples = train_examples
             else:
@@ -298,12 +297,8 @@ class Trainer:
                 per_device_batch_size=per_device_batch_size,
                 desc=f'epoch {epoch_idx} / {n_epochs}')
 
-            save_ckpt_kwargs = {
-                'epoch_idx': epoch_idx,
-                'ckpt_dir_prefix': f'{self.workdir}/ckpts',
-                'save_opt_state': save_opt_states,
-                'max_shard_size': ckpt_max_shard_size
-            }
+            save_ckpt_kwargs = \
+                {'epoch_idx': epoch_idx, 'save_opt_state': save_opt_states}
 
             if eval_examples is None:
                 self._deployer.log_info(
@@ -359,7 +354,6 @@ class Trainer:
 
                 for key in save_argmin_ckpt_by_metrics:
                     assert self.workdir is not None
-                    print('asdfasdfasdf')
                     if eval_metrics[key] < min_metrics.get(key, float('inf')):
                         min_metrics[key] = eval_metrics[key]
 
@@ -392,38 +386,34 @@ class Trainer:
             elif save_last_ckpt:
                 self.save_ckpt(ckpt_name='last', **save_ckpt_kwargs)
 
-    def save_ckpt(self,
-                  epoch_idx,
-                  ckpt_dir_prefix,
-                  ckpt_name,
-                  save_opt_state,
-                  max_shard_size):
-        ckpt_dir = f'{ckpt_dir_prefix}/{ckpt_name}'
-        if jax.process_index() == 0:
-            os.makedirs(ckpt_dir, exist_ok=True)
+    def save_ckpt(self, epoch_idx, ckpt_name, save_opt_state):
+        if self.mesh is None:
+            params = unreplicate(self._state.params)
+        else:
+            params = self._state.params
 
-        self._deployer.save_params(
-            params=self._state.params,
-            ckpt_dir=ckpt_dir,
-            max_shard_size=max_shard_size)
-        self._deployer.save_rng(ckpt_dir=ckpt_dir)
-
+        opt_state = None
         if save_opt_state:
-            self._deployer.save_opt_state(
-                opt_state=self._state.opt_state,
-                ckpt_dir=ckpt_dir,
-                max_shard_size=max_shard_size)
+            if self.mesh is None:
+                opt_state = unreplicate(self._state.opt_state)
+            else:
+                opt_state = self._state.opt_state
+
+        self._deployer.save_ckpt(
+            ckpt_dir=f'{self.workdir}/ckpts/{ckpt_name}',
+            params=params,
+            opt_state=opt_state)
 
         if jax.process_index() == 0:
             last_ckpt_info = {
-                'last_ckpt_name': ckpt_name,
-                'last_step': self.step,
-                'last_epoch_idx': epoch_idx
+                'ckpt_name': ckpt_name,
+                'step': self.step,
+                'epoch_idx': epoch_idx
             }
             json.dump(last_ckpt_info, open(
-                f'{ckpt_dir_prefix}/last_ckpt_info.json', 'w'), indent=4)
+                f'{self.workdir}/ckpts/last_ckpt_info.json', 'w'), indent=4)
             self._deployer.log_info(
-                f'{ckpt_dir_prefix}/last_ckpt_info.json updated.')
+                f'{self.workdir}/ckpts/last_ckpt_info.json updated.')
 
     @property
     def step(self):
