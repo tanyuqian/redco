@@ -56,7 +56,7 @@ def load_ckpt(checkpointer,
     if load_opt_state and os.path.exists(f'{ckpt_dir}/opt_state'):
         keys_to_load.append('opt_state')
 
-    ckpt = {}
+    ckpt = {'params': None, 'opt_state': None}
     for key in keys_to_load:
         print(f'Restoring {ckpt_dir}/{key} ..')
 
