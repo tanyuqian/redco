@@ -106,16 +106,16 @@ class Trainer:
             params = self._deployer.shard_params(
                 params=params, params_spec=params_spec)
 
-            opt_state_spec = self._deployer.get_opt_state_spec(
-                params=params, params_spec=params_spec, optimizer=optimizer)
             if opt_state is None:
                 self._deployer.log_info('Initializing opt_state ...')
                 opt_state = optimizer.init(params)
-            else:
-                opt_state = self._deployer.shard_params(
-                    params=opt_state,
-                    params_spec=opt_state_spec,
-                    desc='opt_state')
+
+            opt_state_spec = self._deployer.get_opt_state_spec(
+                params=params, params_spec=params_spec, optimizer=optimizer)
+            opt_state = self._deployer.shard_params(
+                params=opt_state,
+                params_spec=opt_state_spec,
+                desc='opt_state')
 
             self._state = train_state.TrainState(
                 apply_fn=apply_fn,
