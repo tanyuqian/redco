@@ -64,9 +64,7 @@ def load_ckpt(checkpointer,
             assert optimizer is not None, \
                 (f'optimizer and params_shape must not be None '
                  f'because ckpt {ckpt_dir} has opt_state')
-            target_shape = jax.eval_shape(optimizer.init, params_shape)
-        else:
-            target_shape = params_shape
+            opt_state_shape = jax.eval_shape(optimizer.init, params_shape)
 
         if mesh is None:
             assert params_shape is not None, \
@@ -89,7 +87,8 @@ def load_ckpt(checkpointer,
         ckpt[key] = checkpointer.restore(
             f'{ckpt_dir}/{key}',
             args=ocp.args.PyTreeRestore(
-                item=target_shape, restore_args=restore_args)
+                item=opt_state_shape if key == 'opt_state' else None,
+                restore_args=restore_args)
         )
 
     info = json.load(open(f'{ckpt_dir}/info.json'))
