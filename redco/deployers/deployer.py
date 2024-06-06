@@ -11,10 +11,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import json
 import os
 import jax
 import jax.numpy as jnp
+from flax.core.frozen_dict import freeze
 import orbax.checkpoint
 
 from .data_utils import get_host_examples, get_data_batches
@@ -22,7 +24,14 @@ from .opt_utils import get_lr_schedule_fn
 from .log_utils import get_logger, log_info, save_outputs
 from .ckpt_utils import save_ckpt, load_ckpt
 from .partition_utils import (
-    get_mesh, get_param_spec, get_sharding_rules, get_opt_state_spec)
+    get_mesh,
+    get_param_spec,
+    get_sharding_rules,
+    get_opt_state_spec,
+    shard_params)
+
+
+DEFAULT_HOST0_PORT = 11111
 
 
 class Deployer:
@@ -50,7 +59,7 @@ class Deployer:
                 else list(range(n_local_devices))
 
             if host0_port is None:
-                host0_port = 11111
+                host0_port = DEFAULT_HOST0_PORT
 
             jax.distributed.initialize(
                 coordinator_address=f'{host0_address}:{host0_port}',
@@ -62,7 +71,7 @@ class Deployer:
             os.makedirs(workdir, exist_ok=True)
 
         self._verbose = verbose
-        self._workdir = os.path.abspath(workdir)
+        self._workdir = workdir
         self._logger = get_logger(verbose=verbose, workdir=workdir)
 
         if run_wandb and jax.process_index() == 0:
@@ -199,13 +208,8 @@ class Deployer:
 
     def shard_params(self, params, params_spec, desc='params'):
         self.log_info(info=f'Sharding {desc} ...')
-        return jax.tree_util.tree_map(
-            lambda param, param_spec: jax.make_array_from_callback(
-                shape=param.shape,
-                sharding=jax.sharding.NamedSharding(
-                    mesh=self._mesh, spec=param_spec),
-                data_callback=lambda index: param[index]),
-            params, params_spec)
+        return shard_params(
+            mesh=self._mesh, params=params, params_spec=params_spec)
 
     def run_model_step(self, step_fn, input_args):
         if self._mesh is None:
@@ -244,43 +248,78 @@ class Deployer:
                 logger=self._logger,
                 summary_writer=self._summary_writer)
 
-    def save_ckpt(self, ckpt_dir, params, opt_state):
+    def save_ckpt(self, ckpt_dir, params=None, opt_state=None, **kwargs):
+        ckpt_dir = os.path.abspath(ckpt_dir)
         self.log_info(f'Saving ckpt to {ckpt_dir} ...')
         save_ckpt(
             ckpt_dir=ckpt_dir,
             checkpointer=self._checkpointer,
             params=params,
             opt_state=opt_state,
-            rng=self._rng)
+            rng=self._rng,
+            **kwargs)
         self.log_info(f'Ckpt saved into {ckpt_dir}')
 
-    def load_ckpt(self, ckpt_dir, optimizer):
+    def load_ckpt(self,
+                  ckpt_dir,
+                  optimizer=None,
+                  params_shape=None,
+                  params_sharding_rules=None,
+                  update_rng=True):
+        ckpt_dir = os.path.abspath(ckpt_dir)
         self.log_info(f'Loading ckpt from {ckpt_dir} ...')
-        ckpt = load_ckpt(
+
+        if params_shape is not None:
+            params_shape = freeze(params_shape)
+
+        specs = {}
+        if self._mesh is not None:
+            specs['params'] = self.get_params_spec(
+                params=params_shape,
+                params_sharding_rules=params_sharding_rules)
+            if optimizer is not None:
+                specs['opt_state'] = self.get_opt_state_spec(
+                    params=params_shape,
+                    params_spec=specs['params'],
+                    optimizer=optimizer)
+
+        ckpt, info = load_ckpt(
             ckpt_dir=ckpt_dir,
             checkpointer=self._checkpointer,
-            optimizer=optimizer)
-        self.log_info(f'Ckpt loaded from {ckpt_dir}')
+            optimizer=optimizer,
+            mesh=self._mesh,
+            params_shape=params_shape,
+            specs=specs)
 
-        return ckpt
-
-    def load_last_ckpt(self, optimizer, update_rng=True):
-        last_ckpt_info_path = f'{self._workdir}/ckpts/last_ckpt_info.json'
-        if not os.path.exists(last_ckpt_info_path):
-            self.log_info(f'{last_ckpt_info_path} not found, no ckpt loaded.')
-            return None, None
-
-        last_ckpt_info = json.load(open(last_ckpt_info_path))
-        ckpt_name = last_ckpt_info['ckpt_name']
-        last_ckpt = self.load_ckpt(
-            ckpt_dir=f'{self._workdir}/ckpts/{ckpt_name}',
-            optimizer=optimizer)
+        for key, value in info.items():
+            self.log_info(f'{ckpt_dir}::{key} = {value}')
 
         if update_rng:
-            self._rng = last_ckpt['rng']
-            self.log_info(f'rng updated from ckpt:{ckpt_name}.')
+            self._rng = info['rng']
+            self.log_info(f'rng updated by {ckpt_dir}')
 
-        return last_ckpt, last_ckpt_info
+        return ckpt, info
+
+    def load_last_ckpt(self,
+                       optimizer,
+                       params_shape=None,
+                       params_sharding_rules=None,
+                       update_rng=True):
+        try:
+            last_ckpt_name = open(
+                f'{self._workdir}/ckpts/last_ckpt.txt').read().strip()
+        except:
+            self.log_info(
+                f'{self._workdir}/ckpts/last_ckpt.txt not found, '
+                f'no ckpt loaded.')
+            return None, None
+
+        return self.load_ckpt(
+            ckpt_dir=f'{self._workdir}/ckpts/{last_ckpt_name}',
+            optimizer=optimizer,
+            params_shape=params_shape,
+            params_sharding_rules=params_sharding_rules,
+            update_rng=update_rng)
 
 
     @property

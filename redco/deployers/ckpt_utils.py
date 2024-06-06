@@ -14,37 +14,77 @@
 
 import os
 import jax
+import jax.numpy as jnp
+import json
 from flax.core.frozen_dict import freeze
 from flax.training import orbax_utils
+import orbax.checkpoint as ocp
 
 
-def save_ckpt(checkpointer, ckpt_dir, params, opt_state, rng):
-    ckpt = {'params': params, 'opt_state': opt_state, 'rng': {'rng': rng}}
-    for key, value in ckpt.items():
-        print(f'KEY: {key}')
-        if value is not None:
+def save_ckpt(checkpointer,
+              ckpt_dir,
+              params,
+              opt_state=None,
+              rng=None,
+              **kwargs):
+    ckpt = {'params': params, 'opt_state': opt_state}
+    for key in ['params', 'opt_state']:
+        if ckpt[key] is not None:
             checkpointer.save(
                 f'{ckpt_dir}/{key}',
-                value,
-                save_args=orbax_utils.save_args_from_target(value),
+                ckpt[key],
+                save_args=orbax_utils.save_args_from_target(ckpt[key]),
                 force=True)
 
+    if jax.process_index() == 0:
+        if rng is not None:
+            kwargs['rng'] = rng.tolist()
+        json.dump(kwargs, open(f'{ckpt_dir}/info.json', 'w'), indent=4)
 
-def load_ckpt(checkpointer, ckpt_dir, optimizer):
+
+def load_ckpt(checkpointer,
+              ckpt_dir,
+              optimizer=None,
+              params_shape=None,
+              mesh=None,
+              specs=None):
     ckpt = {}
-    for key in ['params', 'opt_state', 'rng']:
-        print(f'LOADING: {key}')
+    for key in ['params', 'opt_state']:
         if os.path.exists(f'{ckpt_dir}/{key}'):
             if key == 'opt_state':
-                params_shapes = jax.tree_util.tree_map(
-                    lambda x: jax.ShapeDtypeStruct(x.shape, x.dtype),
-                    freeze(ckpt['params']))
-                kwargs = {'item': jax.eval_shape(optimizer.init, params_shapes)}
+                assert optimizer is not None, \
+                    (f'optimizer and params_shape must not be None '
+                     f'because ckpt {ckpt_dir} has opt_state')
+                opt_state_shape = jax.eval_shape(optimizer.init, params_shape)
+
+            if mesh is None:
+                assert params_shape is not None, \
+                    'params_shape must not be None when mesh is None'
+                restore_args = jax.tree_util.tree_map(
+                    lambda param: ocp.ArrayRestoreArgs(
+                        sharding=jax.sharding.SingleDeviceSharding(
+                            jax.local_devices()[0])
+                    ), params_shape if key == 'params' else opt_state_shape
+                )
             else:
-                kwargs = {}
+                assert specs is not None and key in specs, \
+                    f'specs[{key}] must not be None when mesh is not None'
+                restore_args = jax.tree_util.tree_map(
+                    lambda spec: ocp.ArrayRestoreArgs(
+                        sharding=jax.sharding.NamedSharding(
+                            mesh=mesh, spec=spec)
+                    ), specs[key]
+                )
 
-            ckpt[key] = checkpointer.restore(f'{ckpt_dir}/{key}', **kwargs)
+            ckpt[key] = checkpointer.restore(
+                f'{ckpt_dir}/{key}',
+                args=ocp.args.PyTreeRestore(
+                    item=opt_state_shape if key == 'opt_state' else None,
+                    restore_args=restore_args)
+            )
 
-    ckpt['rng'] = ckpt['rng']['rng']
+    info = json.load(open(f'{ckpt_dir}/info.json'))
+    if 'rng' in info:
+        info['rng'] = jnp.array(info['rng'], dtype=jnp.uint32)
 
-    return ckpt
+    return ckpt, info

@@ -17,9 +17,11 @@ import numpy as np
 import jax
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
+from jax.experimental import multihost_utils
 from flax.core.frozen_dict import freeze
 from flax.training.common_utils import shard_prng_key
 from flax.jax_utils import replicate
+
 from .utils import \
     add_idxes, collate_fn_wrapper, pred_fn_wrapper, default_output_fn
 
@@ -87,6 +89,8 @@ class Predictor:
             shuffle=False,
             shuffle_rng=None,
             desc=f'Predicting ({desc})' if desc is not None else 'Predicting')
+
+        multihost_utils.sync_global_devices(f'BEFORE PREDICTING ({desc})')
 
         params = freeze(params)
         preds = []

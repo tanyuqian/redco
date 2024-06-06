@@ -57,20 +57,20 @@ class Trainer:
         self._p_train_step = None
         self._p_eval_step = None
 
+        self._init_step = 0
+        self._init_epoch_idx = 0
+        if last_ckpt_info is not None:
+            self._init_step = last_ckpt_info.get('step', 0)
+            self._init_epoch_idx = last_ckpt_info.get('epoch_idx', -1) + 1
+
         n_params = sum([param.size for param in flatten_dict(params).values()])
         self._deployer.log_info(f'{n_params:,}', title='Training parameters')
-
-        if last_ckpt_info is None:
-            self._last_ckpt_info = \
-                {'ckpt_name': None, 'step': 0, 'epoch_idx': -1}
-        else:
-            self._last_ckpt_info = last_ckpt_info
 
         self.set_train_state(
             apply_fn=self._apply_fn,
             params=params,
             optimizer=self._optimizer,
-            step=self._last_ckpt_info['step'],
+            step=self._init_step,
             opt_state=opt_state)
 
         self._default_predictor_fn = partial(
@@ -173,7 +173,7 @@ class Trainer:
             is_train=True,
             accumulate_grad_batches=self._accumulate_grad_batches)
 
-        multihost_utils.sync_global_devices(f'Training ({desc})')
+        multihost_utils.sync_global_devices(f'BEFORE TRAINING ({desc})')
         for batch in data_batches:
             if self._p_train_step is None:
                 self.setup_running_step(dummy_batch=batch)
@@ -285,8 +285,7 @@ class Trainer:
 
             self._deployer._rng = rng_backup
 
-        for epoch_idx in range(
-                self._last_ckpt_info['epoch_idx'] + 1, n_epochs):
+        for epoch_idx in range(self._init_epoch_idx, n_epochs):
             if isinstance(train_examples, list):
                 epoch_train_examples = train_examples
             else:
@@ -399,21 +398,17 @@ class Trainer:
             else:
                 opt_state = self._state.opt_state
 
+        ckpt_dir = f'{self.workdir}/ckpts/{ckpt_name}'
         self._deployer.save_ckpt(
-            ckpt_dir=f'{self.workdir}/ckpts/{ckpt_name}',
+            ckpt_dir=ckpt_dir,
             params=params,
-            opt_state=opt_state)
+            opt_state=opt_state,
+            step=self.step,
+            epoch_idx=epoch_idx)
 
         if jax.process_index() == 0:
-            last_ckpt_info = {
-                'ckpt_name': ckpt_name,
-                'step': self.step,
-                'epoch_idx': epoch_idx
-            }
-            json.dump(last_ckpt_info, open(
-                f'{self.workdir}/ckpts/last_ckpt_info.json', 'w'), indent=4)
-            self._deployer.log_info(
-                f'{self.workdir}/ckpts/last_ckpt_info.json updated.')
+            open(f'{self.workdir}/ckpts/last_ckpt.txt', 'w').write(ckpt_name)
+            self._deployer.log_info(f'last ckpt updated -- {ckpt_dir}')
 
     @property
     def step(self):
