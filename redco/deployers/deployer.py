@@ -12,7 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import json
 import os
 import jax
 import jax.numpy as jnp
@@ -265,6 +264,8 @@ class Deployer:
                   optimizer=None,
                   params_shape=None,
                   params_sharding_rules=None,
+                  load_params=True,
+                  load_opt_state=True,
                   update_rng=True):
         ckpt_dir = os.path.abspath(ckpt_dir)
         self.log_info(f'Loading ckpt from {ckpt_dir} ...')
@@ -289,7 +290,9 @@ class Deployer:
             optimizer=optimizer,
             mesh=self._mesh,
             params_shape=params_shape,
-            specs=specs)
+            specs=specs,
+            load_params=load_params,
+            load_opt_state=load_opt_state)
 
         for key, value in info.items():
             self.log_info(f'{ckpt_dir}::{key} = {value}')
@@ -304,6 +307,8 @@ class Deployer:
                        optimizer,
                        params_shape=None,
                        params_sharding_rules=None,
+                       load_params=True,
+                       load_opt_state=True,
                        update_rng=True):
         try:
             last_ckpt_name = open(
@@ -319,6 +324,8 @@ class Deployer:
             optimizer=optimizer,
             params_shape=params_shape,
             params_sharding_rules=params_sharding_rules,
+            load_params=load_params,
+            load_opt_state=load_opt_state,
             update_rng=update_rng)
 
 
