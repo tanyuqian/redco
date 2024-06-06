@@ -58,6 +58,8 @@ def load_ckpt(checkpointer,
 
     ckpt = {}
     for key in keys_to_load:
+        print(f'Restoring {ckpt_dir}/{key} ..')
+
         if key == 'opt_state':
             assert optimizer is not None, \
                 (f'optimizer and params_shape must not be None '
