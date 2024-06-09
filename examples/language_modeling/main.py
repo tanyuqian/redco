@@ -12,82 +12,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from functools import partial
+import json
 import fire
-import datasets
 import numpy as np
 import jax
 import jax.numpy as jnp
 import optax
-from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
-from redco import Deployer, Trainer, Predictor
+from transformers import FlaxAutoModelForCausalLM
+from redco import Deployer, Trainer
 
 
-def train_collate_fn(examples, tokenizer, max_length, src_key, tgt_key):
-    batch = tokenizer(
-        [f'{example[src_key]} {example[tgt_key]}' for example in examples],
-        max_length=max_length,
-        padding='max_length',
-        truncation=True,
-        add_special_tokens=False,
-        return_tensors='np')
-
-    batch['labels'] = np.copy(batch['input_ids'])
-    batch['labels'][:, :-1] = batch['input_ids'][:, 1:]
-    batch['labels'][:, -1] = tokenizer.eos_token_id
-
-    is_tgt_token = np.zeros_like(batch['input_ids'])
-    for i, example in enumerate(examples):
-        tgt_ids = tokenizer(
-            example[tgt_key], add_special_tokens=False)['input_ids']
-        is_tgt_token[i, -len(tgt_ids):] = 1
-    batch['label_weights'] = np.zeros_like(batch['input_ids'])
-    batch['label_weights'][:, :-1] = is_tgt_token[:, 1:]
-    batch['label_weights'][:, -1] = 1
-
-    return {
-        key: batch[key]
-        for key in ['input_ids', 'attention_mask', 'labels', 'label_weights']
-    }
-
-
-def eval_collate_fn(examples, tokenizer, src_length, src_key):
-    batch = tokenizer(
-        [example[src_key] for example in examples],
-        max_length=src_length,
-        padding='max_length',
-        truncation=True,
-        add_special_tokens=False,
-        return_tensors='np')
-
-    return {
-        key: batch[key] for key in ['input_ids', 'attention_mask']
-    }
+def collate_fn(examples):
+    token_ids = np.array([examples['token_ids'] for examples in examples])
+    token_ids[token_ids >= 32000] = 2
+    return {'token_ids': token_ids[:, :-1], 'labels': token_ids[:, 1:]}
 
 
 def loss_fn(train_rng, state, params, batch, is_training):
-    labels, label_weights = batch.pop("labels"), batch.pop('label_weights')
+    labels = batch.pop("labels")
     logits = state.apply_fn(
         **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
 
-    loss = optax.softmax_cross_entropy_with_integer_labels(
-        logits=logits, labels=labels)
-
-    return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
-
-
-def pred_fn(pred_rng, batch, params, model, gen_kwargs):
-    output_ids = model.generate(
-        input_ids=batch['input_ids'],
-        attention_mask=batch['attention_mask'],
-        params=params,
-        prng_key=pred_rng,
-        **gen_kwargs)
-    return output_ids.sequences
-
-
-def output_fn(batch_preds, tokenizer):
-    return tokenizer.batch_decode(batch_preds, skip_special_tokens=True)
+    return optax.softmax_cross_entropy_with_integer_labels(
+        logits=logits, labels=labels).mean()
 
 
 def main(n_processes=None,
@@ -95,71 +42,39 @@ def main(n_processes=None,
          host0_port=None,
          process_id=None,
          n_local_devices=None,
-         dataset_name='tatsu-lab/alpaca',
-         src_key='src',
-         tgt_key='tgt',
+         data_file='chunk_379.jsonl',
          model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
          n_model_shards=1,
-         n_epochs=3,
-         per_device_batch_size=8,
-         eval_per_device_batch_size=16,
-         accumulate_grad_batches=1,
-         computation_dtype='float16',
-         max_length=512,
-         eval_src_length=256,
+         n_epochs=1,
+         global_batch_size=8,
+         per_device_batch_size=1,
          learning_rate=2e-5,
          lr_schedule_type='linear',
          warmup_rate=0.03,
          weight_decay=0.,
-         top_p=0.96,
          jax_seed=42,
-         workdir='./workdir',
-         run_tensorboard=False):
+         workdir='./workdir'):
     deployer = Deployer(
         n_model_shards=n_model_shards,
         jax_seed=jax_seed,
         workdir=workdir,
-        run_tensorboard=run_tensorboard,
         n_processes=n_processes,
         host0_address=host0_address,
         host0_port=host0_port,
         process_id=process_id,
         n_local_devices=n_local_devices)
 
-    # process Alpaca data as list
-    # [{'src': ..., 'tgt': ...}, {'src': ..., 'tgt': ...}, ...]
-    dataset = []
-    for example in datasets.load_dataset(dataset_name, split='train'):
-        dataset.append({
-            src_key: example['text'][:-len(example['output'])].strip(),
-            tgt_key: example['output']
-        })
-    train_size = int(0.9 * len(dataset))
-    dataset = {
-        'train': dataset[:train_size],
-        'validation': dataset[train_size:],
-    }
-
-    with jax.default_device(jax.devices('cpu')[0]):
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_name_or_path, padding_side='left')
-        tokenizer.pad_token = tokenizer.eos_token
-
+    with jax.default_device(jax.local_devices(backend='cpu')[0]):
         model = FlaxAutoModelForCausalLM.from_pretrained(
-            model_name_or_path,
-            from_pt=True,
-            dtype=getattr(jnp, computation_dtype))
-
-        # usually dtype for parameters is float32 to ensure training convergence
-        # while dtype for computation can be float32/float16/bfloat16
+            model_name_or_path, from_pt=True, dtype=jnp.bfloat16)
         params = model.to_fp32(model.params)
 
-        gen_kwargs = {
-            'do_sample': True,
-            'top_p': top_p,
-            'max_new_tokens': max_length - eval_src_length,
-            'pad_token_id': tokenizer.pad_token_id
-        }
+    dataset = {'train': [json.loads(line) for line in open(data_file)]}
+
+    global_micro_batch_size, _ = deployer.process_batch_size(
+        per_device_batch_size=per_device_batch_size)
+    assert global_batch_size % global_micro_batch_size == 0
+    accumulate_grad_batches = global_batch_size // global_micro_batch_size
 
     lr_schedule_fn = deployer.get_lr_schedule_fn(
         train_size=len(dataset['train']),
@@ -168,51 +83,28 @@ def main(n_processes=None,
         learning_rate=learning_rate,
         schedule_type=lr_schedule_type,
         warmup_rate=warmup_rate)
-
     optimizer = optax.adamw(
         learning_rate=lr_schedule_fn, weight_decay=weight_decay)
     if accumulate_grad_batches > 1:
         optimizer = optax.MultiSteps(
             optimizer, every_k_schedule=accumulate_grad_batches)
 
-    params_sharding_rules = deployer.get_sharding_rules(params=params)
-
     trainer = Trainer(
         deployer=deployer,
-        collate_fn=partial(
-            train_collate_fn,
-            tokenizer=tokenizer,
-            max_length=max_length,
-            src_key=src_key,
-            tgt_key=tgt_key),
+        collate_fn=collate_fn,
         apply_fn=model,
         loss_fn=loss_fn,
         params=params,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
         accumulate_grad_batches=accumulate_grad_batches,
-        params_sharding_rules=params_sharding_rules)
-
-    predictor = Predictor(
-        deployer=deployer,
-        collate_fn=partial(
-            eval_collate_fn,
-            tokenizer=tokenizer,
-            src_length=eval_src_length,
-            src_key=src_key),
-        pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
-        output_fn=partial(output_fn, tokenizer=tokenizer),
-        params_sharding_rules=params_sharding_rules)
+        params_sharding_rules=deployer.get_sharding_rules(
+            params_shape_or_params=params))
 
     trainer.fit(
         train_examples=dataset['train'],
         n_epochs=n_epochs,
-        per_device_batch_size=per_device_batch_size,
-        eval_examples=dataset['validation'],
-        eval_per_device_batch_size=eval_per_device_batch_size,
-        eval_predictor=predictor,
-        save_last_ckpt=True,
-        save_opt_states=True)
+        per_device_batch_size=per_device_batch_size)
 
 
 if __name__ == '__main__':
