@@ -67,7 +67,10 @@ def main(n_processes=None,
 
     with jax.default_device(jax.local_devices(backend='cpu')[0]):
         model = FlaxAutoModelForCausalLM.from_pretrained(
-            model_name_or_path, from_pt=True, dtype=jnp.bfloat16)
+            model_name_or_path,
+            from_pt=True,
+            dtype=jnp.bfloat16,
+            max_position_embeddings=8192)
         params = model.to_fp32(model.params)
 
     dataset = {'train': []}
