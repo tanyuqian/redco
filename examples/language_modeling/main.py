@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import json
+import tqdm
 import fire
 import numpy as np
 import jax
@@ -69,7 +70,11 @@ def main(n_processes=None,
             model_name_or_path, from_pt=True, dtype=jnp.bfloat16)
         params = model.to_fp32(model.params)
 
-    dataset = {'train': [json.loads(line) for line in open(data_file)]}
+    dataset = {'train': []}
+    for line in tqdm.tqdm(open(data_file), total=10000):
+        dataset['train'].append(json.loads(line))
+        if len(dataset['train']) >= 10000:
+            break
 
     global_micro_batch_size, _ = deployer.process_batch_size(
         per_device_batch_size=per_device_batch_size)
