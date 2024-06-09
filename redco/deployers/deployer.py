@@ -189,7 +189,8 @@ class Deployer:
             return None
         else:
             sharding_rules = get_sharding_rules(
-                params_shape_or_params=params_shape_or_params, n_model_shards=self._mesh.shape['mp'])
+                params_shape_or_params=params_shape_or_params,
+                n_model_shards=self._mesh.shape['mp'])
             self.log_info(
                 info='\n'.join([f'{t}' for t in sharding_rules]),
                 title='Sharding rules')
@@ -201,7 +202,10 @@ class Deployer:
             params_shape_or_params=params_shape_or_params,
             params_sharding_rules=params_sharding_rules)
 
-    def get_opt_state_spec(self, params_shape_or_params, params_spec, optimizer):
+    def get_opt_state_spec(self,
+                           params_shape_or_params,
+                           params_spec,
+                           optimizer):
         self.log_info(info='Getting opt_state spec ...')
         return get_opt_state_spec(
             params_shape_or_params=params_shape_or_params,
