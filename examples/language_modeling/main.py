@@ -26,7 +26,7 @@ from redco import Deployer, Trainer
 def collate_fn(examples):
     token_ids = np.array([examples['token_ids'] for examples in examples])
     token_ids[token_ids >= 32000] = 2
-    return {'token_ids': token_ids[:, :-1], 'labels': token_ids[:, 1:]}
+    return {'input_ids': token_ids[:, :-1], 'labels': token_ids[:, 1:]}
 
 
 def loss_fn(train_rng, state, params, batch, is_training):
@@ -80,6 +80,7 @@ def main(n_processes=None,
         per_device_batch_size=per_device_batch_size)
     assert global_batch_size % global_micro_batch_size == 0
     accumulate_grad_batches = global_batch_size // global_micro_batch_size
+    deployer.log_info(f'accumulate_grad_batches: {accumulate_grad_batches}')
 
     lr_schedule_fn = deployer.get_lr_schedule_fn(
         train_size=len(dataset['train']),
