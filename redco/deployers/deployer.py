@@ -184,26 +184,29 @@ class Deployer:
             learning_rate=learning_rate,
             end_learning_rate=end_learning_rate)
 
-    def get_sharding_rules(self, params):
+    def get_sharding_rules(self, params_shape_or_params):
         if self._mesh is None:
             return None
         else:
             sharding_rules = get_sharding_rules(
-                params=params, n_model_shards=self._mesh.shape['mp'])
+                params_shape_or_params=params_shape_or_params, n_model_shards=self._mesh.shape['mp'])
             self.log_info(
                 info='\n'.join([f'{t}' for t in sharding_rules]),
                 title='Sharding rules')
             return sharding_rules
 
-    def get_params_spec(self, params, params_sharding_rules):
+    def get_params_spec(self, params_shape_or_params, params_sharding_rules):
         self.log_info(info='Getting params spec ...')
         return get_param_spec(
-            params=params, params_sharding_rules=params_sharding_rules)
+            params_shape_or_params=params_shape_or_params,
+            params_sharding_rules=params_sharding_rules)
 
-    def get_opt_state_spec(self, params, params_spec, optimizer):
+    def get_opt_state_spec(self, params_shape_or_params, params_spec, optimizer):
         self.log_info(info='Getting opt_state spec ...')
         return get_opt_state_spec(
-            params=params, params_spec=params_spec, optimizer=optimizer)
+            params_shape_or_params=params_shape_or_params,
+            params_spec=params_spec,
+            optimizer=optimizer)
 
     def shard_params(self, params, params_spec, desc='params'):
         self.log_info(info=f'Sharding {desc} ...')
@@ -247,7 +250,12 @@ class Deployer:
                 logger=self._logger,
                 summary_writer=self._summary_writer)
 
-    def save_ckpt(self, ckpt_dir, params=None, opt_state=None, **kwargs):
+    def save_ckpt(self,
+                  ckpt_dir,
+                  params=None,
+                  opt_state=None,
+                  float_dtype=None,
+                  **kwargs):
         ckpt_dir = os.path.abspath(ckpt_dir)
         self.log_info(f'Saving ckpt to {ckpt_dir} ...')
         save_ckpt(
@@ -255,14 +263,16 @@ class Deployer:
             checkpointer=self._checkpointer,
             params=params,
             opt_state=opt_state,
+            float_dtype=float_dtype,
             rng=self._rng,
             **kwargs)
         self.log_info(f'Ckpt saved into {ckpt_dir}')
 
     def load_ckpt(self,
                   ckpt_dir,
+                  params_shape_or_params,
                   optimizer=None,
-                  params_shape=None,
+                  float_dtype=None,
                   params_sharding_rules=None,
                   load_params=True,
                   load_opt_state=True,
@@ -270,17 +280,16 @@ class Deployer:
         ckpt_dir = os.path.abspath(ckpt_dir)
         self.log_info(f'Loading ckpt from {ckpt_dir} ...')
 
-        if params_shape is not None:
-            params_shape = freeze(params_shape)
+        params_shape_or_params = freeze(params_shape_or_params)
 
         specs = {}
         if self._mesh is not None:
             specs['params'] = self.get_params_spec(
-                params=params_shape,
+                params_shape_or_params=params_shape_or_params,
                 params_sharding_rules=params_sharding_rules)
             if optimizer is not None:
                 specs['opt_state'] = self.get_opt_state_spec(
-                    params=params_shape,
+                    params_shape_or_params=params_shape_or_params,
                     params_spec=specs['params'],
                     optimizer=optimizer)
 
@@ -288,8 +297,9 @@ class Deployer:
             ckpt_dir=ckpt_dir,
             checkpointer=self._checkpointer,
             optimizer=optimizer,
+            params_shape_or_params=params_shape_or_params,
+            float_dtype=float_dtype,
             mesh=self._mesh,
-            params_shape=params_shape,
             specs=specs,
             load_params=load_params,
             load_opt_state=load_opt_state)
@@ -304,9 +314,10 @@ class Deployer:
         return ckpt, info
 
     def load_last_ckpt(self,
-                       optimizer,
-                       params_shape=None,
+                       params_shape_or_params,
+                       optimizer=None,
                        params_sharding_rules=None,
+                       float_dtype=None,
                        load_params=True,
                        load_opt_state=True,
                        update_rng=True):
@@ -322,7 +333,8 @@ class Deployer:
         return self.load_ckpt(
             ckpt_dir=f'{self._workdir}/ckpts/{last_ckpt_name}',
             optimizer=optimizer,
-            params_shape=params_shape,
+            params_shape_or_params=params_shape_or_params,
+            float_dtype=float_dtype,
             params_sharding_rules=params_sharding_rules,
             load_params=load_params,
             load_opt_state=load_opt_state,

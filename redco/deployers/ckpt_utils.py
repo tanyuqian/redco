@@ -13,12 +13,19 @@
 #  limitations under the License.
 
 import os
+import json
 import jax
 import jax.numpy as jnp
-import json
-from flax.core.frozen_dict import freeze
-from flax.training import orbax_utils
 import orbax.checkpoint as ocp
+
+
+def get_dtype(param, float_dtype):
+    if not isinstance(param, (jnp.ndarray, jax.ShapeDtypeStruct)):
+        print(param)
+        exit()
+    if jnp.issubdtype(param.dtype, jnp.floating):
+        return float_dtype
+    return None
 
 
 def save_ckpt(checkpointer,
@@ -26,15 +33,17 @@ def save_ckpt(checkpointer,
               params,
               opt_state=None,
               rng=None,
+              float_dtype=None,
               **kwargs):
     ckpt = {'params': params, 'opt_state': opt_state}
     for key in ['params', 'opt_state']:
         if ckpt[key] is not None:
+            save_args = jax.tree_util.tree_map(
+                lambda param: ocp.SaveArgs(
+                    dtype=get_dtype(param=param, float_dtype=float_dtype)
+                ),ckpt[key])
             checkpointer.save(
-                f'{ckpt_dir}/{key}',
-                ckpt[key],
-                save_args=orbax_utils.save_args_from_target(ckpt[key]),
-                force=True)
+                f'{ckpt_dir}/{key}', ckpt[key], save_args=save_args, force=True)
 
     if jax.process_index() == 0:
         if rng is not None:
@@ -44,8 +53,9 @@ def save_ckpt(checkpointer,
 
 def load_ckpt(checkpointer,
               ckpt_dir,
+              params_shape_or_params,
               optimizer=None,
-              params_shape=None,
+              float_dtype=None,
               mesh=None,
               specs=None,
               load_params=True,
@@ -62,17 +72,16 @@ def load_ckpt(checkpointer,
 
         if key == 'opt_state':
             assert optimizer is not None, \
-                (f'optimizer and params_shape must not be None '
-                 f'because ckpt {ckpt_dir} has opt_state')
-            target_shape = jax.eval_shape(optimizer.init, params_shape)
+                f'optimizer must not be None when loading opt_state'
+            target_shape = jax.eval_shape(
+                optimizer.init, params_shape_or_params)
         else:
-            target_shape = params_shape
+            target_shape = params_shape_or_params
 
         if mesh is None:
-            assert params_shape is not None, \
-                'params_shape must not be None when mesh is None'
             restore_args = jax.tree_util.tree_map(
                 lambda param: ocp.ArrayRestoreArgs(
+                    dtype=get_dtype(param=param, float_dtype=float_dtype),
                     sharding=jax.sharding.SingleDeviceSharding(
                         jax.local_devices()[0])
                 ), target_shape
@@ -81,9 +90,10 @@ def load_ckpt(checkpointer,
             assert specs is not None and key in specs, \
                 f'specs[{key}] must not be None when mesh is not None'
             restore_args = jax.tree_util.tree_map(
-                lambda spec: ocp.ArrayRestoreArgs(
+                lambda param, spec: ocp.ArrayRestoreArgs(
+                    dtype=get_dtype(param=param, float_dtype=float_dtype),
                     sharding=jax.sharding.NamedSharding(mesh=mesh, spec=spec)
-                ), specs[key]
+                ), target_shape, specs[key]
             )
 
         ckpt[key] = checkpointer.restore(

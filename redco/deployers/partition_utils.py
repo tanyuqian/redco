@@ -23,7 +23,6 @@ from jax.sharding import PartitionSpec as P
 from jax.experimental.pjit import pjit
 from flax.traverse_util import flatten_dict, unflatten_dict
 from flax.core.frozen_dict import FrozenDict, freeze, unfreeze
-import optax
 
 # Sentinels
 _unmatched = object()
@@ -71,8 +70,9 @@ def get_mesh(n_model_shards):
     return mesh
 
 
-def get_param_spec(params, params_sharding_rules):
-    return set_partitions(unfreeze(params), params_sharding_rules)
+def get_param_spec(params_shape_or_params, params_sharding_rules):
+    return set_partitions(
+        in_dict=unfreeze(params_shape_or_params), rules=params_sharding_rules)
 
 
 def shard_params(params, params_spec, mesh):
@@ -94,21 +94,22 @@ def shard_params(params, params_spec, mesh):
             return shard_fn(params)
 
 
-def get_opt_state_spec(params, params_spec, optimizer):
+def get_opt_state_spec(params_shape_or_params, params_spec, optimizer):
     def get_opt_spec(x):
         if isinstance(x, (dict, FrozenDict,)):
             return params_spec
         return P()
 
     params_shapes = jax.tree_util.tree_map(
-        lambda x: jax.ShapeDtypeStruct(x.shape, x.dtype), params)
+        lambda x: jax.ShapeDtypeStruct(x.shape, x.dtype),
+        params_shape_or_params)
 
     return jax.tree_util.tree_map(
         get_opt_spec, jax.eval_shape(optimizer.init, params_shapes),
-        is_leaf=lambda x: isinstance(x, (dict, FrozenDict, optax.EmptyState,)))
+        is_leaf=lambda x: isinstance(x, (dict, FrozenDict,)))
 
 
-def get_sharding_rules(params, n_model_shards):
+def get_sharding_rules(params_shape_or_params, n_model_shards):
     def get_valid_mp_dims(param):
         result = []
         for i, dim in enumerate(param.shape):
@@ -124,7 +125,7 @@ def get_sharding_rules(params, n_model_shards):
         return False
 
     sharding_rules = {}
-    flat_params = flatten_dict(params)
+    flat_params = flatten_dict(params_shape_or_params)
     last_shard_dim = None
     for flat_key in sorted(flat_params.keys(), key=lambda t: (len(t), t[-2:])):
         rule_key, param = flat_key[-2:], flat_params[flat_key]

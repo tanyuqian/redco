@@ -62,7 +62,8 @@ class Predictor:
                 dummy_batch)
 
             self._params_spec = self._deployer.get_params_spec(
-                params=params, params_sharding_rules=params_sharding_rules)
+                params_shape_or_params=params,
+                params_sharding_rules=params_sharding_rules)
 
             self._p_pred_step = pjit(
                 pred_fn,

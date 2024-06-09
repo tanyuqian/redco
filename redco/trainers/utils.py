@@ -13,7 +13,14 @@
 #  limitations under the License.
 
 import jax
-from optax._src.linear_algebra import global_norm
+import jax.numpy as jnp
+
+
+def global_norm(updates):
+    return jnp.sqrt(sum(
+        jnp.sum((x.conj() * x).real)
+        for x in jax.tree_util.tree_leaves(updates)
+    ))
 
 
 def default_loss_and_grads(train_rng, state, batch, loss_fn):

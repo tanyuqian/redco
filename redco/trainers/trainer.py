@@ -27,7 +27,6 @@ from flax.traverse_util import flatten_dict
 from flax.core.frozen_dict import freeze
 
 from .utils import default_train_step, default_eval_step
-from ..predictors import Predictor
 
 
 class Trainer:
@@ -73,12 +72,6 @@ class Trainer:
             step=self._init_step,
             opt_state=opt_state)
 
-        self._default_predictor_fn = partial(
-            Predictor,
-            deployer=deployer,
-            collate_fn=collate_fn,
-            params_sharding_rules=params_sharding_rules)
-
     def set_train_state(
             self, apply_fn, params, optimizer, step, opt_state=None):
         self._deployer.log_info('Setting train_state ...')
@@ -101,7 +94,7 @@ class Trainer:
             self._state = replicate(self._state)
         else:
             params_spec = self._deployer.get_params_spec(
-                params=params,
+                params_shape_or_params=params,
                 params_sharding_rules=self._params_sharding_rules)
             params = self._deployer.shard_params(
                 params=params, params_spec=params_spec)
@@ -111,7 +104,9 @@ class Trainer:
                 opt_state = optimizer.init(params)
 
             opt_state_spec = self._deployer.get_opt_state_spec(
-                params=params, params_spec=params_spec, optimizer=optimizer)
+                params_shape_or_params=params,
+                params_spec=params_spec,
+                optimizer=optimizer)
             opt_state = self._deployer.shard_params(
                 params=opt_state,
                 params_spec=opt_state_spec,
@@ -230,7 +225,8 @@ class Trainer:
             save_last_ckpt=False,
             save_argmin_ckpt_by_metrics=None,
             save_argmax_ckpt_by_metrics=None,
-            save_opt_states=True):
+            save_opt_states=True,
+            save_float_dtype=None):
         if eval_per_device_batch_size is None:
             eval_per_device_batch_size = per_device_batch_size
 
@@ -296,8 +292,11 @@ class Trainer:
                 per_device_batch_size=per_device_batch_size,
                 desc=f'epoch {epoch_idx} / {n_epochs}')
 
-            save_ckpt_kwargs = \
-                {'epoch_idx': epoch_idx, 'save_opt_state': save_opt_states}
+            save_ckpt_kwargs = {
+                'epoch_idx': epoch_idx,
+                'save_opt_state': save_opt_states,
+                'float_dtype': save_float_dtype
+            }
 
             if eval_examples is None:
                 self._deployer.log_info(
@@ -385,7 +384,7 @@ class Trainer:
             elif save_last_ckpt:
                 self.save_ckpt(ckpt_name='last', **save_ckpt_kwargs)
 
-    def save_ckpt(self, epoch_idx, ckpt_name, save_opt_state):
+    def save_ckpt(self, epoch_idx, ckpt_name, save_opt_state, float_dtype):
         if self.mesh is None:
             params = unreplicate(self._state.params)
         else:
@@ -403,6 +402,7 @@ class Trainer:
             ckpt_dir=ckpt_dir,
             params=params,
             opt_state=opt_state,
+            float_dtype=float_dtype,
             step=self.step,
             epoch_idx=epoch_idx)
 
