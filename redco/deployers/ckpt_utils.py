@@ -39,7 +39,7 @@ def save_ckpt(checkpointer,
             save_args = jax.tree_util.tree_map(
                 lambda param: ocp.SaveArgs(
                     dtype=get_dtype(param=param, float_dtype=float_dtype)
-                ),ckpt[key])
+                ), ckpt[key])
             checkpointer.save(
                 f'{ckpt_dir}/{key}', ckpt[key], save_args=save_args, force=True)
 
