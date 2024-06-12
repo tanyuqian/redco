@@ -20,9 +20,7 @@ import orbax.checkpoint as ocp
 
 
 def get_dtype(param, float_dtype):
-    if not isinstance(param, (jnp.ndarray, jax.ShapeDtypeStruct)):
-        print(param)
-        exit()
+    assert isinstance(param, (jnp.ndarray, jax.ShapeDtypeStruct))
     if jnp.issubdtype(param.dtype, jnp.floating):
         return float_dtype
     return None
