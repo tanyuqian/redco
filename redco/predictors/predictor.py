@@ -113,6 +113,8 @@ class Predictor:
 
             pred_rng = self._deployer.gen_rng()
             if self.mesh is None:
+                pred_rng = jax.random.split(
+                    pred_rng, num=jax.process_count())[jax.process_index()]
                 pred_rng = shard_prng_key(pred_rng)
 
             batch_preds_with_idxes = self._deployer.run_model_step(

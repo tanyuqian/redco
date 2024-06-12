@@ -175,6 +175,8 @@ class Trainer:
 
             train_rng = self._deployer.gen_rng()
             if self.mesh is None:
+                train_rng = jax.random.split(
+                    train_rng, num=jax.process_count())[jax.process_index()]
                 train_rng = shard_prng_key(train_rng)
             self._state, metrics = self._deployer.run_model_step(
                 step_fn=self._p_train_step,

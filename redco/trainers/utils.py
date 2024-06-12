@@ -18,8 +18,7 @@ import jax.numpy as jnp
 
 def global_norm(updates):
     return jnp.sqrt(sum(
-        jnp.sum((x.conj() * x).real)
-        for x in jax.tree_util.tree_leaves(updates)
+        jnp.sum(x * x) for x in jax.tree_util.tree_leaves(updates)
     ))
 
 

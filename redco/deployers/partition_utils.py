@@ -136,8 +136,6 @@ def get_sharding_rules(params_shape_or_params, n_model_shards):
     sharding_rules = {}
     last_mp_dim = None
     for rule_key in sorted(valid_mp_dims.keys()):
-        print(rule_key, valid_mp_dims[rule_key])
-
         if valid_mp_dims[rule_key] is None or not any(valid_mp_dims[rule_key]):
             sharding_rules[rule_key] = P()
             continue
