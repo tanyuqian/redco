@@ -18,7 +18,6 @@ import json
 import numpy as np
 import jax
 from jax.experimental.pjit import pjit
-from jax.experimental import multihost_utils
 from jax.sharding import PartitionSpec as P
 from flax.jax_utils import replicate, unreplicate
 from flax.training import train_state
@@ -168,7 +167,6 @@ class Trainer:
             is_train=True,
             accumulate_grad_batches=self._accumulate_grad_batches)
 
-        multihost_utils.sync_global_devices(f'BEFORE TRAINING ({desc})')
         for batch in data_batches:
             if self._p_train_step is None:
                 self.setup_running_step(dummy_batch=batch)
@@ -195,8 +193,6 @@ class Trainer:
             shuffle=False,
             shuffle_rng=None,
             desc=f'Evaluating ({desc})' if desc is not None else 'Evaluating')
-
-        multihost_utils.sync_global_devices(f'Evaluating ({desc})')
 
         losses = []
         for batch in data_batches:
@@ -268,7 +264,7 @@ class Trainer:
                     examples=eval_examples[:eval_global_batch_size],
                     params=self._state.params,
                     params_replicated=(self.mesh is None),
-                    params_meshed=(self.mesh is not None),
+                    params_sharded=(self.mesh is not None),
                     per_device_batch_size=eval_per_device_batch_size,
                     desc=f'Sanity check')
                 self._deployer.log_info(
@@ -318,7 +314,7 @@ class Trainer:
                         examples=eval_examples,
                         params=self._state.params,
                         params_replicated=(self.mesh is None),
-                        params_meshed=(self.mesh is not None),
+                        params_sharded=(self.mesh is not None),
                         per_device_batch_size=eval_per_device_batch_size,
                         desc=f'epoch {epoch_idx} / {n_epochs}')
 
@@ -426,3 +422,7 @@ class Trainer:
     @property
     def mesh(self):
         return self._deployer.mesh
+
+    @property
+    def state(self):
+        return self._state

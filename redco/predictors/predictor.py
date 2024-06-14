@@ -17,7 +17,6 @@ import numpy as np
 import jax
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
-from jax.experimental import multihost_utils
 from flax.core.frozen_dict import freeze
 from flax.training.common_utils import shard_prng_key
 from flax.jax_utils import replicate
@@ -75,7 +74,7 @@ class Predictor:
                 per_device_batch_size,
                 params,
                 params_replicated=False,
-                params_meshed=False,
+                params_sharded=False,
                 desc=None):
         raw_n_inputs = len(examples)
         _, global_batch_size = self._deployer.process_batch_size(
@@ -91,9 +90,13 @@ class Predictor:
             shuffle_rng=None,
             desc=f'Predicting ({desc})' if desc is not None else 'Predicting')
 
-        multihost_utils.sync_global_devices(f'BEFORE PREDICTING ({desc})')
-
         params = freeze(params)
+        if (self.mesh is None) and (not params_replicated):
+            params = replicate(params)
+        if (self.mesh is not None) and (not params_sharded):
+            params = self._deployer.shard_params(
+                params=params, params_spec=self._params_spec)
+
         preds = []
         for batch in data_batches:
             if self._p_pred_step is None:
@@ -102,14 +105,6 @@ class Predictor:
                     dummy_batch=batch,
                     params=params,
                     params_sharding_rules=self._params_sharding_rules)
-
-            if (self.mesh is None) and (not params_replicated):
-                params = replicate(params)
-                params_replicated = True
-            if (self.mesh is not None) and (not params_meshed):
-                params = self._deployer.shard_params(
-                    params=params, params_spec=self._params_spec)
-                params_meshed = True
 
             pred_rng = self._deployer.gen_rng()
             if self.mesh is None:
