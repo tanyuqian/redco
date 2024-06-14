@@ -40,7 +40,6 @@ class Predictor:
             pred_fn_wrapper,
             pred_fn=pred_fn,
             under_pmap=self.mesh is None)
-        self._params_spec = None
         self._p_pred_step = None
 
         if output_fn is None:
@@ -60,13 +59,13 @@ class Predictor:
                 lambda x: P(*(('dp',) + (None,) * (len(x.shape) - 1))),
                 dummy_batch)
 
-            self._params_spec = self._deployer.get_params_spec(
+            params_spec = self._deployer.get_params_spec(
                 params_shape_or_params=params,
                 params_sharding_rules=params_sharding_rules)
 
             self._p_pred_step = pjit(
                 pred_fn,
-                in_shardings=(None, self._params_spec, data_spec),
+                in_shardings=(None, params_spec, data_spec),
                 out_shardings=None)
 
     def predict(self,
@@ -94,8 +93,11 @@ class Predictor:
         if (self.mesh is None) and (not params_replicated):
             params = replicate(params)
         if (self.mesh is not None) and (not params_sharded):
+            params_spec = self._deployer.get_params_spec(
+                params_shape_or_params=params,
+                params_sharding_rules=self._params_sharding_rules)
             params = self._deployer.shard_params(
-                params=params, params_spec=self._params_spec)
+                params=params, params_spec=params_spec)
 
         preds = []
         for batch in data_batches:
