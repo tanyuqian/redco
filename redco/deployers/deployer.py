@@ -197,7 +197,6 @@ class Deployer:
             return sharding_rules
 
     def get_params_spec(self, params_shape_or_params, params_sharding_rules):
-        self.log_info(info='Getting params spec ...')
         return get_param_spec(
             params_shape_or_params=params_shape_or_params,
             params_sharding_rules=params_sharding_rules)
@@ -206,7 +205,6 @@ class Deployer:
                            params_shape_or_params,
                            params_spec,
                            optimizer):
-        self.log_info(info='Getting opt_state spec ...')
         return get_opt_state_spec(
             params_shape_or_params=params_shape_or_params,
             params_spec=params_spec,
