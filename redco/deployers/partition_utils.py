@@ -97,7 +97,9 @@ def shard_params(params, params_spec, mesh):
 def get_opt_state_spec(params_shape_or_params, params_spec, optimizer):
     def get_opt_spec(x):
         if isinstance(x, (dict, FrozenDict,)):
-            return params_spec
+            return jax.tree_util.tree_map(
+                lambda s, xx: s if isinstance(xx, jax.ShapeDtypeStruct) else xx,
+                params_spec, x)
         return P()
 
     params_shapes = jax.tree_util.tree_map(

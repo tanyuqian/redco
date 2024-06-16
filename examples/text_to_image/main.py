@@ -18,16 +18,18 @@ import fire
 import numpy as np
 import jax
 import jax.numpy as jnp
+from flax.core.frozen_dict import freeze
+from flax.traverse_util import path_aware_map
 import optax
 import datasets
 from torchvision import transforms
-from transformers import CLIPImageProcessor, CLIPTokenizer, FlaxCLIPTextModel
+from transformers import CLIPTokenizer, FlaxCLIPTextModel
 from diffusers import (
     FlaxAutoencoderKL,
-    FlaxPNDMScheduler,
+    FlaxDDIMScheduler,
     FlaxStableDiffusionPipeline,
     FlaxUNet2DConditionModel)
-from redco import Deployer, Trainer
+from redco import Deployer, Trainer, Predictor
 
 
 def collate_fn(examples, image_key, text_key, resolution, tokenizer):
@@ -59,12 +61,11 @@ def loss_fn(train_rng,
             batch,
             is_training,
             vae,
-            frozen_params,
             noise_scheduler,
             noise_scheduler_state,
             text_encoder):
     vae_outputs = vae.apply(
-        {"params": frozen_params['vae']},
+        {"params": params['vae']},
         batch["pixel_values"],
         deterministic=True,
         method=vae.encode)
@@ -86,7 +87,7 @@ def loss_fn(train_rng,
         noise_scheduler_state, latents, noise, timesteps)
 
     encoder_hidden_states = text_encoder(
-        batch['input_ids'], params=frozen_params['text_encoder'], train=False
+        batch['input_ids'], params=params['text_encoder'], train=False
     )[0]
 
     model_pred = state.apply_fn(
@@ -111,20 +112,12 @@ def pred_fn(pred_rng,
             batch,
             params,
             pipeline,
-            frozen_params,
             resolution,
             n_infer_steps,
             guidance_scale):
-    pred_params = {
-        'unet': params['unet'],
-        'text_encoder': frozen_params['text_encoder'],
-        'vae': frozen_params['vae'],
-        'scheduler': frozen_params['scheduler']
-    }
-
     return pipeline._generate(
         prompt_ids=batch['input_ids'],
-        params=pred_params,
+        params=params,
         prng_seed=pred_rng,
         num_inference_steps=n_infer_steps,
         guidance_scale=guidance_scale,
@@ -136,40 +129,58 @@ def output_fn(batch_preds, pipeline):
     return pipeline.numpy_to_pil(np.asarray(batch_preds))
 
 
-def main(dataset_name='lambdalabs/pokemon-blip-captions',
+def main(dataset_name='reach-vb/pokemon-blip-captions',
          image_key='image',
          text_key='text',
-         model_name_or_path='duongna/stable-diffusion-v1-4-flax',
+         model_name_or_path='stabilityai/stable-diffusion-2-1',
          n_epochs=3,
+         global_batch_size=4,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
-         accumulate_grad_batches=1,
          learning_rate=1e-5,
          grad_norm_clip=1.,
          weight_decay=1e-2,
          n_infer_steps=50,
          guidance_scale=7.5,
          workdir='./workdir',
-         jax_seed=42):
-    deployer = Deployer(workdir=workdir, jax_seed=jax_seed)
+         jax_seed=42,
+         n_processes=None,
+         host0_address=None,
+         host0_port=None,
+         process_id=None,
+         n_local_devices=None):
+    deployer = Deployer(
+        workdir=workdir,
+        jax_seed=jax_seed,
+        n_processes=n_processes,
+        host0_address=host0_address,
+        host0_port=host0_port,
+        process_id=process_id,
+        n_local_devices=n_local_devices)
 
     dataset = list(datasets.load_dataset(dataset_name, split='train'))
     cut = int(0.9 * len(dataset))
     dataset = {'train': dataset[:cut], 'test': dataset[cut:]}
 
-    with jax.default_device(jax.devices('cpu')[0]):
+    with jax.default_device(jax.local_devices(backend='cpu')[0]):
         tokenizer = CLIPTokenizer.from_pretrained(
             model_name_or_path, subfolder="tokenizer")
         text_encoder = FlaxCLIPTextModel.from_pretrained(
-            model_name_or_path, subfolder="text_encoder",)
+            model_name_or_path, from_pt=True, subfolder="text_encoder")
         vae, vae_params = FlaxAutoencoderKL.from_pretrained(
-            model_name_or_path, subfolder="vae")
+            model_name_or_path, from_pt=True, subfolder="vae")
         unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
-            model_name_or_path, subfolder="unet")
-        feature_extracter = CLIPImageProcessor.from_pretrained(
-            model_name_or_path, subfolder='feature_extractor')
-        noise_scheduler, noise_scheduler_state = FlaxPNDMScheduler.\
-            from_pretrained(model_name_or_path, subfolder='scheduler')
+            model_name_or_path, from_pt=True, subfolder="unet")
+        noise_scheduler, noise_scheduler_state = \
+            FlaxDDIMScheduler.from_pretrained(
+                model_name_or_path, subfolder='scheduler')
+        params = {
+            'text_encoder': text_encoder.params,
+            'unet': unet_params,
+            'vae': vae_params,
+            'scheduler': noise_scheduler_state,
+        }
+        params = unet.to_fp32(params)
 
         pipeline = FlaxStableDiffusionPipeline(
             vae=vae,
@@ -177,25 +188,28 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
             tokenizer=tokenizer,
             unet=unet,
             scheduler=noise_scheduler,
-            feature_extractor=feature_extracter,
+            feature_extractor=None,
             safety_checker=None)
 
-        params = {'unet': unet_params}
-        frozen_params = {
-            'text_encoder': text_encoder.params,
-            'vae': vae_params,
-            'scheduler': noise_scheduler_state
-        }
-
-        frozen_params = pipeline.unet.to_fp16(frozen_params)
-        params = pipeline.unet.to_fp32(params)
+    _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
+        per_device_batch_size=per_device_batch_size)
+    assert global_batch_size % global_micro_batch_size == 0
+    accumulate_grad_batches = global_batch_size // global_micro_batch_size
+    deployer.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
 
     optimizer = optax.MultiSteps(optax.chain(
         optax.clip_by_global_norm(grad_norm_clip),
         optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
     ), every_k_schedule=accumulate_grad_batches)
+    trainable_mask = path_aware_map(
+        lambda path, param: path[0] == 'unet', params)
+    optimizer = optax.masked(optimizer, mask=freeze(trainable_mask))
 
     resolution = pipeline.unet.config.sample_size * pipeline.vae_scale_factor
+    deployer.log_info(resolution, title='resolution')
+
+    params_sharding_rules = deployer.get_sharding_rules(
+        params_shape_or_params=params)
     trainer = Trainer(
         deployer=deployer,
         collate_fn=partial(
@@ -207,7 +221,6 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
         apply_fn=pipeline.unet.apply,
         loss_fn=partial(
             loss_fn,
-            frozen_params=frozen_params,
             vae=vae,
             noise_scheduler=noise_scheduler,
             noise_scheduler_state=noise_scheduler_state,
@@ -215,17 +228,25 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
         params=params,
         optimizer=optimizer,
         lr_schedule_fn=lambda step: learning_rate,
-        accumulate_grad_batches=accumulate_grad_batches)
+        accumulate_grad_batches=accumulate_grad_batches,
+        params_sharding_rules=params_sharding_rules)
 
-    predictor = trainer.get_default_predictor(
+    predictor = Predictor(
+        deployer=deployer,
+        collate_fn=partial(
+            collate_fn,
+            image_key=image_key,
+            text_key=text_key,
+            resolution=resolution,
+            tokenizer=pipeline.tokenizer),
         pred_fn=partial(
             pred_fn,
             pipeline=pipeline,
-            frozen_params=frozen_params,
             resolution=resolution,
             n_infer_steps=n_infer_steps,
             guidance_scale=guidance_scale),
-        output_fn=partial(output_fn, pipeline=pipeline))
+        output_fn=partial(output_fn, pipeline=pipeline),
+        params_sharding_rules=params_sharding_rules)
 
     trainer.fit(
         train_examples=dataset['train'],
@@ -234,13 +255,16 @@ def main(dataset_name='lambdalabs/pokemon-blip-captions',
 
     images = predictor.predict(
         examples=dataset['test'],
-        params=trainer.params,
+        params=trainer.state.params,
+        params_replicated=(trainer.mesh is None),
+        params_sharded=(trainer.mesh is not None),
         per_device_batch_size=eval_per_device_batch_size)
 
     output_dir = f'{deployer.workdir}/test_outputs'
     os.makedirs(output_dir, exist_ok=True)
     for example, image in zip(dataset['test'], images):
-        save_filename = '_'.join(example['text'].split())
+        save_filename = ''.join(
+            [ch if ch.isalpha() else ' ' for ch in example[text_key]])
         image.save(f'{output_dir}/{save_filename}.jpg')
 
 

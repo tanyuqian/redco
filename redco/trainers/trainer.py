@@ -64,7 +64,7 @@ class Trainer:
             self._init_epoch_idx = last_ckpt_info.get('epoch_idx', -1) + 1
 
         n_params = sum([param.size for param in flatten_dict(params).values()])
-        self._deployer.log_info(f'{n_params:,}', title='Training parameters')
+        self._deployer.log_info(f'{n_params:,}', title='#Parameters')
 
         self.set_train_state(
             apply_fn=self._apply_fn,
@@ -108,6 +108,7 @@ class Trainer:
                 params_shape_or_params=params,
                 params_spec=params_spec,
                 optimizer=optimizer)
+
             opt_state = self._deployer.shard_params(
                 params=opt_state,
                 params_spec=opt_state_spec,
