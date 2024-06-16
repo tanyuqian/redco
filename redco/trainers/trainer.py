@@ -24,6 +24,8 @@ from flax.training import train_state
 from flax.training.common_utils import shard_prng_key
 from flax.traverse_util import flatten_dict
 from flax.core.frozen_dict import freeze
+from orbax.checkpoint.utils import \
+    fully_replicated_host_local_array_to_global_array
 
 from .utils import default_train_step, default_eval_step
 
@@ -248,12 +250,13 @@ class Trainer:
 
         if eval_sanity_check and eval_examples is not None:
             rng_backup = self._deployer._rng
-            _, eval_global_batch_size = self._deployer.process_batch_size(
-                per_device_batch_size=eval_per_device_batch_size)
+            _, eval_global_micro_batch_size = \
+                self._deployer.get_local_global_micro_batch_size(
+                    per_device_batch_size=eval_per_device_batch_size)
 
             if eval_loss:
                 self.eval_loss(
-                    examples=eval_examples[:eval_global_batch_size],
+                    examples=eval_examples[:eval_global_micro_batch_size],
                     per_device_batch_size=eval_per_device_batch_size,
                     desc=f'Sanity check')
                 self._deployer.log_info(
@@ -261,7 +264,7 @@ class Trainer:
 
             if eval_predictor is not None:
                 preds = eval_predictor.predict(
-                    examples=eval_examples[:eval_global_batch_size],
+                    examples=eval_examples[:eval_global_micro_batch_size],
                     params=self._state.params,
                     params_replicated=(self.mesh is None),
                     params_sharded=(self.mesh is not None),
@@ -272,7 +275,7 @@ class Trainer:
 
                 if eval_metric_fn is not None:
                     json.dumps(eval_metric_fn(
-                        examples=eval_examples[:eval_global_batch_size],
+                        examples=eval_examples[:eval_global_micro_batch_size],
                         preds=preds))
                     self._deployer.log_info(
                         'Sanity check (for evaluation metrics) passed.')
@@ -384,14 +387,18 @@ class Trainer:
 
     def save_ckpt(self, epoch_idx, ckpt_name, save_opt_state, float_dtype):
         if self.mesh is None:
-            params = unreplicate(self._state.params)
+            params = jax.tree_util.tree_map(
+                fully_replicated_host_local_array_to_global_array,
+                self._state.params)
         else:
             params = self._state.params
 
         opt_state = None
         if save_opt_state:
             if self.mesh is None:
-                opt_state = unreplicate(self._state.opt_state)
+                opt_state = jax.tree_util.tree_map(
+                    fully_replicated_host_local_array_to_global_array,
+                    self._state.opt_state)
             else:
                 opt_state = self._state.opt_state
 

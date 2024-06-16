@@ -18,15 +18,15 @@ Here is also a [Quick Tutorial](tutorials/quick.md) for you to become an expert 
 pip install redco
 ```
 
-#### Adjust Jax & Flax versions
-The command above would automatically install cpu version of jax, so the version of Jax need to be adjusted based on your device. For example,
+#### Adjust Jax to GPU/TPU version
+The command above would automatically install cpu version of jax, so the version of Jax need to be adjusted based on your device. 
+For example, on GPUs,
 ```
-pip install --upgrade flax==0.7.0
-pip install --upgrade jax[cuda11_pip]==0.4.13 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+# for cuda-12.x
+pip install --upgrade "jax[cuda12]"
+# for cuda-11.x
+pip install --upgrade jax[cuda11_pip] -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
-Jax version (`==0.4.13`) and Flax version (`==0.7.0`) can be flexible, as long as they match your CUDA/CUDNN/NCCL version. 
-Besides, the Flax modeling in the HuggingFace implementation sometimes doesn't support the most recent Jax & Flax versions. 
-
 If you are using TPU/CPU/AMD/Apple, see [here](https://github.com/google/jax#installation) for corresponding installation commands.
 
 
@@ -62,6 +62,7 @@ We now have a [paper](https://arxiv.org/pdf/2310.16355.pdf) you can cite for the
 ```
 RedCoast: A Lightweight Tool to Automate Distributed Training of LLMs on Any GPU/TPUs
 Bowen Tan, Yun Zhu, Lijuan Liu, Hongyi Wang, Yonghao Zhuang, Jindong Chen, Eric Xing, Zhiting Hu
+NAACL 2024, Demo
 Mlsys Workshop @ NeurIPS 2023
 
 @article{tan2023redco,

@@ -76,9 +76,10 @@ class Predictor:
                 params_sharded=False,
                 desc=None):
         raw_n_inputs = len(examples)
-        _, global_batch_size = self._deployer.process_batch_size(
-            per_device_batch_size=per_device_batch_size)
-        examples = examples + [examples[0]] * (global_batch_size - 1)
+        _, global_micro_batch_size = \
+            self._deployer.get_local_global_micro_batch_size(
+                per_device_batch_size=per_device_batch_size)
+        examples = examples + [examples[0]] * (global_micro_batch_size - 1)
         examples = add_idxes(examples=examples)
 
         data_batches = self._deployer.get_model_input_batches(
@@ -124,7 +125,7 @@ class Predictor:
 
             batch_preds = self._output_fn(batch_preds)
             assert isinstance(batch_preds, list) and \
-                   len(batch_preds) == global_batch_size
+                   len(batch_preds) == global_micro_batch_size
             preds.extend(batch_preds)
 
         return preds[:raw_n_inputs]

@@ -51,13 +51,16 @@ def get_data_batches(examples,
         disable=(jax.process_index() > 0 or not verbose))
 
 
-def get_host_examples(examples, global_batch_size, shuffle, shuffle_rng, mesh):
+def get_host_examples(
+        examples, global_micro_batch_size, shuffle, shuffle_rng, mesh):
     if shuffle:
         shuffled_idxes = jax.random.permutation(
             key=shuffle_rng, x=len(examples))
         examples = [examples[int(idx)] for idx in shuffled_idxes]
 
-    examples = examples[:len(examples) // global_batch_size * global_batch_size]
+    truncated_size = \
+        len(examples) // global_micro_batch_size * global_micro_batch_size
+    examples = examples[:truncated_size]
 
     if mesh is None:
         return examples[jax.process_index()::jax.process_count()]

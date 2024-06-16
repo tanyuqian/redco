@@ -92,15 +92,17 @@ class Deployer:
         self._mesh = get_mesh(n_model_shards=n_model_shards)
         self._checkpointer = orbax.checkpoint.PyTreeCheckpointer()
 
-    def process_batch_size(self, per_device_batch_size):
+    def get_local_global_micro_batch_size(self, per_device_batch_size):
         if self._mesh is None:
-            batch_size = per_device_batch_size * jax.local_device_count()
-            global_batch_size = batch_size * jax.process_count()
+            local_micro_batch_size = \
+                per_device_batch_size * jax.local_device_count()
+            global_micro_batch_size = \
+                local_micro_batch_size * jax.process_count()
         else:
-            batch_size = per_device_batch_size * self._mesh.shape['dp']
-            global_batch_size = batch_size
+            global_micro_batch_size = local_micro_batch_size = \
+                per_device_batch_size * self._mesh.shape['dp']
 
-        return batch_size, global_batch_size
+        return local_micro_batch_size, global_micro_batch_size
 
     def get_model_input_batches(self,
                                 examples,
@@ -111,28 +113,30 @@ class Deployer:
                                 desc,
                                 is_train=False,
                                 accumulate_grad_batches=None):
-        batch_size, global_batch_size = self.process_batch_size(
-            per_device_batch_size=per_device_batch_size)
+        local_micro_batch_size, global_micro_batch_size = \
+            self.get_local_global_micro_batch_size(
+                per_device_batch_size=per_device_batch_size)
 
         examples = get_host_examples(
             examples=examples,
-            global_batch_size=global_batch_size,
+            global_micro_batch_size=global_micro_batch_size,
             shuffle=shuffle,
             shuffle_rng=shuffle_rng,
             mesh=self._mesh)
 
         if not is_train:
-            desc = f'{desc} (global_batch_size = {global_batch_size})'
+            desc = f'{desc} (global_batch_size = {global_micro_batch_size})'
         elif accumulate_grad_batches is None:
-            desc = f'{desc} (global_micro_batch_size = {global_batch_size})'
+            desc = \
+                f'{desc} (global_micro_batch_size = {global_micro_batch_size})'
         else:
             desc = (f'{desc} ('
-                    f'global_micro_batch_size = {global_batch_size}, '
+                    f'global_micro_batch_size = {global_micro_batch_size}, '
                     f'accumulate_grad_batches = {accumulate_grad_batches})')
 
         return get_data_batches(
             examples=examples,
-            batch_size=batch_size,
+            batch_size=local_micro_batch_size,
             collate_fn=collate_fn,
             do_shard=(self.mesh is None),
             desc=desc,
@@ -169,9 +173,9 @@ class Deployer:
                            warmup_steps=None,
                            init_learning_rate=0.,
                            end_learning_rate=0.):
-        _, global_batch_size = self.process_batch_size(
+        _, global_micro_batch_size = self.get_local_global_micro_batch_size(
             per_device_batch_size=per_device_batch_size)
-        total_train_steps = n_epochs * (train_size // global_batch_size)
+        total_train_steps = n_epochs * (train_size // global_micro_batch_size)
 
         if warmup_steps is None:
             warmup_steps = int(total_train_steps * warmup_rate)
