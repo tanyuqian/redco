@@ -114,10 +114,11 @@ def pred_fn(pred_rng,
             pipeline,
             resolution,
             n_infer_steps,
-            guidance_scale):
+            guidance_scale,
+            noise_scheduler_state):
     return pipeline._generate(
         prompt_ids=batch['input_ids'],
-        params=params,
+        params={**params, 'scheduler': noise_scheduler_state},
         prng_seed=pred_rng,
         num_inference_steps=n_infer_steps,
         guidance_scale=guidance_scale,
@@ -134,7 +135,7 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
          text_key='text',
          model_name_or_path='stabilityai/stable-diffusion-2-1',
          n_epochs=3,
-         global_batch_size=4,
+         global_batch_size=8,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
          learning_rate=1e-5,
@@ -177,8 +178,7 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
         params = {
             'text_encoder': text_encoder.params,
             'unet': unet_params,
-            'vae': vae_params,
-            'scheduler': noise_scheduler_state,
+            'vae': vae_params
         }
         params = unet.to_fp32(params)
 
@@ -244,7 +244,8 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
             pipeline=pipeline,
             resolution=resolution,
             n_infer_steps=n_infer_steps,
-            guidance_scale=guidance_scale),
+            guidance_scale=guidance_scale,
+            noise_scheduler_state=noise_scheduler_state),
         output_fn=partial(output_fn, pipeline=pipeline),
         params_sharding_rules=params_sharding_rules)
 
