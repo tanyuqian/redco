@@ -134,11 +134,11 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
          image_key='image',
          text_key='text',
          model_name_or_path='stabilityai/stable-diffusion-2-1',
+         n_model_shards=1,
          n_epochs=3,
          global_batch_size=8,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
-         computation_dtype='bfloat16',
          learning_rate=1e-5,
          grad_norm_clip=1.,
          weight_decay=1e-2,
@@ -154,6 +154,7 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
     deployer = Deployer(
         workdir=workdir,
         jax_seed=jax_seed,
+        n_model_shards=n_model_shards,
         n_processes=n_processes,
         host0_address=host0_address,
         host0_port=host0_port,
@@ -167,17 +168,16 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
     with jax.default_device(jax.local_devices(backend='cpu')[0]):
 
         tokenizer = CLIPTokenizer.from_pretrained(
-            model_name_or_path, subfolder="tokenizer",
-            dtype=jnp.dtype(computation_dtype))
+            model_name_or_path, subfolder="tokenizer")
         text_encoder = FlaxCLIPTextModel.from_pretrained(
-            model_name_or_path, from_pt=True, subfolder="text_encoder",
-            dtype=jnp.dtype(computation_dtype))
+            model_name_or_path,
+            from_pt=True, subfolder="text_encoder", dtype=jnp.bfloat16)
         vae, vae_params = FlaxAutoencoderKL.from_pretrained(
-            model_name_or_path, from_pt=True, subfolder="vae",
-            dtype=jnp.dtype(computation_dtype))
+            model_name_or_path,
+            from_pt=True, subfolder="vae", dtype=jnp.bfloat16)
         unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
-            model_name_or_path, from_pt=True, subfolder="unet",
-            dtype=jnp.dtype(computation_dtype))
+            model_name_or_path,
+            from_pt=True, subfolder="unet", dtype=jnp.float32)
         noise_scheduler, noise_scheduler_state = \
             FlaxDDIMScheduler.from_pretrained(
                 model_name_or_path, subfolder='scheduler')
@@ -186,7 +186,6 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
             'unet': unet_params,
             'vae': vae_params
         }
-        params = unet.to_fp32(params)
 
         pipeline = FlaxStableDiffusionPipeline(
             vae=vae,
