@@ -63,7 +63,8 @@ class Trainer:
             self._init_step = last_ckpt_info.get('step', 0)
             self._init_epoch_idx = last_ckpt_info.get('epoch_idx', -1) + 1
 
-        n_params = sum([param.size for param in flatten_dict(params).values()])
+        n_params = sum([
+            param.size for param in jax.tree_util.tree_leaves(params)])
         self._deployer.log_info(f'{n_params:,}', title='#Parameters')
 
         self.set_train_state(
