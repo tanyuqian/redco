@@ -170,14 +170,11 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
         tokenizer = CLIPTokenizer.from_pretrained(
             model_name_or_path, subfolder="tokenizer")
         text_encoder = FlaxCLIPTextModel.from_pretrained(
-            model_name_or_path,
-            from_pt=True, subfolder="text_encoder", dtype=jnp.bfloat16)
+            model_name_or_path, from_pt=True, subfolder="text_encoder")
         vae, vae_params = FlaxAutoencoderKL.from_pretrained(
-            model_name_or_path,
-            from_pt=True, subfolder="vae", dtype=jnp.bfloat16)
+            model_name_or_path, from_pt=True, subfolder="vae")
         unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
-            model_name_or_path,
-            from_pt=True, subfolder="unet", dtype=jnp.float32)
+            model_name_or_path, from_pt=True, subfolder="unet")
         noise_scheduler, noise_scheduler_state = \
             FlaxDDIMScheduler.from_pretrained(
                 model_name_or_path, subfolder='scheduler')

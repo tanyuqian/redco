@@ -162,9 +162,12 @@ def get_sharding_rules(params_shape_or_params, n_model_shards):
             valid_idxes.reverse()
         elif (rule_key[0].startswith('up')
               or rule_key[0].startswith('gate')
-              or rule_key[0].startswith('wi')):
+              or rule_key[0].startswith('wi')
+              or rule_key[0].endswith('_in')):
             is_special = True
-        elif rule_key[0].startswith('down') or rule_key[0].endswith('wo'):
+        elif (rule_key[0].startswith('down')
+              or rule_key[0].startswith('wo')
+              or rule_key[0].endswith('_out')):
             is_special = True
             valid_idxes.reverse()
         elif rule_key[0].startswith('head') or rule_key[0].endswith('head'):
