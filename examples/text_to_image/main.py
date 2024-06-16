@@ -138,6 +138,7 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
          global_batch_size=8,
          per_device_batch_size=1,
          eval_per_device_batch_size=1,
+         computation_dtype='bfloat16',
          learning_rate=1e-5,
          grad_norm_clip=1.,
          weight_decay=1e-2,
@@ -164,14 +165,19 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
     dataset = {'train': dataset[:cut], 'test': dataset[cut:]}
 
     with jax.default_device(jax.local_devices(backend='cpu')[0]):
+
         tokenizer = CLIPTokenizer.from_pretrained(
-            model_name_or_path, subfolder="tokenizer")
+            model_name_or_path, subfolder="tokenizer",
+            dtype=jnp.dtype(computation_dtype))
         text_encoder = FlaxCLIPTextModel.from_pretrained(
-            model_name_or_path, from_pt=True, subfolder="text_encoder")
+            model_name_or_path, from_pt=True, subfolder="text_encoder",
+            dtype=jnp.dtype(computation_dtype))
         vae, vae_params = FlaxAutoencoderKL.from_pretrained(
-            model_name_or_path, from_pt=True, subfolder="vae")
+            model_name_or_path, from_pt=True, subfolder="vae",
+            dtype=jnp.dtype(computation_dtype))
         unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
-            model_name_or_path, from_pt=True, subfolder="unet")
+            model_name_or_path, from_pt=True, subfolder="unet",
+            dtype=jnp.dtype(computation_dtype))
         noise_scheduler, noise_scheduler_state = \
             FlaxDDIMScheduler.from_pretrained(
                 model_name_or_path, subfolder='scheduler')
