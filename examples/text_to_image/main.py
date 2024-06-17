@@ -133,7 +133,7 @@ def output_fn(batch_preds, pipeline):
 def main(dataset_name='lambdalabs/naruto-blip-captions',
          image_key='image',
          text_key='text',
-         model_name_or_path='stabilityai/stable-diffusion-2',
+         model_name_or_path='stabilityai/stable-diffusion-2-1-base',
          n_model_shards=1,
          n_epochs=3,
          global_batch_size=8,
@@ -165,14 +165,15 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     dataset = {'train': dataset[:cut], 'test': dataset[cut:]}
 
     with jax.default_device(jax.local_devices(backend='cpu')[0]):
+        model_kwargs = {'from_pt': True, 'dtype': jnp.float16}
         tokenizer = CLIPTokenizer.from_pretrained(
             model_name_or_path, subfolder="tokenizer")
         text_encoder = FlaxCLIPTextModel.from_pretrained(
-            model_name_or_path, subfolder="text_encoder", from_pt=True)
+            model_name_or_path, subfolder="text_encoder", **model_kwargs)
         vae, vae_params = FlaxAutoencoderKL.from_pretrained(
-            model_name_or_path, subfolder="vae", from_pt=True)
+            model_name_or_path, subfolder="vae", **model_kwargs)
         unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
-            model_name_or_path, subfolder="unet", from_pt=True)
+            model_name_or_path, subfolder="unet", **model_kwargs)
         noise_scheduler, noise_scheduler_state = \
             FlaxDDIMScheduler.from_pretrained(
                 model_name_or_path, subfolder='scheduler')
