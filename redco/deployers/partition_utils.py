@@ -96,7 +96,8 @@ def shard_params(params, params_spec, mesh):
 
 def get_opt_state_spec(params_shape_or_params, params_spec, optimizer):
     def get_opt_spec(x):
-        if isinstance(x, (dict, FrozenDict,)):
+        if (jax.tree_util.tree_structure(x) ==
+                jax.tree_util.tree_structure(params_spec)):
             return jax.tree_util.tree_map(
                 lambda s, xx: s if isinstance(xx, jax.ShapeDtypeStruct) else xx,
                 params_spec, x)
@@ -108,7 +109,9 @@ def get_opt_state_spec(params_shape_or_params, params_spec, optimizer):
 
     return jax.tree_util.tree_map(
         get_opt_spec, jax.eval_shape(optimizer.init, params_shapes),
-        is_leaf=lambda x: isinstance(x, (dict, FrozenDict,)))
+        is_leaf=lambda x: jax.tree_util.tree_structure(x) ==
+                          jax.tree_util.tree_structure(params_spec)
+    )
 
 
 def get_sharding_rules(params_shape_or_params, n_model_shards):

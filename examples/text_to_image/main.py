@@ -130,7 +130,7 @@ def output_fn(batch_preds, pipeline):
     return pipeline.numpy_to_pil(np.asarray(batch_preds))
 
 
-def main(dataset_name='reach-vb/pokemon-blip-captions',
+def main(dataset_name='lambdalabs/naruto-blip-captions',
          image_key='image',
          text_key='text',
          model_name_or_path='duongna/stable-diffusion-v1-4-flax',
@@ -201,9 +201,11 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
         optax.clip_by_global_norm(grad_norm_clip),
         optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
     ), every_k_schedule=accumulate_grad_batches)
-    trainable_mask = path_aware_map(
-        lambda path, param: path[0] == 'unet', params)
-    optimizer = optax.masked(optimizer, mask=freeze(trainable_mask))
+    param_labels = path_aware_map(
+        lambda path, _: 'trainable' if path[0] == 'unet' else 'frozen', params)
+    optimizer = optax.multi_transform(
+        transforms={'trainable': optimizer, 'frozen': optax.set_to_zero()},
+        param_labels=param_labels)
 
     resolution = pipeline.unet.config.sample_size * pipeline.vae_scale_factor
     deployer.log_info(resolution, title='resolution')
