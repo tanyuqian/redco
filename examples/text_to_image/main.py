@@ -182,6 +182,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
             'unet': unet_params,
             'vae': vae_params
         }
+        params = unet.to_fp32(params)
 
         pipeline = FlaxStableDiffusionPipeline(
             vae=vae,
