@@ -26,7 +26,7 @@ from torchvision import transforms
 from transformers import CLIPTokenizer, FlaxCLIPTextModel
 from diffusers import (
     FlaxAutoencoderKL,
-    FlaxDDIMScheduler,
+    FlaxPNDMScheduler,
     FlaxStableDiffusionPipeline,
     FlaxUNet2DConditionModel)
 from redco import Deployer, Trainer, Predictor
@@ -174,7 +174,7 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
         unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
             model_name_or_path, subfolder="unet")
         noise_scheduler, noise_scheduler_state = \
-            FlaxDDIMScheduler.from_pretrained(
+            FlaxPNDMScheduler.from_pretrained(
                 model_name_or_path, subfolder='scheduler')
         params = {
             'text_encoder': text_encoder.params,
