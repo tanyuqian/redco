@@ -133,12 +133,11 @@ def output_fn(batch_preds, pipeline):
 def main(dataset_name='reach-vb/pokemon-blip-captions',
          image_key='image',
          text_key='text',
-         model_name_or_path='stabilityai/stable-diffusion-2-base',
+         model_name_or_path='duongna/stable-diffusion-v1-4-flax',
          n_model_shards=1,
          n_epochs=3,
          global_batch_size=8,
          per_device_batch_size=1,
-         eval_per_device_batch_size=1,
          learning_rate=1e-5,
          grad_norm_clip=1.,
          weight_decay=1e-2,
@@ -169,14 +168,11 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
         tokenizer = CLIPTokenizer.from_pretrained(
             model_name_or_path, subfolder="tokenizer")
         text_encoder = FlaxCLIPTextModel.from_pretrained(
-            model_name_or_path,
-            from_pt=True, subfolder="text_encoder", dtype=jnp.bfloat16)
+            model_name_or_path, subfolder="text_encoder")
         vae, vae_params = FlaxAutoencoderKL.from_pretrained(
-            model_name_or_path,
-            from_pt=True, subfolder="vae", dtype=jnp.bfloat16)
+            model_name_or_path, subfolder="vae")
         unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
-            model_name_or_path,
-            from_pt=True, subfolder="unet", dtype=jnp.float32)
+            model_name_or_path, subfolder="unet")
         noise_scheduler, noise_scheduler_state = \
             FlaxDDIMScheduler.from_pretrained(
                 model_name_or_path, subfolder='scheduler')
@@ -263,7 +259,7 @@ def main(dataset_name='reach-vb/pokemon-blip-captions',
         params=trainer.state.params,
         params_replicated=(trainer.mesh is None),
         params_sharded=(trainer.mesh is not None),
-        per_device_batch_size=eval_per_device_batch_size)
+        per_device_batch_size=per_device_batch_size)
 
     output_dir = f'{deployer.workdir}/test_outputs'
     os.makedirs(output_dir, exist_ok=True)
