@@ -205,7 +205,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
         lambda path, _: 'trainable' if path[0] == 'unet' else 'frozen', params)
     optimizer = optax.multi_transform(
         transforms={'trainable': optimizer, 'frozen': optax.set_to_zero()},
-        param_labels=param_labels)
+        param_labels=freeze(param_labels))
 
     resolution = pipeline.unet.config.sample_size * pipeline.vae_scale_factor
     deployer.log_info(resolution, title='resolution')
