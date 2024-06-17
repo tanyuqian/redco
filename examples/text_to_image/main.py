@@ -26,7 +26,7 @@ from torchvision import transforms
 from transformers import CLIPTokenizer, FlaxCLIPTextModel
 from diffusers import (
     FlaxAutoencoderKL,
-    FlaxPNDMScheduler,
+    FlaxDDIMScheduler,
     FlaxStableDiffusionPipeline,
     FlaxUNet2DConditionModel)
 from redco import Deployer, Trainer, Predictor
@@ -133,7 +133,7 @@ def output_fn(batch_preds, pipeline):
 def main(dataset_name='lambdalabs/naruto-blip-captions',
          image_key='image',
          text_key='text',
-         model_name_or_path='duongna/stable-diffusion-v1-4-flax',
+         model_name_or_path='stabilityai/stable-diffusion-2',
          n_model_shards=1,
          n_epochs=3,
          global_batch_size=8,
@@ -174,7 +174,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
         unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
             model_name_or_path, subfolder="unet")
         noise_scheduler, noise_scheduler_state = \
-            FlaxPNDMScheduler.from_pretrained(
+            FlaxDDIMScheduler.from_pretrained(
                 model_name_or_path, subfolder='scheduler')
         params = {
             'text_encoder': text_encoder.params,
