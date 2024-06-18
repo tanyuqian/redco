@@ -22,7 +22,6 @@ from jax.sharding import PartitionSpec as P
 from flax.jax_utils import replicate, unreplicate
 from flax.training import train_state
 from flax.training.common_utils import shard_prng_key
-from flax.traverse_util import flatten_dict
 from flax.core.frozen_dict import freeze
 from orbax.checkpoint.utils import \
     fully_replicated_host_local_array_to_global_array

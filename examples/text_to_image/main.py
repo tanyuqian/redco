@@ -165,15 +165,17 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     dataset = {'train': dataset[:cut], 'test': dataset[cut:]}
 
     with jax.default_device(jax.local_devices(backend='cpu')[0]):
-        model_kwargs = {'from_pt': True, 'dtype': jnp.float16}
         tokenizer = CLIPTokenizer.from_pretrained(
             model_name_or_path, subfolder="tokenizer")
         text_encoder = FlaxCLIPTextModel.from_pretrained(
-            model_name_or_path, subfolder="text_encoder", **model_kwargs)
+            model_name_or_path,
+            subfolder="text_encoder", from_pt=True, dtype=jnp.float16)
         vae, vae_params = FlaxAutoencoderKL.from_pretrained(
-            model_name_or_path, subfolder="vae", **model_kwargs)
+            model_name_or_path,
+            subfolder="vae", from_pt=True, dtype=jnp.float16)
         unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
-            model_name_or_path, subfolder="unet", **model_kwargs)
+            model_name_or_path,
+            subfolder="unet", from_pt=True, dtype=jnp.float32)
         noise_scheduler, noise_scheduler_state = \
             FlaxDDIMScheduler.from_pretrained(
                 model_name_or_path, subfolder='scheduler')
@@ -182,7 +184,6 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
             'unet': unet_params,
             'vae': vae_params
         }
-        params = unet.to_fp32(params)
 
         pipeline = FlaxStableDiffusionPipeline(
             vae=vae,
@@ -214,14 +215,15 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
 
     params_sharding_rules = deployer.get_sharding_rules(
         params_shape_or_params=params)
+    collate_fn_kwargs = {
+        'image_key': image_key,
+        'text_key': text_key,
+        'resolution': resolution,
+        'tokenizer': pipeline.tokenizer
+    }
     trainer = Trainer(
         deployer=deployer,
-        collate_fn=partial(
-            collate_fn,
-            image_key=image_key,
-            text_key=text_key,
-            resolution=resolution,
-            tokenizer=pipeline.tokenizer),
+        collate_fn=partial(collate_fn, **collate_fn_kwargs),
         apply_fn=pipeline.unet.apply,
         loss_fn=partial(
             loss_fn,
@@ -237,12 +239,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
 
     predictor = Predictor(
         deployer=deployer,
-        collate_fn=partial(
-            collate_fn,
-            image_key=image_key,
-            text_key=text_key,
-            resolution=resolution,
-            tokenizer=pipeline.tokenizer),
+        collate_fn=partial(collate_fn, **collate_fn_kwargs),
         pred_fn=partial(
             pred_fn,
             pipeline=pipeline,
