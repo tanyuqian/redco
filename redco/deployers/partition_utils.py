@@ -71,9 +71,13 @@ def get_mesh(n_model_shards):
 
 
 def get_param_spec(params_shape_or_params, params_sharding_rules):
-    return set_partitions(
-        in_dict=unfreeze(params_shape_or_params), rules=params_sharding_rules)
+    params_spec = jax.tree_util.tree_map(
+        lambda params_sharding_rules_, params_: set_partitions(
+            unfreeze(params_), rules=params_sharding_rules_),
+        params_shape_or_params, params_sharding_rules,
+        is_leaf=lambda x: isinstance(x, list))
 
+    return freeze(params_spec)
 
 def shard_params(params, params_spec, mesh):
     if jax.tree_util.tree_all(jax.tree_util.tree_map(

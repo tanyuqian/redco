@@ -108,7 +108,6 @@ class Trainer:
                 params_shape_or_params=params,
                 params_spec=params_spec,
                 optimizer=optimizer)
-
             opt_state = self._deployer.shard_params(
                 params=opt_state,
                 params_spec=opt_state_spec,

@@ -213,8 +213,10 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     resolution = pipeline.unet.config.sample_size * pipeline.vae_scale_factor
     deployer.log_info(resolution, title='resolution')
 
-    params_sharding_rules = deployer.get_sharding_rules(
-        params_shape_or_params=params)
+    params_sharding_rules = {
+        key: deployer.get_sharding_rules(params_shape_or_params=params[key])
+        for key in ['unet', 'text_encoder', 'vae']
+    }
     collate_fn_kwargs = {
         'image_key': image_key,
         'text_key': text_key,
