@@ -26,7 +26,7 @@ from torchvision import transforms
 from transformers import CLIPTokenizer, FlaxCLIPTextModel
 from diffusers import (
     FlaxAutoencoderKL,
-    FlaxDDIMScheduler,
+    FlaxPNDMScheduler,
     FlaxStableDiffusionPipeline,
     FlaxUNet2DConditionModel)
 from redco import Deployer, Trainer, Predictor
@@ -177,7 +177,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
             model_name_or_path,
             subfolder="unet", from_pt=True, dtype=jnp.float32)
         noise_scheduler, noise_scheduler_state = \
-            FlaxDDIMScheduler.from_pretrained(
+            FlaxPNDMScheduler.from_pretrained(
                 model_name_or_path, subfolder='scheduler')
         params = {
             'text_encoder': text_encoder.params,
@@ -268,7 +268,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     os.makedirs(output_dir, exist_ok=True)
     for example, image in zip(dataset['test'], images):
         save_filename = ''.join(
-            [ch if ch.isalpha() else ' ' for ch in example[text_key]])
+            [ch if ch.isalpha() else '_' for ch in example[text_key]])
         image.save(f'{output_dir}/{save_filename}.jpg')
 
 
