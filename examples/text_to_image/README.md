@@ -12,7 +12,7 @@ It supports
 # Install RedCoast
 pip install redco==0.4.17
 # Install torchvision/torch (cpu version)
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
 
 ### Usage
@@ -25,7 +25,7 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=.80 python main.py
 ```
 
 #### Multi-GPU Model Parallel
-This code supports tensor parallel:
+This code supports tensor parallel to accommodate large diffusion models:
 ```shell
 XLA_PYTHON_CLIENT_MEM_FRACTION=.80 python main.py \
   --per_device_batch_size 10 \
