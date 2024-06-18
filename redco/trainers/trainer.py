@@ -64,7 +64,7 @@ class Trainer:
 
         n_params = sum([
             param.size for param in jax.tree_util.tree_leaves(params)])
-        self._deployer.log_info(f'{n_params:,}', title='#Parameters')
+        self._deployer.log_info(f'{n_params:,}', title='Parameters')
 
         self.set_train_state(
             apply_fn=self._apply_fn,
