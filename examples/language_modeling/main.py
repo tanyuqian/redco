@@ -114,6 +114,8 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
         opt_state=ckpt['opt_state'],
         last_ckpt_info=info,
         optimizer=optimizer,
+        lr_schedule_fn=lr_schedule_fn,
+        accumulate_grad_batches=accumulate_grad_batches,
         params_sharding_rules=params_sharding_rules)
 
     trainer.fit(
