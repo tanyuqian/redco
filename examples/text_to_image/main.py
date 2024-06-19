@@ -239,7 +239,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     ckpt, info = deployer.load_last_ckpt(**load_ckpt_kwargs)
     if ckpt is None:
         ckpt, info = deployer.load_ckpt(
-            ckpt_dir=init_ckpt_dir, **load_ckpt_kwargs)
+            ckpt_dir=init_ckpt_dir, update_rng=False, **load_ckpt_kwargs)
 
     pipeline = FlaxStableDiffusionPipeline(
         vae=vae,

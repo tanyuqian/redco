@@ -103,7 +103,7 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
     ckpt, info = deployer.load_last_ckpt(**load_ckpt_kwargs)
     if ckpt is None:
         ckpt, info = deployer.load_ckpt(
-            ckpt_dir=init_ckpt_dir, **load_ckpt_kwargs)
+            ckpt_dir=init_ckpt_dir, update_rng=False, **load_ckpt_kwargs)
 
     trainer = Trainer(
         deployer=deployer,
