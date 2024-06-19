@@ -49,6 +49,8 @@ def get_optimizer(deployer,
         optax.clip_by_global_norm(grad_norm_clip),
         optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
     ), every_k_schedule=accumulate_grad_batches)
+
+    # Grouping parameters -- Only Unet parameters are trainable.
     param_labels = path_aware_map(
         lambda path, _: 'trainable' if path[0] == 'unet' else 'frozen',
         params_shape_or_params)
