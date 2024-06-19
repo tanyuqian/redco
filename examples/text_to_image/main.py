@@ -23,13 +23,40 @@ from flax.traverse_util import path_aware_map
 import optax
 import datasets
 from torchvision import transforms
-from transformers import CLIPTokenizer, FlaxCLIPTextModel
+from transformers import CLIPConfig, CLIPTokenizer, FlaxCLIPTextModel
 from diffusers import (
     FlaxAutoencoderKL,
     FlaxPNDMScheduler,
     FlaxStableDiffusionPipeline,
     FlaxUNet2DConditionModel)
 from redco import Deployer, Trainer, Predictor
+
+
+def get_optimizer(deployer,
+                  params_shape_or_params,
+                  global_batch_size,
+                  per_device_batch_size,
+                  grad_norm_clip,
+                  learning_rate,
+                  weight_decay):
+    _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
+        per_device_batch_size=per_device_batch_size)
+    assert global_batch_size % global_micro_batch_size == 0
+    accumulate_grad_batches = global_batch_size // global_micro_batch_size
+    deployer.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
+
+    optimizer = optax.MultiSteps(optax.chain(
+        optax.clip_by_global_norm(grad_norm_clip),
+        optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
+    ), every_k_schedule=accumulate_grad_batches)
+    param_labels = path_aware_map(
+        lambda path, _: 'trainable' if path[0] == 'unet' else 'frozen',
+        params_shape_or_params)
+    optimizer = optax.multi_transform(
+        transforms={'trainable': optimizer, 'frozen': optax.set_to_zero()},
+        param_labels=freeze(param_labels))
+
+    return optimizer, accumulate_grad_batches
 
 
 def collate_fn(examples, image_key, text_key, resolution, tokenizer):
@@ -134,6 +161,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
          image_key='image',
          text_key='text',
          model_name_or_path='stabilityai/stable-diffusion-2-1-base',
+         init_ckpt_dir='./stable-diffusion-2-1-base',
          n_model_shards=1,
          n_epochs=3,
          global_batch_size=8,
@@ -164,59 +192,65 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     cut = int(0.9 * len(dataset))
     dataset = {'train': dataset[:cut], 'test': dataset[cut:]}
 
-    with jax.default_device(jax.local_devices(backend='cpu')[0]):
-        tokenizer = CLIPTokenizer.from_pretrained(
-            model_name_or_path, subfolder="tokenizer")
-        text_encoder = FlaxCLIPTextModel.from_pretrained(
-            model_name_or_path,
-            subfolder="text_encoder", from_pt=True, dtype=jnp.float16)
-        vae, vae_params = FlaxAutoencoderKL.from_pretrained(
-            model_name_or_path,
-            subfolder="vae", from_pt=True, dtype=jnp.float16)
-        unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
-            model_name_or_path,
-            subfolder="unet", from_pt=True, dtype=jnp.float32)
-        noise_scheduler, noise_scheduler_state = \
-            FlaxPNDMScheduler.from_pretrained(
-                model_name_or_path, subfolder='scheduler')
-        params = {
-            'text_encoder': text_encoder.params,
-            'unet': unet_params,
-            'vae': vae_params
-        }
+    tokenizer = CLIPTokenizer.from_pretrained(
+        model_name_or_path, subfolder="tokenizer")
+    text_encoder = FlaxCLIPTextModel(
+        config=CLIPConfig.from_pretrained(
+            model_name_or_path, subfolder="text_encoder"),
+        dtype=jnp.float16, _do_init=False)
+    vae = FlaxAutoencoderKL.from_config(
+        config=FlaxAutoencoderKL.load_config(
+            model_name_or_path, subfolder='vae'), dtype=jnp.float16)
+    unet = FlaxUNet2DConditionModel.from_config(
+        config=FlaxUNet2DConditionModel.load_config(
+            model_name_or_path, subfolder='unet'), dtype=jnp.float16)
+    noise_scheduler, noise_scheduler_state = \
+        FlaxPNDMScheduler.from_pretrained(
+            model_name_or_path, subfolder='scheduler')
+    params_shape = {
+        'text_encoder': jax.eval_shape(
+            partial(text_encoder.init_weights, input_shape=(1, 1)),
+            jax.random.PRNGKey(0)),
+        'vae': jax.eval_shape(vae.init_weights, jax.random.PRNGKey(0)),
+        'unet': jax.eval_shape(unet.init_weights, jax.random.PRNGKey(0))
+    }
+    params_sharding_rules = {
+        key: deployer.get_sharding_rules(
+            params_shape_or_params=params_shape[key])
+        for key in ['unet', 'text_encoder', 'vae']
+    }
+    optimizer, accumulate_grad_batches = get_optimizer(
+        deployer=deployer,
+        params_shape_or_params=params_shape,
+        global_batch_size=global_batch_size,
+        per_device_batch_size=per_device_batch_size,
+        grad_norm_clip=grad_norm_clip,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay)
 
-        pipeline = FlaxStableDiffusionPipeline(
-            vae=vae,
-            text_encoder=text_encoder,
-            tokenizer=tokenizer,
-            unet=unet,
-            scheduler=noise_scheduler,
-            feature_extractor=None,
-            safety_checker=None)
+    ckpt, info = deployer.load_last_ckpt(
+        params_shape_or_params=params_shape,
+        optimizer=optimizer,
+        params_sharding_rules=params_sharding_rules)
+    if ckpt is None:
+        ckpt, info = deployer.load_ckpt(
+            ckpt_dir=init_ckpt_dir,
+            params_shape_or_params=params_shape,
+            optimizer=optimizer,
+            params_sharding_rules=params_sharding_rules)
 
-    _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
-        per_device_batch_size=per_device_batch_size)
-    assert global_batch_size % global_micro_batch_size == 0
-    accumulate_grad_batches = global_batch_size // global_micro_batch_size
-    deployer.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
-
-    optimizer = optax.MultiSteps(optax.chain(
-        optax.clip_by_global_norm(grad_norm_clip),
-        optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
-    ), every_k_schedule=accumulate_grad_batches)
-    param_labels = path_aware_map(
-        lambda path, _: 'trainable' if path[0] == 'unet' else 'frozen', params)
-    optimizer = optax.multi_transform(
-        transforms={'trainable': optimizer, 'frozen': optax.set_to_zero()},
-        param_labels=freeze(param_labels))
+    pipeline = FlaxStableDiffusionPipeline(
+        vae=vae,
+        text_encoder=text_encoder,
+        tokenizer=tokenizer,
+        unet=unet,
+        scheduler=noise_scheduler,
+        feature_extractor=None,
+        safety_checker=None)
 
     resolution = pipeline.unet.config.sample_size * pipeline.vae_scale_factor
     deployer.log_info(resolution, title='resolution')
 
-    params_sharding_rules = {
-        key: deployer.get_sharding_rules(params_shape_or_params=params[key])
-        for key in ['unet', 'text_encoder', 'vae']
-    }
     collate_fn_kwargs = {
         'image_key': image_key,
         'text_key': text_key,
@@ -233,7 +267,8 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
             noise_scheduler=noise_scheduler,
             noise_scheduler_state=noise_scheduler_state,
             text_encoder=text_encoder),
-        params=params,
+        params=ckpt['params'],
+        opt_state=ckpt['opt_state'],
         optimizer=optimizer,
         lr_schedule_fn=lambda step: learning_rate,
         accumulate_grad_batches=accumulate_grad_batches,
