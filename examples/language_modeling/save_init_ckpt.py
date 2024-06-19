@@ -14,7 +14,7 @@
 
 import fire
 import jax
-from transformers import AutoModelForCausalLM
+from transformers import FlaxAutoModelForCausalLM
 from redco import Deployer
 
 
@@ -25,7 +25,7 @@ def main(model_name_or_path='huggyllama/llama-13b'):
     deployer.log_info(ckpt_dir, title='Init CKPT Dir to Save')
 
     with jax.default_device(jax.local_devices(backend='cpu')[0]):
-        model = AutoModelForCausalLM.from_pretrained(
+        model = FlaxAutoModelForCausalLM.from_pretrained(
             model_name_or_path, from_pt=True)
         deployer.save_ckpt(ckpt_dir=ckpt_dir, params=model.params)
 
