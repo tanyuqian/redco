@@ -1,31 +1,29 @@
-#  Copyright 2021 Google LLC
-#  #
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#  #
-#      https://www.apache.org/licenses/LICENSE-2.0
-#  #
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-import json
-import tqdm
+from functools import partial
 import fire
 import numpy as np
 import jax
 import jax.numpy as jnp
 import optax
-from transformers import FlaxAutoModelForCausalLM
+import datasets
+from transformers import AutoConfig, FlaxAutoModelForCausalLM
 from redco import Deployer, Trainer
+
+
+def get_dataset(dataset_name, eos_token_id, context_length):
+    examples = []
+    tokens_buffer = []
+    for example in datasets.load_dataset(dataset_name, split='train'):
+        tokens_buffer.extend(example['input_ids'][1:] + [eos_token_id])
+        while len(tokens_buffer) >= context_length:
+            examples.append({'token_ids': tokens_buffer[:context_length]})
+            tokens_buffer = tokens_buffer[context_length:]
+
+    cut = int(0.9 * len(examples))
+    return {'train': examples[:cut], 'validation': examples[cut:]}
 
 
 def collate_fn(examples):
     token_ids = np.array([examples['token_ids'] for examples in examples])
-    token_ids[token_ids >= 32000] = 2
     return {'input_ids': token_ids[:, :-1], 'labels': token_ids[:, 1:]}
 
 
@@ -33,57 +31,55 @@ def loss_fn(train_rng, state, params, batch, is_training):
     labels = batch.pop("labels")
     logits = state.apply_fn(
         **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
-
     return optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels).mean()
 
 
-def main(n_processes=None,
+def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
+         model_name_or_path='huggyllama/llama-13b',
+         init_ckpt_dir='./llama-13b',
+         n_model_shards=8,
+         n_epochs=1,
+         global_batch_size=8,
+         per_device_batch_size=4,
+         learning_rate=2e-5,
+         lr_schedule_type='linear',
+         warmup_rate=0.1,
+         grad_norm_clip=1.,
+         weight_decay=0.01,
+         workdir='./workdir',
+         jax_seed=42,
+         n_processes=None,
          host0_address=None,
          host0_port=None,
          process_id=None,
-         n_local_devices=None,
-         data_file='chunk_379.jsonl',
-         model_name_or_path='huggyllama/llama-30b',
-         n_model_shards=1,
-         n_epochs=1,
-         global_batch_size=8,
-         per_device_batch_size=1,
-         learning_rate=2e-5,
-         lr_schedule_type='linear',
-         warmup_rate=0.03,
-         weight_decay=0.,
-         jax_seed=42,
-         workdir='./workdir'):
+         n_local_devices=None):
     deployer = Deployer(
-        n_model_shards=n_model_shards,
-        jax_seed=jax_seed,
         workdir=workdir,
+        jax_seed=jax_seed,
+        n_model_shards=n_model_shards,
         n_processes=n_processes,
         host0_address=host0_address,
         host0_port=host0_port,
         process_id=process_id,
         n_local_devices=n_local_devices)
 
-    with jax.default_device(jax.local_devices(backend='cpu')[0]):
-        model = FlaxAutoModelForCausalLM.from_pretrained(
-            model_name_or_path,
-            from_pt=True,
-            dtype=jnp.bfloat16,
-            max_position_embeddings=8192)
-        params = model.to_fp32(model.params)
+    model = FlaxAutoModelForCausalLM.from_config(
+        AutoConfig.from_pretrained(model_name_or_path), _do_init=False)
+    dataset = get_dataset(
+        dataset_name=dataset_name,
+        eos_token_id=model.config.eos_token_id,
+        context_length=model.config.max_sequence_length)
 
-    dataset = {'train': []}
-    for line in tqdm.tqdm(open(data_file), total=10000):
-        dataset['train'].append(json.loads(line))
-        if len(dataset['train']) >= 10000:
-            break
-
-    global_micro_batch_size, _ = deployer.process_batch_size(
+    params_shape = jax.eval_shape(
+        partial(model.init_weights, input_shape=(1, 1)), jax.random.PRNGKey(0))
+    params_sharding_rules = deployer.get_sharding_rules(
+        params_shape_or_params=params_shape)
+    _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
         per_device_batch_size=per_device_batch_size)
     assert global_batch_size % global_micro_batch_size == 0
     accumulate_grad_batches = global_batch_size // global_micro_batch_size
-    deployer.log_info(f'accumulate_grad_batches: {accumulate_grad_batches}')
+    deployer.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
 
     lr_schedule_fn = deployer.get_lr_schedule_fn(
         train_size=len(dataset['train']),
@@ -92,28 +88,41 @@ def main(n_processes=None,
         learning_rate=learning_rate,
         schedule_type=lr_schedule_type,
         warmup_rate=warmup_rate)
-    optimizer = optax.adamw(
-        learning_rate=lr_schedule_fn, weight_decay=weight_decay)
-    if accumulate_grad_batches > 1:
-        optimizer = optax.MultiSteps(
-            optimizer, every_k_schedule=accumulate_grad_batches)
+    optimizer = optax.MultiSteps(optax.chain(
+        optax.clip_by_global_norm(grad_norm_clip),
+        optax.adamw(learning_rate=lr_schedule_fn, weight_decay=weight_decay)
+    ), every_k_schedule=accumulate_grad_batches)
+
+    load_ckpt_kwargs = {
+        'params_shape_or_params': params_shape,
+        'optimizer': optimizer,
+        'params_sharding_rules': params_sharding_rules,
+        'float_dypte': jnp.float32
+    }
+    ckpt, info = deployer.load_last_ckpt(**load_ckpt_kwargs)
+    if ckpt is None:
+        ckpt, info = deployer.load_ckpt(
+            ckpt_dir=init_ckpt_dir, **load_ckpt_kwargs)
 
     trainer = Trainer(
         deployer=deployer,
         collate_fn=collate_fn,
         apply_fn=model,
         loss_fn=loss_fn,
-        params=params,
+        params=ckpt['params'],
+        opt_state=ckpt['opt_state'],
+        last_ckpt_info=info,
         optimizer=optimizer,
-        lr_schedule_fn=lr_schedule_fn,
-        accumulate_grad_batches=accumulate_grad_batches,
-        params_sharding_rules=deployer.get_sharding_rules(
-            params_shape_or_params=params))
+        params_sharding_rules=params_sharding_rules)
 
     trainer.fit(
         train_examples=dataset['train'],
+        eval_examples=dataset['validation'],
         n_epochs=n_epochs,
-        per_device_batch_size=per_device_batch_size)
+        per_device_batch_size=per_device_batch_size,
+        save_every_ckpt=False,
+        save_last_ckpt=False,
+        save_opt_states=False)
 
 
 if __name__ == '__main__':

@@ -230,16 +230,16 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
         learning_rate=learning_rate,
         weight_decay=weight_decay)
 
-    ckpt, info = deployer.load_last_ckpt(
-        params_shape_or_params=params_shape,
-        optimizer=optimizer,
-        params_sharding_rules=params_sharding_rules)
+    load_ckpt_kwargs = {
+        'params_shape_or_params': params_shape,
+        'optimizer': optimizer,
+        'params_sharding_rules': params_sharding_rules,
+        'float_dypte': jnp.float32
+    }
+    ckpt, info = deployer.load_last_ckpt(**load_ckpt_kwargs)
     if ckpt is None:
         ckpt, info = deployer.load_ckpt(
-            ckpt_dir=init_ckpt_dir,
-            params_shape_or_params=params_shape,
-            optimizer=optimizer,
-            params_sharding_rules=params_sharding_rules)
+            ckpt_dir=init_ckpt_dir, **load_ckpt_kwargs)
 
     pipeline = FlaxStableDiffusionPipeline(
         vae=vae,
@@ -271,6 +271,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
             text_encoder=text_encoder),
         params=ckpt['params'],
         opt_state=ckpt['opt_state'],
+        last_ckpt_info=info,
         optimizer=optimizer,
         lr_schedule_fn=lambda step: learning_rate,
         accumulate_grad_batches=accumulate_grad_batches,
