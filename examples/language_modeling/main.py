@@ -41,7 +41,7 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
          n_model_shards=8,
          n_epochs=1,
          global_batch_size=8,
-         per_device_batch_size=4,
+         per_device_batch_size=2,
          learning_rate=2e-5,
          lr_schedule_type='linear',
          warmup_rate=0.1,
@@ -65,7 +65,8 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
         n_local_devices=n_local_devices)
 
     model = FlaxAutoModelForCausalLM.from_config(
-        AutoConfig.from_pretrained(model_name_or_path), _do_init=False)
+        AutoConfig.from_pretrained(model_name_or_path),
+        dtype=jnp.bfloat16, _do_init=False)
     dataset = get_dataset(
         dataset_name=dataset_name,
         eos_token_id=model.config.eos_token_id,
