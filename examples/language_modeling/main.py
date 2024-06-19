@@ -97,7 +97,7 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
         'params_shape_or_params': params_shape,
         'optimizer': optimizer,
         'params_sharding_rules': params_sharding_rules,
-        'float_dypte': jnp.float32
+        'float_dtype': jnp.float32
     }
     ckpt, info = deployer.load_last_ckpt(**load_ckpt_kwargs)
     if ckpt is None:
