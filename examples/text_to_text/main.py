@@ -59,7 +59,7 @@ def collate_fn(examples,
 
 def loss_fn(train_rng, state, params, batch, is_training):
     labels = batch.pop('labels')
-    label_weights = batch.pop('label_weights')
+    label_weights = batch['decoder_attention_mask']
     logits = state.apply_fn(
         **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
     loss = optax.softmax_cross_entropy_with_integer_labels(
