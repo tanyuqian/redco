@@ -1,65 +1,74 @@
-## Sequence-to-Sequence
+## Language Modeling
 
-This example implements seq2seq with Redco. 
+This example implements training seq2seq models.
 It supports 
-* assigning a dataset from [datasets](https://github.com/huggingface/datasets) or customizing by yourself
-* assigning a seq2seq model from [transformers](https://github.com/huggingface/transformers) (bart-base by default)
-* multi-host running
+* assigning a dataset from [datasets](https://github.com/huggingface/datasets) or customizing by yourself (`xsum` by default)
+* assigning a text-to-image diffusion model from [transformers](https://github.com/huggingface/transformers) (`google/flan-t5-xl` by default)
+
 
 ### Requirement
 
-Install Redco
+
 ```shell
-pip install redco==0.4.16
+# Install RedCoast
+pip install redco==0.4.17
+# Install nltk, rouge for evaluation
+pip install nltk rouge-score
+# Install torchvision/torch for ckpt loading if loading PyTorch initializations (cpu version)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
 
 ### Usage
 
-```shell
-python main.py \
-  --dataset_name xsum \
-  --model_name_or_path google/flan-t5-xl \
-  --n_model_shards 8
+*Commands below are tested on 8 x 80Gb H100 machines. You may want to adjust some numbers based on your hardware.*
+
+#### [For Multi-Host] Prepare initialization
+In multi-host environments, HuggingFace's FlaxModel.init_weights() function cannot utilize the CPU backend to load the model into CPU memory before sharding it to GPU/TPUs. Therefore, it is necessary to prepare a JAX format checkpoint in advance for multi-host execution,
+e.g.,
 ```
-* `--n_model_shards`: number of pieces to split your large model, 1 by default (pure data parallelism). 
+python save_init_ckpt.py --model_name_or_path google/flan-t5-xl
+```
+The prepared ckpt would be saved into `./flan-t5-xl`.
+
+
+#### Data Parallel Only
+When `--n_model_shards=1`, it doesn't shard the model and runs data parallelism only, which usually applied on smaller models, e.g., t5-base
+```shell
+XLA_PYTHON_CLIENT_MEM_FRACTION=.90 python main.py --model_name_or_path google/flan-t5-base --n_model_shards 1
+```
+Regarding `XLA_PYTHON_CLIENT_MEM_FRACTION`, see [here](https://jax.readthedocs.io/en/latest/gpu_memory_allocation.html) for more details about Jax's GPU memory preallocation.
+
+#### Multi-GPU Model Parallel
+This code supports tensor parallel to accommodate large diffusion models:
+```shell
+XLA_PYTHON_CLIENT_MEM_FRACTION=.90 python main.py 
+```
 
 See `def main(...)` in [main.py](main.py) for all the tunable arguments. 
 
+#### Multi-Node Running (SLURM)
 
-#### For Multi-host Envs
-
-##### General Case
+Here is an example sbatch script under SLURM, running this code on `N` nodes.
 ```
-python main.py \
-    --host0_address 192.168.0.1 \ 
-    --n_processes 2 \
-    --process_id 1 \
-    --n_local_devices 4
-```
-* `--n_processes`: number of hosts.
-* `--host0_address`: the ip of host 0.
-* `--process_id`: id of the current host (should vary across all hosts).
-* `--n_local_devices`: number of devices (e.g., GPUs) on the machine. (Only required on some special envs, e.g., SLURM) 
-
-##### Under SLURM
-If you are using Redco under SLURM, just leave `n_processes` to be `None`. 
-Below is an example of `run.sh` to submit, e.g., `sbatch run.sh`.
-
-```shell
 #!/bin/bash
-#SBATCH --job-name=red_coast
-#SBATCH --nodes=2
+#SBATCH --job-name=stable-diffusion
+#SBATCH --partition=xxx
+#SBATCH --nodes=N
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=16
-#SBATCH --gres=gpu:4
-#SBATCH --output=slurm_%j.out
-#SBATCH --error=slurm_%j.err
+#SBATCH --cpus-per-task=100
+#SBATCH --gres=gpu:8
+#SBATCH --mem=1000G
+#SBATCH --output=slurm.out
+#SBATCH --error=slurm.err
+
+module load cuda/12.3 cuDNN/9.1 nvhpc/24.3
 
 nodes_array=($(scontrol show hostnames "$SLURM_JOB_NODELIST"))
 head_node=${nodes_array[0]}
 master_addr=$(srun --nodes=1 --ntasks=1 -w "$head_node" hostname --ip-address)
 
-srun python main.py --host0_address ${master_addr} --n_local_devices 4
+export XLA_PYTHON_CLIENT_MEM_FRACTION=.90
+# export XLA_PYTHON_CLIENT_PREALLOCATE=false
+
+srun python main.py --host0_address ${master_addr} --n_local_devices 8 
 ```
-* `--host0_address`: the ip of node 0 among your assigned nodes.
-* `--n_local_devices`: number of GPUs on every machine. 

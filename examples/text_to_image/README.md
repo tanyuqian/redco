@@ -19,6 +19,15 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 *Commands below are tested on 8 x 80Gb H100 machines. You may want to adjust some numbers based on your hardware.*
 
+#### [For Multi-Host] Prepare initialization
+In multi-host environments, HuggingFace's FlaxModel.init_weights() function cannot utilize the CPU backend to load the model into CPU memory before sharding it to GPU/TPUs. Therefore, it is necessary to prepare a JAX format checkpoint in advance for multi-host execution,
+e.g.,
+```
+python save_init_ckpt.py --model_name_or_path stabilityai/stable-diffusion-2-1-base
+```
+The prepared ckpt would be saved into `./stable-diffusion-2-1-base`.
+
+
 #### Data Parallel Only
 ```shell
 XLA_PYTHON_CLIENT_MEM_FRACTION=.80 python main.py 

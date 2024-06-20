@@ -72,10 +72,6 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
         eos_token_id=model.config.eos_token_id,
         context_length=model.config.max_sequence_length)
 
-    params_shape = jax.eval_shape(
-        partial(model.init_weights, input_shape=(1, 1)), jax.random.PRNGKey(0))
-    params_sharding_rules = deployer.get_sharding_rules(
-        params_shape_or_params=params_shape)
     _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
         per_device_batch_size=per_device_batch_size)
     assert global_batch_size % global_micro_batch_size == 0
@@ -94,6 +90,10 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
         optax.adamw(learning_rate=lr_schedule_fn, weight_decay=weight_decay)
     ), every_k_schedule=accumulate_grad_batches)
 
+    params_shape = jax.eval_shape(
+        partial(model.init_weights, input_shape=(1, 1)), jax.random.PRNGKey(0))
+    params_sharding_rules = deployer.get_sharding_rules(
+        params_shape_or_params=params_shape)
     load_ckpt_kwargs = {
         'params_shape_or_params': params_shape,
         'optimizer': optimizer,
