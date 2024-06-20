@@ -195,7 +195,7 @@ def main(dataset_name='EdinburghNLP/xsum',
         deployer=deployer,
         collate_fn=partial(collate_fn, **collate_fn_kwargs),
         pred_fn=partial(pred_fn, model=model),
-        output_fn=output_fn,
+        output_fn=partial(output_fn, tokenizer=tokenizer),
         params_sharding_rules=params_sharding_rules)
 
     trainer.fit(
