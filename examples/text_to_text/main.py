@@ -204,7 +204,7 @@ def main(dataset_name='EdinburghNLP/xsum',
         n_epochs=n_epochs,
         eval_examples=dataset['validation'],
         eval_predictor=predictor,
-        eval_metric_fn=eval_rouge,
+        eval_metric_fn=partial(eval_rouge, tgt_key=tgt_key),
         save_last_ckpt=False,
         save_argmax_ckpt_by_metrics=['rougeL'],
         save_opt_states=False)
