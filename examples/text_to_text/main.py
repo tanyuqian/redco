@@ -19,9 +19,9 @@ import jax
 import jax.numpy as jnp
 import optax
 import datasets
-from transformers import AutoTokenizer, FlaxAutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoConfig, FlaxAutoModelForSeq2SeqLM
 import evaluate
-from redco import Deployer, Trainer
+from redco import Deployer, Trainer, Predictor
 
 
 def collate_fn(examples,
@@ -45,20 +45,12 @@ def collate_fn(examples,
         truncation=True,
         return_tensors='np')
 
-    if tokenizer.bos_token_id is not None:
-        labels = np.zeros_like(decoder_inputs['input_ids'])
-        labels[:, :-1] = decoder_inputs['input_ids'][:, 1:]
-        decoder_input_ids = decoder_inputs['input_ids']
-        decoder_input_ids[:, 0] = decoder_start_token_id
-    else:
-        labels = decoder_inputs['input_ids']
-        decoder_input_ids = np.zeros_like(decoder_inputs['input_ids'])
-        decoder_input_ids[:, 1:] = decoder_inputs['input_ids'][:, :-1]
-        decoder_input_ids[:, 0] = decoder_start_token_id
+    labels = decoder_inputs['input_ids']
+    decoder_inputs['input_ids'] = np.zeros_like(labels)
+    decoder_inputs['input_ids'][:, 0] = decoder_start_token_id
+    decoder_inputs['input_ids'][:, 1:] = labels[:, :-1]
 
     model_inputs['labels'] = labels
-    decoder_inputs['input_ids'] = decoder_input_ids
-
     for key in decoder_inputs:
         model_inputs[f'decoder_{key}'] = np.array(decoder_inputs[key])
 
@@ -66,26 +58,21 @@ def collate_fn(examples,
 
 
 def loss_fn(train_rng, state, params, batch, is_training):
-    labels = batch.pop("labels")
-    label_weights = batch['decoder_attention_mask']
-
+    labels = batch.pop('labels')
+    label_weights = batch.pop('label_weights')
     logits = state.apply_fn(
         **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
-
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
-
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def pred_fn(pred_rng, params, batch, model, gen_kwargs):
-    output_ids = model.generate(
+def pred_fn(pred_rng, params, batch, model):
+    return model.generate(
         input_ids=batch['input_ids'],
         attention_mask=batch['attention_mask'],
         params=params,
-        prng_key=pred_rng,
-        **gen_kwargs)
-    return output_ids.sequences
+        prng_key=pred_rng).sequences
 
 
 def output_fn(batch_preds, tokenizer):
@@ -94,7 +81,6 @@ def output_fn(batch_preds, tokenizer):
 
 def eval_rouge(examples, preds, tgt_key):
     rouge_scorer = evaluate.load('rouge')
-
     return rouge_scorer.compute(
         predictions=preds,
         references=[example[tgt_key] for example in examples],
@@ -102,100 +88,126 @@ def eval_rouge(examples, preds, tgt_key):
         use_stemmer=True)
 
 
-def main(n_processes=None,
-         host0_address=None,
-         host0_port=None,
-         process_id=None,
-         n_local_devices=None,
-         dataset_name='xsum',
+def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
          src_key='document',
          tgt_key='summary',
-         model_name_or_path='google/flan-t5-base',
-         n_model_shards=1,
-         n_epochs=2,
-         per_device_batch_size=8,
-         eval_per_device_batch_size=16,
-         accumulate_grad_batches=2,
-         computation_dtype='float32',
+         model_name_or_path='google/flan-t5-xl',
+         init_ckpt_dir='./flan-t5-xl',
+         n_model_shards=8,
          max_src_len=512,
          max_tgt_len=64,
          num_beams=4,
-         learning_rate=4e-5,
+         n_epochs=1,
+         global_batch_size=8,
+         per_device_batch_size=2,
+         learning_rate=2e-5,
+         lr_schedule_type='linear',
          warmup_rate=0.1,
-         weight_decay=0.,
-         jax_seed=42,
+         grad_norm_clip=1.,
+         weight_decay=0.01,
          workdir='./workdir',
-         run_tensorboard=False):
+         jax_seed=42,
+         n_processes=None,
+         host0_address=None,
+         host0_port=None,
+         process_id=None,
+         n_local_devices=None):
     deployer = Deployer(
-        n_model_shards=n_model_shards,
-        jax_seed=jax_seed,
         workdir=workdir,
-        run_tensorboard=run_tensorboard,
+        jax_seed=jax_seed,
+        n_model_shards=n_model_shards,
         n_processes=n_processes,
         host0_address=host0_address,
         host0_port=host0_port,
         process_id=process_id,
         n_local_devices=n_local_devices)
 
-    dataset = datasets.load_dataset(dataset_name)
-    dataset = {key: list(dataset[key]) for key in dataset.keys()}
+    dataset = {
+        split: datasets.load_dataset(dataset_name, split=split)
+        for split in ['train', 'validation']
+    }
+    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+    model = FlaxAutoModelForSeq2SeqLM.from_config(
+        AutoConfig.from_pretrained(model_name_or_path),
+        dtype=jnp.bfloat16, _do_init=False)
+    model.generation_config.update(
+        decoder_start_token_id=model.config.decoder_start_token_id,
+        max_length=max_tgt_len,
+        pad_token_id=tokenizer.pad_token_id,
+        num_beams=num_beams)
 
-    with jax.default_device(jax.devices('cpu')[0]):
-        model = FlaxAutoModelForSeq2SeqLM.from_pretrained(
-            model_name_or_path,
-            from_pt=True,
-            dtype=getattr(jnp, computation_dtype))
-        model.params = model.to_fp32(model.params)
-
-        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        gen_kwargs = {'max_length': max_tgt_len, 'num_beams': num_beams}
+    _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
+        per_device_batch_size=per_device_batch_size)
+    assert global_batch_size % global_micro_batch_size == 0
+    accumulate_grad_batches = global_batch_size // global_micro_batch_size
+    deployer.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
 
     lr_schedule_fn = deployer.get_lr_schedule_fn(
         train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
         learning_rate=learning_rate,
-        schedule_type='linear',
+        schedule_type=lr_schedule_type,
         warmup_rate=warmup_rate)
-    optimizer = optax.adamw(
-        learning_rate=lr_schedule_fn, weight_decay=weight_decay)
-    if accumulate_grad_batches > 1:
-        optimizer = optax.MultiSteps(
-            optimizer, every_k_schedule=accumulate_grad_batches)
+    optimizer = optax.MultiSteps(optax.chain(
+        optax.clip_by_global_norm(grad_norm_clip),
+        optax.adamw(learning_rate=lr_schedule_fn, weight_decay=weight_decay)
+    ), every_k_schedule=accumulate_grad_batches)
 
+    params_shape = jax.eval_shape(
+        partial(model.init_weights, input_shape=(1, 1)), jax.random.PRNGKey(0))
+    params_sharding_rules = deployer.get_sharding_rules(
+        params_shape_or_params=params_shape)
+
+    load_ckpt_kwargs = {
+        'params_shape_or_params': params_shape,
+        'optimizer': optimizer,
+        'params_sharding_rules': params_sharding_rules,
+        'float_dtype': jnp.float32
+    }
+    ckpt, info = deployer.load_last_ckpt(**load_ckpt_kwargs)
+    if ckpt is None:
+        ckpt, info = deployer.load_ckpt(
+            ckpt_dir=init_ckpt_dir, update_rng=False, **load_ckpt_kwargs)
+
+    collate_fn_kwargs = {
+        'tokenizer': tokenizer,
+        'decoder_start_token_id': model.config.decoder_start_token_id,
+        'max_src_len': max_src_len,
+        'max_tgt_len': max_tgt_len,
+        'src_key': src_key,
+        'tgt_key': tgt_key,
+    }
     trainer = Trainer(
         deployer=deployer,
-        collate_fn=partial(
-            collate_fn,
-            tokenizer=tokenizer,
-            decoder_start_token_id=model.config.decoder_start_token_id,
-            max_src_len=max_src_len,
-            max_tgt_len=max_tgt_len,
-            src_key=src_key,
-            tgt_key=tgt_key),
+        collate_fn=partial(collate_fn, **collate_fn_kwargs),
         apply_fn=model,
         loss_fn=loss_fn,
-        params=model.params,
+        params=ckpt['params'],
+        opt_state=ckpt['opt_state'],
+        last_ckpt_info=info,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
         accumulate_grad_batches=accumulate_grad_batches,
-        params_sharding_rules=deployer.get_sharding_rules(params=model.params))
+        params_sharding_rules=params_sharding_rules)
 
-    predictor = trainer.get_default_predictor(
-        pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
-        output_fn=partial(output_fn, tokenizer=tokenizer))
+    predictor = Predictor(
+        deployer=deployer,
+        collate_fn=partial(collate_fn, **collate_fn_kwargs),
+        pred_fn=partial(pred_fn, model=model),
+        output_fn=output_fn,
+        params_sharding_rules=params_sharding_rules)
 
     trainer.fit(
         train_examples=dataset['train'],
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
         eval_examples=dataset['validation'],
-        eval_per_device_batch_size=eval_per_device_batch_size,
-        eval_loss=True,
         eval_predictor=predictor,
-        eval_metric_fn=partial(eval_rouge, tgt_key=tgt_key),
-        save_last_ckpt=True,
-        save_argmax_ckpt_by_metrics=['rougeL'])
+        eval_metric_fn=eval_rouge,
+        save_last_ckpt=False,
+        save_argmax_ckpt_by_metrics=['rougeL'],
+        save_opt_states=False)
 
 
 if __name__ == '__main__':
