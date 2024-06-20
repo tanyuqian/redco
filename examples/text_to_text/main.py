@@ -123,7 +123,7 @@ def main(dataset_name='EdinburghNLP/xsum',
         n_local_devices=n_local_devices)
 
     dataset = {
-        split: datasets.load_dataset(dataset_name, split=split)
+        split: list(datasets.load_dataset(dataset_name, split=split))
         for split in ['train', 'validation']
     }
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
