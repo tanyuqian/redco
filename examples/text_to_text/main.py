@@ -88,7 +88,7 @@ def eval_rouge(examples, preds, tgt_key):
         use_stemmer=True)
 
 
-def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
+def main(dataset_name='EdinburghNLP/xsum',
          src_key='document',
          tgt_key='summary',
          model_name_or_path='google/flan-t5-xl',
