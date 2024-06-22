@@ -1,7 +1,5 @@
-from functools import partial
 import fire
 import numpy as np
-import jax
 import jax.numpy as jnp
 import optax
 import datasets
@@ -72,12 +70,9 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
         eos_token_id=model.config.eos_token_id,
         context_length=model.config.max_sequence_length)
 
-    _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
+    accumulate_grad_batches = deployer.get_accumulate_grad_batches(
+        global_batch_size=global_batch_size,
         per_device_batch_size=per_device_batch_size)
-    assert global_batch_size % global_micro_batch_size == 0
-    accumulate_grad_batches = global_batch_size // global_micro_batch_size
-    deployer.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
-
     lr_schedule_fn = deployer.get_lr_schedule_fn(
         train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,
@@ -90,20 +85,20 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
         optax.adamw(learning_rate=lr_schedule_fn, weight_decay=weight_decay)
     ), every_k_schedule=accumulate_grad_batches)
 
-    params_shape = jax.eval_shape(
-        partial(model.init_weights, input_shape=(1, 1)), jax.random.PRNGKey(0))
-    params_sharding_rules = deployer.get_sharding_rules(
-        params_shape_or_params=params_shape)
-    load_ckpt_kwargs = {
-        'params_shape_or_params': params_shape,
-        'optimizer': optimizer,
-        'params_sharding_rules': params_sharding_rules,
-        'float_dtype': jnp.float32
-    }
-    ckpt, info = deployer.load_last_ckpt(**load_ckpt_kwargs)
+    ckpt, info = deployer.load_last_ckpt(
+        optimizer=optimizer, float_dtype=jnp.float32)
     if ckpt is None:
         ckpt, info = deployer.load_ckpt(
-            ckpt_dir=init_ckpt_dir, update_rng=False, **load_ckpt_kwargs)
+            ckpt_dir=init_ckpt_dir,
+            update_rng=False,
+            optimizer=optimizer,
+            float_dtype=jnp.float32)
+
+    params_sharding_rules = deployer.get_sharding_rules(
+        params_shape_or_params=ckpt['params'])
+    deployer.log_info(
+        info='\n'.join([str(t) for t in params_sharding_rules]),
+        title='Sharding rules')
 
     trainer = Trainer(
         deployer=deployer,
