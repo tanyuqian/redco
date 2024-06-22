@@ -70,7 +70,7 @@ def get_mesh(n_model_shards):
     return mesh
 
 
-def get_param_spec(params_shape_or_params, params_sharding_rules):
+def get_params_spec(params_shape_or_params, params_sharding_rules):
     params_spec = jax.tree_util.tree_map(
         lambda params_sharding_rules_, params_: set_partitions(
             params_, rules=params_sharding_rules_),

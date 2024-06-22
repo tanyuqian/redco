@@ -13,9 +13,11 @@
 #  limitations under the License.
 
 import os
+import pickle
 import json
 import jax
 import jax.numpy as jnp
+from flax.core.frozen_dict import freeze, unfreeze
 import orbax.checkpoint as ocp
 
 
@@ -43,10 +45,16 @@ def save_ckpt(checkpointer,
             checkpointer.save(
                 f'{ckpt_dir}/{key}', ckpt[key], save_args=save_args, force=True)
 
+    params_shape = jax.eval_shape(lambda x: x, params)
     if jax.process_index() == 0:
+        pickle.dump(params_shape, open(f'{ckpt_dir}/params_shape.pkl', 'wb'))
         if rng is not None:
             kwargs['rng'] = rng.tolist()
         json.dump(kwargs, open(f'{ckpt_dir}/info.json', 'w'), indent=4)
+
+
+def load_params_shape(ckpt_dir):
+    return freeze(pickle.load(open(f'{ckpt_dir}/params_shape.pkl', 'rb')))
 
 
 def load_ckpt(checkpointer,

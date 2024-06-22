@@ -16,15 +16,16 @@ import os
 import jax
 import jax.numpy as jnp
 from flax.core.frozen_dict import freeze
+from flax.serialization import msgpack_restore
 import orbax.checkpoint
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_lr_schedule_fn
 from .log_utils import get_logger, log_info, save_outputs
-from .ckpt_utils import save_ckpt, load_ckpt
+from .ckpt_utils import save_ckpt, load_params_shape, load_ckpt
 from .partition_utils import (
     get_mesh,
-    get_param_spec,
+    get_params_spec,
     get_sharding_rules,
     get_opt_state_spec,
     shard_params)
@@ -103,6 +104,33 @@ class Deployer:
                 per_device_batch_size * self._mesh.shape['dp']
 
         return local_micro_batch_size, global_micro_batch_size
+
+    def get_accumulate_grad_batches(
+            self, global_batch_size, per_device_batch_size):
+        _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
+            per_device_batch_size=per_device_batch_size)
+        assert global_batch_size % global_micro_batch_size == 0
+        accumulate_grad_batches = global_batch_size // global_micro_batch_size
+        deployer.log_info(
+            accumulate_grad_batches, title='accumulate_grad_batches')
+
+        return accumulate_grad_batches
+
+    def get_optimizer(self, learning_rate, weight_decay, grad_norm_clip, ):
+        optimizer = optax.MultiSteps(optax.chain(
+            optax.clip_by_global_norm(grad_norm_clip),
+            optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
+        ), every_k_schedule=accumulate_grad_batches)
+
+        # Grouping parameters -- Only Unet parameters are trainable.
+        param_labels = path_aware_map(
+            lambda path, _: 'trainable' if path[0] == 'unet' else 'frozen',
+            params_shape_or_params)
+        optimizer = optax.multi_transform(
+            transforms={'trainable': optimizer, 'frozen': optax.set_to_zero()},
+            param_labels=freeze(param_labels))
+
+        return optimizer, accumulate_grad_batches
 
     def get_model_input_batches(self,
                                 examples,
@@ -195,13 +223,10 @@ class Deployer:
             sharding_rules = get_sharding_rules(
                 params_shape_or_params=params_shape_or_params,
                 n_model_shards=self._mesh.shape['mp'])
-            self.log_info(
-                info='\n'.join([f'{t}' for t in sharding_rules]),
-                title='Sharding rules')
             return sharding_rules
 
     def get_params_spec(self, params_shape_or_params, params_sharding_rules):
-        return get_param_spec(
+        return get_params_spec(
             params_shape_or_params=params_shape_or_params,
             params_sharding_rules=params_sharding_rules)
 
@@ -258,7 +283,7 @@ class Deployer:
 
     def save_ckpt(self,
                   ckpt_dir,
-                  params=None,
+                  params,
                   opt_state=None,
                   float_dtype=None,
                   **kwargs):
@@ -274,36 +299,42 @@ class Deployer:
             **kwargs)
         self.log_info(f'Ckpt saved into {ckpt_dir}')
 
+    def load_params_shape(self, ckpt_dir):
+        return load_params_shape(ckpt_dir=ckpt_dir)
+
     def load_ckpt(self,
                   ckpt_dir,
-                  params_shape_or_params,
+                  params_sharding_rules=None,
                   optimizer=None,
                   float_dtype=None,
-                  params_sharding_rules=None,
                   load_params=True,
                   load_opt_state=True,
                   update_rng=True):
         ckpt_dir = os.path.abspath(ckpt_dir)
         self.log_info(f'Loading ckpt from {ckpt_dir} ...')
 
-        params_shape_or_params = freeze(params_shape_or_params)
+        params_shape = self.load_params_shape(ckpt_dir=ckpt_dir)
 
         specs = {}
         if self._mesh is not None:
+            if params_sharding_rules is None:
+                params_sharding_rules = self.get_sharding_rules(
+                    params_shape_or_params=params_shape)
+
             specs['params'] = self.get_params_spec(
-                params_shape_or_params=params_shape_or_params,
+                params_shape_or_params=params_shape,
                 params_sharding_rules=params_sharding_rules)
             if optimizer is not None:
                 specs['opt_state'] = self.get_opt_state_spec(
-                    params_shape_or_params=params_shape_or_params,
+                    params_shape_or_params=params_shape,
                     params_spec=specs['params'],
                     optimizer=optimizer)
 
         ckpt, info = load_ckpt(
             ckpt_dir=ckpt_dir,
             checkpointer=self._checkpointer,
+            params_shape_or_params=params_shape,
             optimizer=optimizer,
-            params_shape_or_params=params_shape_or_params,
             float_dtype=float_dtype,
             mesh=self._mesh,
             specs=specs,
@@ -311,6 +342,8 @@ class Deployer:
             load_opt_state=load_opt_state)
 
         for key, value in info.items():
+            if not update_rng and key == 'rng':
+                continue
             self.log_info(f'{ckpt_dir}::{key} = {value}')
 
         if update_rng:
@@ -320,7 +353,6 @@ class Deployer:
         return ckpt, info
 
     def load_last_ckpt(self,
-                       params_shape_or_params,
                        optimizer=None,
                        params_sharding_rules=None,
                        float_dtype=None,
@@ -339,7 +371,6 @@ class Deployer:
         return self.load_ckpt(
             ckpt_dir=f'{self._workdir}/ckpts/{last_ckpt_name}',
             optimizer=optimizer,
-            params_shape_or_params=params_shape_or_params,
             float_dtype=float_dtype,
             params_sharding_rules=params_sharding_rules,
             load_params=load_params,
