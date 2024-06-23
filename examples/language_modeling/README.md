@@ -67,4 +67,4 @@ export XLA_PYTHON_CLIENT_MEM_FRACTION=.90
 srun python main.py --host0_address ${master_addr} --n_local_devices 8 
 ```
 
-The sharding can go cross multiple hosts, e.g., `--n_model_shards 32` for `Llama-65b`, which might make the running slower on GPU clusters, but works well on TPUs.
+The sharding can go cross multiple hosts, e.g., `--n_model_shards 16` if one has 2 (or more) nodes. 

@@ -17,7 +17,7 @@ import pickle
 import json
 import jax
 import jax.numpy as jnp
-from flax.core.frozen_dict import freeze, unfreeze
+from flax.core.frozen_dict import freeze
 import orbax.checkpoint as ocp
 
 

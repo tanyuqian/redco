@@ -15,9 +15,7 @@
 import os
 import jax
 import jax.numpy as jnp
-from flax.core.frozen_dict import freeze
-from flax.serialization import msgpack_restore
-import orbax.checkpoint
+import orbax.checkpoint as ocp
 
 from .data_utils import get_host_examples, get_data_batches
 from .opt_utils import get_lr_schedule_fn
@@ -91,7 +89,7 @@ class Deployer:
 
         self._rng = jax.random.PRNGKey(seed=jax_seed)
         self._mesh = get_mesh(n_model_shards=n_model_shards)
-        self._checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+        self._checkpointer = ocp.PyTreeCheckpointer()
 
     def get_local_global_micro_batch_size(self, per_device_batch_size):
         if self._mesh is None:

@@ -22,7 +22,7 @@ from jax.sharding import Mesh
 from jax.sharding import PartitionSpec as P
 from jax.experimental.pjit import pjit
 from flax.traverse_util import flatten_dict, unflatten_dict
-from flax.core.frozen_dict import FrozenDict, freeze, unfreeze
+from flax.core.frozen_dict import freeze, unfreeze
 
 # Sentinels
 _unmatched = object()
@@ -78,6 +78,7 @@ def get_params_spec(params_shape_or_params, params_sharding_rules):
         is_leaf=lambda x: isinstance(x, list))
 
     return freeze(params_spec)
+
 
 def shard_params(params, params_spec, mesh):
     if jax.tree_util.tree_all(jax.tree_util.tree_map(

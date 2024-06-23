@@ -23,12 +23,12 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 *Commands below are tested on 8 x 80Gb H100 machines. You may want to adjust some numbers based on your hardware.*
 
 #### [For Multi-Host] Prepare initialization
-In multi-host environments, HuggingFace's FlaxModel.init_weights() function cannot utilize the CPU backend to load the model into CPU memory before sharding it to GPU/TPUs. Therefore, it is necessary to prepare a JAX format checkpoint in advance for multi-host execution,
+In multi-host environments, HuggingFace's `FlaxModel.init_weights()` function cannot utilize the CPU backend to load the model into CPU memory before sharding it to GPU/TPUs. Therefore, it is necessary to prepare a JAX format checkpoint in advance for multi-host execution,
 e.g.,
 ```
-python save_init_ckpt.py --model_name_or_path google/flan-t5-xl
+python save_init_ckpt.py --model_name_or_path google/flan-t5-xxl
 ```
-The prepared ckpt would be saved into `./flan-t5-xl`.
+The prepared ckpt would be saved into `./flan-t5-xxl`.
 
 
 #### Data Parallel Only
@@ -72,3 +72,4 @@ export XLA_PYTHON_CLIENT_MEM_FRACTION=.90
 
 srun python main.py --host0_address ${master_addr} --n_local_devices 8 
 ```
+The sharding can go cross multiple hosts, e.g., `--n_model_shards 16` if one has 2 (or more) nodes.
