@@ -39,7 +39,7 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
          n_model_shards=8,
          n_epochs=1,
          global_batch_size=8,
-         per_device_batch_size=2,
+         per_device_batch_size=4,
          learning_rate=2e-5,
          lr_schedule_type='linear',
          warmup_rate=0.1,
@@ -89,10 +89,7 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
         optimizer=optimizer, float_dtype=jnp.float32)
     if ckpt is None:
         ckpt, info = deployer.load_ckpt(
-            ckpt_dir=init_ckpt_dir,
-            update_rng=False,
-            optimizer=optimizer,
-            float_dtype=jnp.float32)
+            ckpt_dir=init_ckpt_dir, update_rng=False, float_dtype=jnp.float32)
 
     params_sharding_rules = deployer.get_sharding_rules(
         params_shape_or_params=ckpt['params'])

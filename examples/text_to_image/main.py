@@ -32,35 +32,6 @@ from diffusers import (
 from redco import Deployer, Trainer, Predictor
 
 
-def get_optimizer(deployer,
-                  params_shape_or_params,
-                  global_batch_size,
-                  per_device_batch_size,
-                  grad_norm_clip,
-                  learning_rate,
-                  weight_decay):
-    _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
-        per_device_batch_size=per_device_batch_size)
-    assert global_batch_size % global_micro_batch_size == 0
-    accumulate_grad_batches = global_batch_size // global_micro_batch_size
-    deployer.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
-
-    optimizer = optax.MultiSteps(optax.chain(
-        optax.clip_by_global_norm(grad_norm_clip),
-        optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
-    ), every_k_schedule=accumulate_grad_batches)
-
-    # Grouping parameters -- Only Unet parameters are trainable.
-    param_labels = path_aware_map(
-        lambda path, _: 'trainable' if path[0] == 'unet' else 'frozen',
-        params_shape_or_params)
-    optimizer = optax.multi_transform(
-        transforms={'trainable': optimizer, 'frozen': optax.set_to_zero()},
-        param_labels=freeze(param_labels))
-
-    return optimizer, accumulate_grad_batches
-
-
 def collate_fn(examples, image_key, text_key, resolution, tokenizer):
     batch = tokenizer(
         [example[text_key] for example in examples],
@@ -209,38 +180,6 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     noise_scheduler, noise_scheduler_state = \
         FlaxPNDMScheduler.from_pretrained(
             model_name_or_path, subfolder='scheduler')
-    params_shape = {
-        'text_encoder': jax.eval_shape(
-            partial(text_encoder.init_weights, input_shape=(1, 1)),
-            jax.random.PRNGKey(0)),
-        'vae': jax.eval_shape(vae.init_weights, jax.random.PRNGKey(0)),
-        'unet': jax.eval_shape(unet.init_weights, jax.random.PRNGKey(0))
-    }
-    params_sharding_rules = {
-        key: deployer.get_sharding_rules(
-            params_shape_or_params=params_shape[key])
-        for key in ['unet', 'text_encoder', 'vae']
-    }
-    optimizer, accumulate_grad_batches = get_optimizer(
-        deployer=deployer,
-        params_shape_or_params=params_shape,
-        global_batch_size=global_batch_size,
-        per_device_batch_size=per_device_batch_size,
-        grad_norm_clip=grad_norm_clip,
-        learning_rate=learning_rate,
-        weight_decay=weight_decay)
-
-    load_ckpt_kwargs = {
-        'params_shape_or_params': params_shape,
-        'optimizer': optimizer,
-        'params_sharding_rules': params_sharding_rules,
-        'float_dypte': jnp.float32
-    }
-    ckpt, info = deployer.load_last_ckpt(**load_ckpt_kwargs)
-    if ckpt is None:
-        ckpt, info = deployer.load_ckpt(
-            ckpt_dir=init_ckpt_dir, update_rng=False, **load_ckpt_kwargs)
-
     pipeline = FlaxStableDiffusionPipeline(
         vae=vae,
         text_encoder=text_encoder,
@@ -249,6 +188,34 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
         scheduler=noise_scheduler,
         feature_extractor=None,
         safety_checker=None)
+
+    accumulate_grad_batches = deployer.get_accumulate_grad_batches(
+        global_batch_size=global_batch_size,
+        per_device_batch_size=per_device_batch_size)
+    optimizer = optax.MultiSteps(optax.chain(
+        optax.clip_by_global_norm(grad_norm_clip),
+        optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
+    ), every_k_schedule=accumulate_grad_batches)
+    param_labels = path_aware_map(  # Only Unet parameters are trainable.
+        lambda path, _: 'trainable' if path[0] == 'unet' else 'frozen',
+        deployer.load_params_shape(ckpt_dir=init_ckpt_dir))
+    optimizer = optax.multi_transform(
+        transforms={'trainable': optimizer, 'frozen': optax.set_to_zero()},
+        param_labels=freeze(param_labels))
+
+    ckpt, info = deployer.load_last_ckpt(
+        optimizer=optimizer, float_dtype=jnp.float32)
+    if ckpt is None:
+        ckpt, info = deployer.load_ckpt(
+            ckpt_dir=init_ckpt_dir, update_rng=False, float_dtype=jnp.float32)
+
+    params_sharding_rules = {}
+    for key in ['text_encoder', 'unet', 'vae']:
+        params_sharding_rules[key] = deployer.get_sharding_rules(
+            params_shape_or_params=ckpt['params'][key])
+        deployer.log_info(
+            info='\n'.join([str(t) for t in params_sharding_rules[key]]),
+            title=f'Sharding Rules ({key})')
 
     resolution = pipeline.unet.config.sample_size * pipeline.vae_scale_factor
     deployer.log_info(resolution, title='resolution')
