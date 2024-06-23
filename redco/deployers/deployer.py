@@ -107,30 +107,13 @@ class Deployer:
 
     def get_accumulate_grad_batches(
             self, global_batch_size, per_device_batch_size):
-        _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
+        _, global_micro_batch_size = self.get_local_global_micro_batch_size(
             per_device_batch_size=per_device_batch_size)
         assert global_batch_size % global_micro_batch_size == 0
         accumulate_grad_batches = global_batch_size // global_micro_batch_size
-        deployer.log_info(
-            accumulate_grad_batches, title='accumulate_grad_batches')
+        self.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
 
         return accumulate_grad_batches
-
-    def get_optimizer(self, learning_rate, weight_decay, grad_norm_clip, ):
-        optimizer = optax.MultiSteps(optax.chain(
-            optax.clip_by_global_norm(grad_norm_clip),
-            optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
-        ), every_k_schedule=accumulate_grad_batches)
-
-        # Grouping parameters -- Only Unet parameters are trainable.
-        param_labels = path_aware_map(
-            lambda path, _: 'trainable' if path[0] == 'unet' else 'frozen',
-            params_shape_or_params)
-        optimizer = optax.multi_transform(
-            transforms={'trainable': optimizer, 'frozen': optax.set_to_zero()},
-            param_labels=freeze(param_labels))
-
-        return optimizer, accumulate_grad_batches
 
     def get_model_input_batches(self,
                                 examples,
