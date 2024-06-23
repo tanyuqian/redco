@@ -1,21 +1,6 @@
-#  Copyright 2021 Google LLC
-#  #
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#  #
-#      https://www.apache.org/licenses/LICENSE-2.0
-#  #
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
 from functools import partial
 import fire
 import numpy as np
-import jax
 import jax.numpy as jnp
 import optax
 import datasets
@@ -91,15 +76,15 @@ def eval_rouge(examples, preds, tgt_key):
 def main(dataset_name='EdinburghNLP/xsum',
          src_key='document',
          tgt_key='summary',
-         model_name_or_path='google/flan-t5-xl',
-         init_ckpt_dir='./flan-t5-xl',
+         model_name_or_path='google/flan-t5-xxl',
+         init_ckpt_dir='./flan-t5-xxl',
          n_model_shards=8,
          max_src_len=512,
          max_tgt_len=64,
          num_beams=4,
          n_epochs=1,
          global_batch_size=64,
-         per_device_batch_size=16,
+         per_device_batch_size=4,
          learning_rate=2e-5,
          lr_schedule_type='linear',
          warmup_rate=0.1,
@@ -126,6 +111,7 @@ def main(dataset_name='EdinburghNLP/xsum',
         split: list(datasets.load_dataset(dataset_name, split=split))
         for split in ['train', 'validation']
     }
+
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = FlaxAutoModelForSeq2SeqLM.from_config(
         AutoConfig.from_pretrained(model_name_or_path),
@@ -136,12 +122,9 @@ def main(dataset_name='EdinburghNLP/xsum',
         pad_token_id=tokenizer.pad_token_id,
         num_beams=num_beams)
 
-    _, global_micro_batch_size = deployer.get_local_global_micro_batch_size(
+    accumulate_grad_batches = deployer.get_accumulate_grad_batches(
+        global_batch_size=global_batch_size,
         per_device_batch_size=per_device_batch_size)
-    assert global_batch_size % global_micro_batch_size == 0
-    accumulate_grad_batches = global_batch_size // global_micro_batch_size
-    deployer.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
-
     lr_schedule_fn = deployer.get_lr_schedule_fn(
         train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,
@@ -154,21 +137,17 @@ def main(dataset_name='EdinburghNLP/xsum',
         optax.adamw(learning_rate=lr_schedule_fn, weight_decay=weight_decay)
     ), every_k_schedule=accumulate_grad_batches)
 
-    params_shape = jax.eval_shape(
-        partial(model.init_weights, input_shape=(1, 1)), jax.random.PRNGKey(0))
-    params_sharding_rules = deployer.get_sharding_rules(
-        params_shape_or_params=params_shape)
-
-    load_ckpt_kwargs = {
-        'params_shape_or_params': params_shape,
-        'optimizer': optimizer,
-        'params_sharding_rules': params_sharding_rules,
-        'float_dtype': jnp.float32
-    }
-    ckpt, info = deployer.load_last_ckpt(**load_ckpt_kwargs)
+    ckpt, info = deployer.load_last_ckpt(
+        optimizer=optimizer, float_dtype=jnp.float32)
     if ckpt is None:
         ckpt, info = deployer.load_ckpt(
-            ckpt_dir=init_ckpt_dir, update_rng=False, **load_ckpt_kwargs)
+            ckpt_dir=init_ckpt_dir, update_rng=False, float_dtype=jnp.float32)
+
+    params_sharding_rules = deployer.get_sharding_rules(
+        params_shape_or_params=ckpt['params'])
+    deployer.log_info(
+        info='\n'.join([str(t) for t in params_sharding_rules]),
+        title='Sharding rules')
 
     collate_fn_kwargs = {
         'tokenizer': tokenizer,
@@ -206,8 +185,7 @@ def main(dataset_name='EdinburghNLP/xsum',
         eval_predictor=predictor,
         eval_metric_fn=partial(eval_rouge, tgt_key=tgt_key),
         save_last_ckpt=False,
-        save_argmax_ckpt_by_metrics=['rougeL'],
-        save_opt_states=False)
+        save_argmax_ckpt_by_metrics=['rougeL'])
 
 
 if __name__ == '__main__':

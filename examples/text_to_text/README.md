@@ -1,4 +1,4 @@
-## Language Modeling
+## Sequence-to-Sequence
 
 This example implements training seq2seq models.
 It supports 
@@ -11,7 +11,7 @@ It supports
 
 ```shell
 # Install RedCoast
-pip install redco==0.4.17
+pip install redco==0.4.18
 # Install nltk, rouge for evaluation
 pip install nltk rouge-score
 # Install torchvision/torch for ckpt loading if loading PyTorch initializations (cpu version)
