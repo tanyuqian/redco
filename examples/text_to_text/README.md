@@ -14,7 +14,7 @@ It supports
 pip install redco==0.4.18
 # Install nltk, rouge for evaluation
 pip install nltk rouge-score
-# Install torchvision/torch for ckpt loading if loading PyTorch initializations (cpu version)
+# Install torchvision/torch (cpu version) for loading PyTorch initializations
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
 

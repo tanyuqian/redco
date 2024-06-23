@@ -9,7 +9,7 @@ from flax.traverse_util import path_aware_map
 import optax
 import datasets
 from torchvision import transforms
-from transformers import CLIPConfig, CLIPTokenizer, FlaxCLIPTextModel
+from transformers import CLIPTextConfig, CLIPTokenizer, FlaxCLIPTextModel
 from diffusers import (
     FlaxAutoencoderKL,
     FlaxPNDMScheduler,
@@ -50,31 +50,31 @@ def loss_fn(train_rng,
             noise_scheduler,
             noise_scheduler_state,
             text_encoder):
+    sample_rng, noise_rng, timestep_rng = jax.random.split(train_rng, num=3)
+
     vae_outputs = vae.apply(
         {"params": params['vae']},
         batch["pixel_values"],
         deterministic=True,
         method=vae.encode)
-
-    train_rng, sample_rng = jax.random.split(train_rng)
     latents = vae_outputs.latent_dist.sample(sample_rng)
     latents = jnp.transpose(latents, (0, 3, 1, 2))
     latents = latents * vae.config.scaling_factor
 
-    noise_rng, timestep_rng = jax.random.split(sample_rng)
     noise = jax.random.normal(noise_rng, latents.shape)
     timesteps = jax.random.randint(
         key=timestep_rng,
         shape=(latents.shape[0],),
         minval=0,
         maxval=noise_scheduler.config.num_train_timesteps)
-
     noisy_latents = noise_scheduler.add_noise(
-        noise_scheduler_state, latents, noise, timesteps)
+        state=noise_scheduler_state,
+        original_samples=latents,
+        noise=noise,
+        timesteps=timesteps)
 
     encoder_hidden_states = text_encoder(
-        batch['input_ids'], params=params['text_encoder'], train=False
-    )[0]
+        batch['input_ids'], params=params['text_encoder'], train=False)[0]
 
     model_pred = state.apply_fn(
         {"params": params['unet']},
@@ -154,7 +154,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     tokenizer = CLIPTokenizer.from_pretrained(
         model_name_or_path, subfolder="tokenizer")
     text_encoder = FlaxCLIPTextModel(
-        config=CLIPConfig.from_pretrained(
+        config=CLIPTextConfig.from_pretrained(
             model_name_or_path, subfolder="text_encoder"),
         dtype=jnp.float16, _do_init=False)
     vae = FlaxAutoencoderKL.from_config(
@@ -199,7 +199,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     for key in ['text_encoder', 'unet', 'vae']:
         params_sharding_rules[key] = deployer.get_sharding_rules(
             params_shape_or_params=ckpt['params'][key])
-        if params_sharding_rules[key] is not None:
+        if n_model_shards > 1:
             deployer.log_info(
                 info='\n'.join([str(t) for t in params_sharding_rules[key]]),
                 title=f'Sharding Rules ({key})')
