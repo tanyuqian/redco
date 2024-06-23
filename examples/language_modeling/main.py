@@ -93,9 +93,10 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
 
     params_sharding_rules = deployer.get_sharding_rules(
         params_shape_or_params=ckpt['params'])
-    deployer.log_info(
-        info='\n'.join([str(t) for t in params_sharding_rules]),
-        title='Sharding rules')
+    if params_sharding_rules is not None:
+        deployer.log_info(
+            info='\n'.join([str(t) for t in params_sharding_rules]),
+            title='Sharding rules')
 
     trainer = Trainer(
         deployer=deployer,

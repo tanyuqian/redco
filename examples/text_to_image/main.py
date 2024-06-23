@@ -199,9 +199,10 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     for key in ['text_encoder', 'unet', 'vae']:
         params_sharding_rules[key] = deployer.get_sharding_rules(
             params_shape_or_params=ckpt['params'][key])
-        deployer.log_info(
-            info='\n'.join([str(t) for t in params_sharding_rules[key]]),
-            title=f'Sharding Rules ({key})')
+        if params_sharding_rules[key] is not None:
+            deployer.log_info(
+                info='\n'.join([str(t) for t in params_sharding_rules[key]]),
+                title=f'Sharding Rules ({key})')
 
     resolution = pipeline.unet.config.sample_size * pipeline.vae_scale_factor
     deployer.log_info(resolution, title='resolution')
