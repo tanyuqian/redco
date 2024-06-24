@@ -1,6 +1,5 @@
 import fire
 import jax
-import jax.numpy as jnp
 from transformers import FlaxCLIPTextModel
 from diffusers import FlaxAutoencoderKL, FlaxUNet2DConditionModel
 from redco import Deployer
@@ -14,14 +13,11 @@ def main(model_name_or_path='stabilityai/stable-diffusion-2-1-base'):
 
     with jax.default_device(jax.local_devices(backend='cpu')[0]):
         text_encoder = FlaxCLIPTextModel.from_pretrained(
-            model_name_or_path,
-            subfolder="text_encoder", from_pt=True, dtype=jnp.float16)
+            model_name_or_path, subfolder="text_encoder", from_pt=True)
         vae, vae_params = FlaxAutoencoderKL.from_pretrained(
-            model_name_or_path,
-            subfolder="vae", from_pt=True, dtype=jnp.float16)
+            model_name_or_path, subfolder="vae", from_pt=True)
         unet, unet_params = FlaxUNet2DConditionModel.from_pretrained(
-            model_name_or_path,
-            subfolder="unet", from_pt=True, dtype=jnp.float32)
+            model_name_or_path, subfolder="unet", from_pt=True)
         params = {
             'text_encoder': text_encoder.params,
             'unet': unet_params,

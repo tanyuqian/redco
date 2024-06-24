@@ -122,7 +122,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
          model_name_or_path='stabilityai/stable-diffusion-2-1-base',
          init_ckpt_dir='./stable-diffusion-2-1-base',
          n_model_shards=1,
-         n_epochs=3,
+         n_epochs=8,
          global_batch_size=8,
          per_device_batch_size=1,
          learning_rate=1e-5,
@@ -156,13 +156,13 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     text_encoder = FlaxCLIPTextModel(
         config=CLIPTextConfig.from_pretrained(
             model_name_or_path, subfolder="text_encoder"),
-        dtype=jnp.float16, _do_init=False)
+        dtype=jnp.float32, _do_init=False)
     vae = FlaxAutoencoderKL.from_config(
         config=FlaxAutoencoderKL.load_config(
-            model_name_or_path, subfolder='vae'), dtype=jnp.float16)
+            model_name_or_path, subfolder='vae'), dtype=jnp.float32)
     unet = FlaxUNet2DConditionModel.from_config(
         config=FlaxUNet2DConditionModel.load_config(
-            model_name_or_path, subfolder='unet'), dtype=jnp.float16)
+            model_name_or_path, subfolder='unet'), dtype=jnp.float32)
     noise_scheduler, noise_scheduler_state = \
         FlaxPNDMScheduler.from_pretrained(
             model_name_or_path, subfolder='scheduler')
