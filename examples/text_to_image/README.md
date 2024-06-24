@@ -72,3 +72,14 @@ export XLA_PYTHON_CLIENT_MEM_FRACTION=.80
 srun python main.py --host0_address ${master_addr} --n_model_shards 8 --global_batch_size 40 --n_local_devices 8 --per_device_batch_size 10
 ```
 The sharding can go cross multiple hosts, e.g., `--n_model_shards 16` if one has 2 (or more) nodes.
+
+### Results
+
+
+| Training Data                                                     | Model Generation                                                                   | 
+|-------------------------------------------------------------------|------------------------------------------------------------------------------------|
+| a girl in a red dress with long brown hair                        | a man in the woods with a sword                                                    |
+| <img src="results/a_girl_in_a_red_dress_with_long_brown_hair.jpg" alt="drawing" width="500"/> | <img src="results/a_man_in_the_woods_with_a_sword.jpg" alt="drawing" width="500"/> |
+| a guy with a bandage on his face                        | a girl with long brown hair and blue eyes                                          |
+| <img src="results/a_guy_with_a_bandage_on_his_face.jpg" alt="drawing" width="500"/> | <img src="results/a_girl_with_long_hair_and_a_green_jacket.jpg" alt="drawing" width="500"/> |
+
