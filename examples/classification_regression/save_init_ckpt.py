@@ -1,24 +1,10 @@
-#  Copyright 2021 Google LLC
-#  #
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#  #
-#      https://www.apache.org/licenses/LICENSE-2.0
-#  #
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
 import fire
 import jax
 from transformers import FlaxAutoModelForSequenceClassification
 from redco import Deployer
 
 
-def main(model_name_or_path='FacebookAI/roberta-large'):
+def main(model_name_or_path='FacebookAI/roberta-large', num_labels=2):
     deployer = Deployer(workdir=None, jax_seed=0)
 
     ckpt_dir = './' + model_name_or_path.split('/')[-1]
@@ -26,7 +12,7 @@ def main(model_name_or_path='FacebookAI/roberta-large'):
 
     with jax.default_device(jax.local_devices(backend='cpu')[0]):
         model = FlaxAutoModelForSequenceClassification.from_pretrained(
-            model_name_or_path, from_pt=True)
+            model_name_or_path, num_labels=num_labels, from_pt=True)
         deployer.save_ckpt(ckpt_dir=ckpt_dir, params=model.params)
 
 

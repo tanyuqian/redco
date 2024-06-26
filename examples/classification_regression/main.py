@@ -100,6 +100,7 @@ def main(dataset_name='sst2',
     dataset = {key: list(dataset[key]) for key in dataset.keys()}
     num_labels = 1 if is_regression \
         else len(set([example[label_key] for example in dataset['train']]))
+    deployer.log_info(num_labels, title='num_labels')
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = FlaxAutoModelForSequenceClassification.from_config(
