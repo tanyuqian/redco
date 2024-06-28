@@ -69,7 +69,7 @@ def log_info(info, title, logger, summary_writer, step):
 
 
 def save_outputs(outputs, workdir, desc, logger, summary_writer, step):
-    outputs = jax.tree_util.tree_map(str, outputs)
+    outputs = jax.tree.map(str, outputs)
     json.dump(outputs, open(f'{workdir}/outputs_{desc}.json', 'w'), indent=4)
     logger.info(
         f'Outputs ({desc}) has been saved into {workdir}/outputs_{desc}.json.')

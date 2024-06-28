@@ -54,25 +54,19 @@ def pred_step(pred_rng, params, batch, pred_fn, mesh):
 
 
 def default_output_fn(preds):
-    batch_size = jax.tree_util.tree_leaves(preds)[0].shape[0]
+    batch_size = jax.tree.leaves(preds)[0].shape[0]
+    assert jax.tree.all(jax.tree.map(lambda x: x.shape[0] == batch_size, preds))
 
-    assert jax.tree_util.tree_all(
-        jax.tree_util.tree_map(lambda x: x.shape[0] == batch_size, preds))
-
-    outputs = []
-    for i in range(batch_size):
-        outputs.append(jax.tree_util.tree_map(lambda x: x[i], preds))
-
-    return outputs
+    return [jax.tree.map(lambda x: x[i], preds) for i in range(batch_size)]
 
 
 def process_batch_preds(batch_preds_with_idxes, mesh):
     if mesh is None:
         batch_preds_with_idxes = unreplicate(batch_preds_with_idxes)
 
-    preds = jax.tree_util.tree_map(
-        lambda t: t.reshape((t.shape[0] * t.shape[1],) + t.shape[2:]),
+    preds = jax.tree.map(
+        lambda t: t.reshape((-1,) + t.shape[2:]),
         batch_preds_with_idxes['raw_preds'])
     idxes_argsort = jnp.argsort(batch_preds_with_idxes['__idx__'].reshape(-1))
 
-    return jax.tree_util.tree_map(lambda t: t[idxes_argsort], preds)
+    return jax.tree.map(lambda t: t[idxes_argsort], preds)

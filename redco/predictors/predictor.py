@@ -55,12 +55,10 @@ class Predictor:
         if self.mesh is None:
             self._p_pred_step = jax.pmap(pred_step_fn, axis_name='batch')
         else:
-            data_spec = jax.tree_util.tree_map(lambda x: P('dp'), dummy_batch)
-
+            data_spec = jax.tree.map(lambda x: P('dp'), dummy_batch)
             params_spec = self._deployer.get_params_spec(
                 params_shape_or_params=params,
                 params_sharding_rules=params_sharding_rules)
-
             self._p_pred_step = pjit(
                 pred_step_fn,
                 in_shardings=(None, params_spec, data_spec),
@@ -118,7 +116,7 @@ class Predictor:
 
             batch_preds = process_batch_preds(
                 batch_preds_with_idxes=batch_preds_with_idxes, mesh=self.mesh)
-            batch_preds = jax.tree_util.tree_map(np.asarray, batch_preds)
+            batch_preds = jax.tree.map(np.asarray, batch_preds)
 
             batch_preds = self._output_fn(batch_preds)
             assert isinstance(batch_preds, list) and \

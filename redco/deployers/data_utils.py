@@ -21,13 +21,15 @@ from flax.training.common_utils import shard
 
 def get_dataloader(examples, batch_size, collate_fn, mesh):
     def make_jnp(value):
-        value = jax.tree_util.tree_map(
+        value = jax.tree.map(
             lambda x: dict(x) if isinstance(x, UserDict) else x, value)
-        value = jax.tree_util.tree_map(jnp.asarray, value)
+        value = jax.tree.map(jnp.asarray, value)
         if mesh is None:
-            value = jax.tree_util.tree_map(shard, value)
+            value = jax.tree.map(shard, value)
         else:
-            value = jax.tree.map(lambda x: x.reshape((mesh.shape['dp'], -1) + x.shape[1:]), value)
+            value = jax.tree.map(
+                lambda x: x.reshape((mesh.shape['dp'], -1) + x.shape[1:]),
+                value)
 
         return value
 

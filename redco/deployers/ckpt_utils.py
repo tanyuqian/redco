@@ -38,7 +38,7 @@ def save_ckpt(checkpointer,
     ckpt = {'params': params, 'opt_state': opt_state}
     for key in ['params', 'opt_state']:
         if ckpt[key] is not None:
-            save_args = jax.tree_util.tree_map(
+            save_args = jax.tree.map(
                 lambda param: ocp.SaveArgs(
                     dtype=get_dtype(param=param, float_dtype=float_dtype)
                 ), ckpt[key])
@@ -85,7 +85,7 @@ def load_ckpt(checkpointer,
             target_shape = params_shape_or_params
 
         if mesh is None:
-            restore_args = jax.tree_util.tree_map(
+            restore_args = jax.tree.map(
                 lambda param: ocp.ArrayRestoreArgs(
                     dtype=get_dtype(param=param, float_dtype=float_dtype),
                     sharding=jax.sharding.SingleDeviceSharding(
@@ -95,7 +95,7 @@ def load_ckpt(checkpointer,
         else:
             assert specs is not None and key in specs, \
                 f'specs[{key}] must not be None when mesh is not None'
-            restore_args = jax.tree_util.tree_map(
+            restore_args = jax.tree.map(
                 lambda param, spec: ocp.ArrayRestoreArgs(
                     dtype=get_dtype(param=param, float_dtype=float_dtype),
                     sharding=jax.sharding.NamedSharding(mesh=mesh, spec=spec)

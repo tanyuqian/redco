@@ -17,9 +17,7 @@ import jax.numpy as jnp
 
 
 def global_norm(updates):
-    return jnp.sqrt(sum(
-        jnp.sum(x * x) for x in jax.tree_util.tree_leaves(updates)
-    ))
+    return jnp.sqrt(sum(jnp.sum(x * x) for x in jax.tree.leaves(updates)))
 
 
 def loss_and_grads(train_rng, state, batch, loss_fn):

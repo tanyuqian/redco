@@ -62,8 +62,7 @@ class Trainer:
             self._init_step = last_ckpt_info.get('step', 0)
             self._init_epoch_idx = last_ckpt_info.get('epoch_idx', -1) + 1
 
-        n_params = sum([
-            param.size for param in jax.tree_util.tree_leaves(params)])
+        n_params = sum([param.size for param in jax.tree.leaves(params)])
         self._deployer.log_info(f'{n_params:,}', title='Parameters')
 
         self.set_train_state(
@@ -133,7 +132,6 @@ class Trainer:
             loss_fn=self._loss_fn,
             lr_schedule_fn=self._lr_schedule_fn,
             mesh=self.mesh)
-
         eval_step_fn = partial(
             eval_step, loss_fn=self._loss_fn, mesh=self.mesh)
 
@@ -141,14 +139,12 @@ class Trainer:
             self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
             self._p_eval_step = jax.pmap(eval_step_fn, axis_name='batch')
         else:
-            data_spec = jax.tree_util.tree_map(lambda x: P('dp'), dummy_batch)
-
+            data_spec = jax.tree.map(lambda x: P('dp'), dummy_batch)
             self._p_train_step = pjit(
                 train_step_fn,
                 in_shardings=(None, self._state_spec, data_spec),
                 out_shardings=(self._state_spec, None),
                 donate_argnums=(1, ))
-
             self._p_eval_step = pjit(
                 eval_step_fn,
                 in_shardings=(self._state_spec, data_spec),
@@ -384,7 +380,7 @@ class Trainer:
 
     def save_ckpt(self, epoch_idx, ckpt_name, save_opt_state, float_dtype):
         if self.mesh is None:
-            params = jax.tree_util.tree_map(
+            params = jax.tree.map(
                 fully_replicated_host_local_array_to_global_array,
                 self._state.params)
         else:
@@ -393,7 +389,7 @@ class Trainer:
         opt_state = None
         if save_opt_state:
             if self.mesh is None:
-                opt_state = jax.tree_util.tree_map(
+                opt_state = jax.tree.map(
                     fully_replicated_host_local_array_to_global_array,
                     self._state.opt_state)
             else:

@@ -71,7 +71,7 @@ def get_mesh(n_model_shards):
 
 
 def get_params_spec(params_shape_or_params, params_sharding_rules):
-    params_spec = jax.tree_util.tree_map(
+    params_spec = jax.tree.map(
         lambda params_sharding_rules_, params_: set_partitions(
             params_, rules=params_sharding_rules_),
         params_sharding_rules, unfreeze(params_shape_or_params),
@@ -83,7 +83,7 @@ def get_params_spec(params_shape_or_params, params_sharding_rules):
 def shard_params(params, params_spec, mesh):
     if jax.tree.all(jax.tree.map(lambda x: isinstance(
             x, np.ndarray) or x.sharding.is_fully_addressable, params)):
-        return jax.tree_util.tree_map(
+        return jax.tree.map(
             lambda param, param_spec: jax.make_array_from_callback(
                 shape=param.shape,
                 sharding=jax.sharding.NamedSharding(mesh=mesh, spec=param_spec),
@@ -98,19 +98,19 @@ def shard_params(params, params_spec, mesh):
 def get_opt_state_spec(params_shape_or_params, params_spec, optimizer):
     def match_params_structure(x):
         try:
-            jax.tree_util.tree_map(lambda x, y: None,  params_spec, x)
+            jax.tree.map(lambda x, y: None,  params_spec, x)
         except:
             return False
         return True
 
     def get_opt_spec(x):
         if match_params_structure(x):
-            return jax.tree_util.tree_map(
+            return jax.tree.map(
                 lambda s, xx: s if isinstance(xx, jax.ShapeDtypeStruct) else xx,
                 params_spec, x)
         return P()
 
-    return jax.tree_util.tree_map(
+    return jax.tree.map(
         get_opt_spec, jax.eval_shape(optimizer.init, params_shape_or_params),
         is_leaf=match_params_structure)
 
