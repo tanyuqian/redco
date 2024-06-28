@@ -308,7 +308,7 @@ class Deployer:
 
         if update_rng:
             self._rng = info['rng']
-            self.log_info(f'rng updated by {ckpt_dir}')
+            self.log_info(f'rng updated to {self._rng} (by {ckpt_dir})')
 
         return ckpt, info
 
@@ -324,7 +324,7 @@ class Deployer:
                 f'{self._workdir}/ckpts/last_ckpt.txt').read().strip()
         except:
             self.log_info(
-                f'{self._workdir}/ckpts/last_ckpt.txt not found, '
+                f'{self._workdir}/ckpts/last_ckpt.txt not found. '
                 f'no ckpt loaded.')
             return None, None
 
@@ -336,7 +336,6 @@ class Deployer:
             load_params=load_params,
             load_opt_state=load_opt_state,
             update_rng=update_rng)
-
 
     @property
     def mesh(self):

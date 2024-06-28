@@ -52,7 +52,7 @@ def train_step(train_rng, state, batch, loss_fn, lr_schedule_fn, mesh):
         'loss': loss, 'step': state.step, 'grad_norm': global_norm(grads)
     }
     if lr_schedule_fn is not None:
-        metrics.update({'lr': lr_schedule_fn(state.step)})
+        metrics['lr'] = lr_schedule_fn(state.step)
 
     if mesh is None:
         metrics = jax.lax.pmean(metrics, axis_name='batch')
@@ -62,11 +62,12 @@ def train_step(train_rng, state, batch, loss_fn, lr_schedule_fn, mesh):
 
 def eval_step(state, batch, loss_fn, mesh):
     if mesh is None:
-        loss = loss_fn(train_rng=jax.random.PRNGKey(0),
-                state=state,
-                params=state.params,
-                batch=batch,
-                is_training=False)
+        loss = loss_fn(
+            train_rng=jax.random.PRNGKey(0),
+            state=state,
+            params=state.params,
+            batch=batch,
+            is_training=False)
         loss = jax.lax.pmean(loss, axis_name='batch')
     else:
         loss = jax.vmap(
