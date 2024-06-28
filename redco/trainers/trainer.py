@@ -26,7 +26,7 @@ from flax.core.frozen_dict import freeze
 from orbax.checkpoint.utils import \
     fully_replicated_host_local_array_to_global_array
 
-from .utils import default_train_step, default_eval_step
+from .utils import train_step, eval_step
 
 
 class Trainer:
@@ -129,23 +129,19 @@ class Trainer:
 
     def setup_running_step(self, dummy_batch):
         train_step_fn = partial(
-            default_train_step,
+            train_step,
             loss_fn=self._loss_fn,
             lr_schedule_fn=self._lr_schedule_fn,
-            under_pmap=(self.mesh is None))
+            mesh=self.mesh)
 
         eval_step_fn = partial(
-            default_eval_step,
-            loss_fn=self._loss_fn,
-            under_pmap=(self.mesh is None))
+            eval_step, loss_fn=self._loss_fn, mesh=self.mesh)
 
         if self.mesh is None:
             self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
             self._p_eval_step = jax.pmap(eval_step_fn, axis_name='batch')
         else:
-            data_spec = jax.tree_util.tree_map(
-                lambda x: P(*(('dp',) + (None,) * (len(x.shape) - 1))),
-                dummy_batch)
+            data_spec = jax.tree_util.tree_map(lambda x: P('dp'), dummy_batch)
 
             self._p_train_step = pjit(
                 train_step_fn,
@@ -206,6 +202,7 @@ class Trainer:
 
             if self.mesh is None:
                 metrics = unreplicate(metrics)
+
             losses.append(metrics['loss'].item())
             data_batches.set_postfix(**metrics)
 

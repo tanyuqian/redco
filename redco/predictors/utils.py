@@ -14,13 +14,14 @@
 
 import numpy as np
 import jax
+import jax.numpy as jnp
+from flax.jax_utils import unreplicate
 
 
 def add_idxes(examples):
     examples_upd = []
     for idx, example in enumerate(examples):
         assert '__idx__' not in example
-        # example = copy.deepcopy(example)
         example = {key: example[key] for key in example.keys()}
         example.update({'__idx__': idx})
 
@@ -37,18 +38,19 @@ def collate_fn_wrapper(examples, collate_fn):
     return batch
 
 
-def pred_fn_wrapper(pred_rng, params, batch, pred_fn, under_pmap):
+def pred_fn_wrapper(pred_rng, params, batch, pred_fn):
     idxes = batch.pop('__idx__')
     preds = pred_fn(pred_rng=pred_rng, params=params, batch=batch)
-    preds = {
-        'raw_preds': preds,
-        '__idx__': idxes
-    }
+    return {'raw_preds': preds, '__idx__': idxes}
 
-    if under_pmap:
+
+def pred_step(pred_rng, params, batch, pred_fn, mesh):
+    if mesh is None:
+        preds = pred_fn(pred_rng=pred_rng, params=params, batch=batch)
         return jax.lax.all_gather(preds, axis_name='batch')
     else:
-        return preds
+        return jax.vmap(
+            lambda b: pred_fn(pred_rng=pred_rng, params=params, batch=b))(batch)
 
 
 def default_output_fn(preds):
@@ -62,3 +64,15 @@ def default_output_fn(preds):
         outputs.append(jax.tree_util.tree_map(lambda x: x[i], preds))
 
     return outputs
+
+
+def process_batch_preds(batch_preds_with_idxes, mesh):
+    if mesh is None:
+        batch_preds_with_idxes = unreplicate(batch_preds_with_idxes)
+
+    preds = jax.tree_util.tree_map(
+        lambda t: t.reshape((t.shape[0] * t.shape[1],) + t.shape[2:]),
+        batch_preds_with_idxes['raw_preds'])
+    idxes_argsort = jnp.argsort(batch_preds_with_idxes['__idx__'].reshape(-1))
+
+    return jax.tree_util.tree_map(lambda t: t[idxes_argsort], preds)

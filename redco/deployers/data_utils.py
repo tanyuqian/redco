@@ -19,13 +19,16 @@ import jax.numpy as jnp
 from flax.training.common_utils import shard
 
 
-def get_dataloader(examples, batch_size, collate_fn, do_shard):
+def get_dataloader(examples, batch_size, collate_fn, mesh):
     def make_jnp(value):
         value = jax.tree_util.tree_map(
             lambda x: dict(x) if isinstance(x, UserDict) else x, value)
         value = jax.tree_util.tree_map(jnp.asarray, value)
-        if do_shard:
+        if mesh is None:
             value = jax.tree_util.tree_map(shard, value)
+        else:
+            value = jax.tree.map(lambda x: x.reshape((mesh.shape['dp'], -1) + x.shape[1:]), value)
+
         return value
 
     for i in range(0, len(examples) // batch_size):
@@ -33,17 +36,12 @@ def get_dataloader(examples, batch_size, collate_fn, do_shard):
             examples=examples[i * batch_size:(i + 1) * batch_size]))
 
 
-def get_data_batches(examples,
-                     batch_size,
-                     collate_fn,
-                     do_shard,
-                     desc,
-                     verbose):
+def get_data_batches(examples, batch_size, collate_fn, mesh, desc, verbose):
     data_loader = get_dataloader(
         examples=examples,
         batch_size=batch_size,
         collate_fn=collate_fn,
-        do_shard=do_shard)
+        mesh=mesh)
     return tqdm.tqdm(
         data_loader,
         total=len(examples) // batch_size,

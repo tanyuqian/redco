@@ -20,6 +20,7 @@ import numpy as np
 import jax
 from jax.sharding import Mesh
 from jax.sharding import PartitionSpec as P
+from jax.sharding import NamedSharding, PositionalSharding
 from jax.experimental.pjit import pjit
 from flax.traverse_util import flatten_dict, unflatten_dict
 from flax.core.frozen_dict import freeze, unfreeze
@@ -81,22 +82,10 @@ def get_params_spec(params_shape_or_params, params_sharding_rules):
 
 
 def shard_params(params, params_spec, mesh):
-    if jax.tree_util.tree_all(jax.tree_util.tree_map(
-            lambda x: isinstance(x, np.ndarray) or
-                      x.sharding.is_fully_addressable,
-            params
-    )):
-        return jax.tree_util.tree_map(
-            lambda param, param_spec: jax.make_array_from_callback(
-                shape=param.shape,
-                sharding=jax.sharding.NamedSharding(mesh=mesh, spec=param_spec),
-                data_callback=lambda index: param[index]),
-            params, params_spec)
-    else:
-        shard_fn = pjit(
-            lambda x: x, in_shardings=(params_spec,), out_shardings=params_spec)
-        with mesh:
-            return shard_fn(params)
+    return jax.tree_util.tree_map(
+        lambda param, param_spec: jax.device_put(
+            param, device=NamedSharding(mesh=mesh, spec=param_spec)),
+        params, params_spec)
 
 
 def get_opt_state_spec(params_shape_or_params, params_spec, optimizer):

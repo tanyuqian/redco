@@ -21,8 +21,13 @@ from flax.core.frozen_dict import freeze
 from flax.training.common_utils import shard_prng_key
 from flax.jax_utils import replicate
 
-from .utils import \
-    add_idxes, collate_fn_wrapper, pred_fn_wrapper, default_output_fn
+from .utils import (
+    add_idxes,
+    collate_fn_wrapper,
+    pred_fn_wrapper,
+    pred_step,
+    default_output_fn,
+    process_batch_preds)
 
 
 class Predictor:
@@ -36,10 +41,7 @@ class Predictor:
         self._collate_fn = partial(collate_fn_wrapper, collate_fn=collate_fn)
 
         self._params_sharding_rules = params_sharding_rules
-        self._pred_fn = partial(
-            pred_fn_wrapper,
-            pred_fn=pred_fn,
-            under_pmap=self.mesh is None)
+        self._pred_fn = partial(pred_fn_wrapper, pred_fn=pred_fn)
         self._p_pred_step = None
 
         if output_fn is None:
@@ -47,24 +49,20 @@ class Predictor:
         else:
             self._output_fn = output_fn
 
-    def setup_running_step(self,
-                           pred_fn,
-                           dummy_batch,
-                           params,
-                           params_sharding_rules):
+    def setup_running_step(self, dummy_batch, params, params_sharding_rules):
+        pred_step_fn = partial(pred_step, pred_fn=self._pred_fn, mesh=self.mesh)
+
         if self.mesh is None:
-            self._p_pred_step = jax.pmap(pred_fn, axis_name='batch')
+            self._p_pred_step = jax.pmap(pred_step_fn, axis_name='batch')
         else:
-            data_spec = jax.tree_util.tree_map(
-                lambda x: P(*(('dp',) + (None,) * (len(x.shape) - 1))),
-                dummy_batch)
+            data_spec = jax.tree_util.tree_map(lambda x: P('dp'), dummy_batch)
 
             params_spec = self._deployer.get_params_spec(
                 params_shape_or_params=params,
                 params_sharding_rules=params_sharding_rules)
 
             self._p_pred_step = pjit(
-                pred_fn,
+                pred_step_fn,
                 in_shardings=(None, params_spec, data_spec),
                 out_shardings=None)
 
@@ -104,7 +102,6 @@ class Predictor:
         for batch in data_batches:
             if self._p_pred_step is None:
                 self.setup_running_step(
-                    pred_fn=self._pred_fn,
                     dummy_batch=batch,
                     params=params,
                     params_sharding_rules=self._params_sharding_rules)
@@ -119,8 +116,8 @@ class Predictor:
                 step_fn=self._p_pred_step,
                 input_args=(pred_rng, params, batch))
 
-            batch_preds = self._deployer.process_batch_preds(
-                batch_preds_with_idxes=batch_preds_with_idxes)
+            batch_preds = process_batch_preds(
+                batch_preds_with_idxes=batch_preds_with_idxes, mesh=self.mesh)
             batch_preds = jax.tree_util.tree_map(np.asarray, batch_preds)
 
             batch_preds = self._output_fn(batch_preds)

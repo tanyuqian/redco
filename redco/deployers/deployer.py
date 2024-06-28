@@ -147,30 +147,9 @@ class Deployer:
             examples=examples,
             batch_size=local_micro_batch_size,
             collate_fn=collate_fn,
-            do_shard=(self.mesh is None),
+            mesh=self._mesh,
             desc=desc,
             verbose=self._verbose)
-
-    def process_batch_preds(self, batch_preds_with_idxes):
-        if self._mesh is None:
-            batch_preds_with_idxes = jax.tree_util.tree_map(
-                lambda x: x[0], batch_preds_with_idxes)
-
-            batch_preds = batch_preds_with_idxes['raw_preds']
-            idxes = batch_preds_with_idxes['__idx__']
-
-            assert jax.tree_util.tree_all(jax.tree_util.tree_map(
-                lambda t: t.shape[0] * t.shape[1] == idxes.size, batch_preds))
-
-            preds = jax.tree_util.tree_map(
-                lambda t: t.reshape((t.shape[0] * t.shape[1],) + t.shape[2:]),
-                batch_preds)
-            idxes = idxes.reshape(-1)
-            idxes_argsort = jnp.argsort(idxes, axis=None)
-
-            return jax.tree_util.tree_map(lambda t: t[idxes_argsort], preds)
-        else:
-            return batch_preds_with_idxes['raw_preds']
 
     def get_lr_schedule_fn(self,
                            train_size,
