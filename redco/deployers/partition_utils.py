@@ -82,10 +82,26 @@ def get_params_spec(params_shape_or_params, params_sharding_rules):
 
 
 def shard_params(params, params_spec, mesh):
-    return jax.tree_util.tree_map(
-        lambda param, param_spec: jax.device_put(
-            param, device=NamedSharding(mesh=mesh, spec=param_spec)),
-        params, params_spec)
+    if jax.tree.all(jax.tree.map(lambda x: isinstance(
+            x, np.ndarray) or x.sharding.is_fully_addressable, params)):
+        return jax.tree_util.tree_map(
+            lambda param, param_spec: jax.make_array_from_callback(
+                shape=param.shape,
+                sharding=jax.sharding.NamedSharding(mesh=mesh, spec=param_spec),
+                data_callback=lambda index: param[index]),
+            params, params_spec)
+    else:
+        try:
+            in_params_spec = jax.tree.map(lambda x: x.sharding.spec, params)
+        except:
+            in_params_spec = params_spec
+
+        shard_fn = jax.jit(
+            lambda x: x,
+            in_shardings=(in_params_spec,),
+            out_shardings=params_spec)
+        with mesh:
+            return shard_fn(params)
 
 
 def get_opt_state_spec(params_shape_or_params, params_spec, optimizer):
