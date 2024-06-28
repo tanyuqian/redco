@@ -20,7 +20,6 @@ import numpy as np
 import jax
 from jax.sharding import Mesh
 from jax.sharding import PartitionSpec as P
-from jax.sharding import NamedSharding, PositionalSharding
 from jax.experimental.pjit import pjit
 from flax.traverse_util import flatten_dict, unflatten_dict
 from flax.core.frozen_dict import freeze, unfreeze
@@ -91,15 +90,7 @@ def shard_params(params, params_spec, mesh):
                 data_callback=lambda index: param[index]),
             params, params_spec)
     else:
-        try:
-            in_params_spec = jax.tree.map(lambda x: x.sharding.spec, params)
-        except:
-            in_params_spec = params_spec
-
-        shard_fn = jax.jit(
-            lambda x: x,
-            in_shardings=(in_params_spec,),
-            out_shardings=params_spec)
+        shard_fn = pjit(lambda x: x, out_shardings=params_spec)
         with mesh:
             return shard_fn(params)
 

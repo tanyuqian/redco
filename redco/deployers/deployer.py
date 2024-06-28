@@ -14,7 +14,6 @@
 
 import os
 import jax
-import jax.numpy as jnp
 import orbax.checkpoint as ocp
 
 from .data_utils import get_host_examples, get_data_batches
@@ -44,7 +43,7 @@ class Deployer:
                  process_id=None,
                  n_local_devices=None,
                  run_tensorboard=False,
-                 run_wandb=False):
+                 wandb_init_kwargs=None):
         if n_processes is None:
             if 'SLURM_JOB_NUM_NODES' in os.environ:
                 n_processes = int(os.environ['SLURM_JOB_NUM_NODES'])
@@ -72,8 +71,9 @@ class Deployer:
         self._workdir = workdir
         self._logger = get_logger(verbose=verbose, workdir=workdir)
 
-        if run_wandb and jax.process_index() == 0:
+        if wandb_init_kwargs is not None and jax.process_index() == 0:
             import wandb
+            wandb.init(**wandb_init_kwargs)
             self._wandb_log_fn = wandb.log
         else:
             self._wandb_log_fn = None
