@@ -1,17 +1,3 @@
-#  Copyright 2021 Google LLC
-#  #
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#  #
-#      https://www.apache.org/licenses/LICENSE-2.0
-#  #
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
 import os
 from functools import partial
 import fire
@@ -21,9 +7,12 @@ import jax.numpy as jnp
 import optax
 import datasets
 from transformers import (
-    AutoImageProcessor, AutoTokenizer, FlaxVisionEncoderDecoderModel)
+    AutoImageProcessor,
+    AutoTokenizer,
+    AutoConfig,
+    FlaxVisionEncoderDecoderModel)
 import evaluate
-from redco import Deployer, Trainer
+from redco import Deployer, Trainer, Predictor
 
 
 def collate_fn(examples,
@@ -33,13 +22,11 @@ def collate_fn(examples,
                max_tgt_len,
                image_path_key='image_path',
                text_key='caption'):
-    images = [
-        Image.open(example[image_path_key]).convert('RGB')
-        for example in examples
-    ]
     model_inputs = {
-        'pixel_values': image_processor(
-            images, return_tensors='np').pixel_values
+        'pixel_values': image_processor([
+            Image.open(example[image_path_key]).convert('RGB')
+            for example in examples
+        ], return_tensors='np').pixel_values
     }
 
     decoder_inputs = tokenizer(
@@ -49,20 +36,12 @@ def collate_fn(examples,
         truncation=True,
         return_tensors='np')
 
-    if tokenizer.bos_token_id is not None:
-        labels = np.zeros_like(decoder_inputs['input_ids'])
-        labels[:, :-1] = decoder_inputs['input_ids'][:, 1:]
-        decoder_input_ids = decoder_inputs['input_ids']
-        decoder_input_ids[:, 0] = decoder_start_token_id
-    else:
-        labels = decoder_inputs['input_ids']
-        decoder_input_ids = np.zeros_like(decoder_inputs['input_ids'])
-        decoder_input_ids[:, 1:] = decoder_inputs['input_ids'][:, :-1]
-        decoder_input_ids[:, 0] = decoder_start_token_id
+    labels = decoder_inputs['input_ids']
+    decoder_inputs['input_ids'] = np.zeros_like(labels)
+    decoder_inputs['input_ids'][:, 0] = decoder_start_token_id
+    decoder_inputs['input_ids'][:, 1:] = labels[:, :-1]
 
     model_inputs['labels'] = labels
-    decoder_inputs['input_ids'] = decoder_input_ids
-
     for key in decoder_inputs:
         model_inputs[f'decoder_{key}'] = np.array(decoder_inputs[key])
 
@@ -70,20 +49,18 @@ def collate_fn(examples,
 
 
 def loss_fn(train_rng, state, params, batch, is_training):
-    labels = batch.pop("labels")
+    labels = batch.pop('labels')
     label_weights = batch['decoder_attention_mask']
     logits = state.apply_fn(
         **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
-
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def pred_fn(pred_rng, batch, params, model, gen_kwargs):
+def pred_fn(pred_rng, batch, params, model):
     return model.generate(
-        batch["pixel_values"], params=params, prng_key=pred_rng, **gen_kwargs
-    ).sequences
+        batch["pixel_values"], params=params, prng_key=pred_rng).sequences
 
 
 def output_fn(batch_preds, tokenizer):
@@ -104,16 +81,35 @@ def main(data_dir='./mscoco_data',
          image_path_key='image_path',
          text_key='caption',
          model_name_or_path='nlpconnect/vit-gpt2-image-captioning',
-         n_epochs=2,
-         per_device_batch_size=8,
-         accumulate_grad_batches=2,
-         eval_per_device_batch_size=16,
-         learning_rate=1e-5,
-         warmup_rate=0.1,
-         weight_decay=0.,
-         jax_seed=42,
+         init_ckpt_dir='./vit-gpt2-image-captioning',
+         n_model_shards=1,
          max_tgt_len=16,
-         num_beams=4):
+         num_beams=4,
+         n_epochs=2,
+         global_batch_size=32,
+         per_device_batch_size=8,
+         learning_rate=2e-5,
+         lr_schedule_type='linear',
+         warmup_rate=0.1,
+         grad_norm_clip=1.,
+         weight_decay=0.01,
+         workdir='./workdir',
+         jax_seed=42,
+         n_processes=None,
+         host0_address=None,
+         host0_port=None,
+         process_id=None,
+         n_local_devices=None):
+    deployer = Deployer(
+        workdir=workdir,
+        jax_seed=jax_seed,
+        n_model_shards=n_model_shards,
+        n_processes=n_processes,
+        host0_address=host0_address,
+        host0_port=host0_port,
+        process_id=process_id,
+        n_local_devices=n_local_devices)
+
     dataset = datasets.load_dataset(
         "ydshieh/coco_dataset_script", "2017",
         data_dir=os.path.abspath(f'{data_dir}/raw'),
@@ -122,54 +118,80 @@ def main(data_dir='./mscoco_data',
 
     image_processor = AutoImageProcessor.from_pretrained(model_name_or_path)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-    model = FlaxVisionEncoderDecoderModel.from_pretrained(
-        model_name_or_path, from_pt=True)
-    gen_kwargs = {'max_length': max_tgt_len, 'num_beams': num_beams}
+    model = FlaxVisionEncoderDecoderModel._from_config(
+        config=AutoConfig.from_pretrained(model_name_or_path),
+        dtype=jnp.bfloat16, _do_init=False)
+    model.generation_config.update(
+        decoder_start_token_id=model.config.decoder_start_token_id,
+        max_length=max_tgt_len,
+        pad_token_id=tokenizer.pad_token_id,
+        num_beams=num_beams)
 
-    deployer = Deployer(jax_seed=jax_seed)
-
+    accumulate_grad_batches = deployer.get_accumulate_grad_batches(
+        global_batch_size=global_batch_size,
+        per_device_batch_size=per_device_batch_size)
     lr_schedule_fn = deployer.get_lr_schedule_fn(
         train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
         learning_rate=learning_rate,
-        schedule_type='linear',
+        schedule_type=lr_schedule_type,
         warmup_rate=warmup_rate)
-    optimizer = optax.adamw(
-        learning_rate=lr_schedule_fn, weight_decay=weight_decay)
-    if accumulate_grad_batches > 1:
-        optimizer = optax.MultiSteps(
-            optimizer, every_k_schedule=accumulate_grad_batches)
+    optimizer = optax.MultiSteps(optax.chain(
+        optax.clip_by_global_norm(grad_norm_clip),
+        optax.adamw(learning_rate=lr_schedule_fn, weight_decay=weight_decay)
+    ), every_k_schedule=accumulate_grad_batches)
 
+    ckpt, info = deployer.load_last_ckpt(
+        optimizer=optimizer, float_dtype=jnp.float32)
+    if ckpt is None:
+        ckpt, info = deployer.load_ckpt(
+            ckpt_dir=init_ckpt_dir, update_rng=False, float_dtype=jnp.float32)
+
+    params_sharding_rules = deployer.get_sharding_rules(
+        params_shape_or_params=ckpt['params'])
+    if params_sharding_rules is not None:
+        deployer.log_info(
+            info='\n'.join([str(t) for t in params_sharding_rules]),
+            title='Sharding rules')
+
+    collate_fn_kwargs = {
+        'image_processor': image_processor,
+        'tokenizer': tokenizer,
+        'decoder_start_token_id': model.config.decoder_start_token_id,
+        'max_tgt_len': max_tgt_len,
+        'image_path_key': image_path_key,
+        'text_key': text_key
+    }
     trainer = Trainer(
         deployer=deployer,
-        collate_fn=partial(
-            collate_fn,
-            image_processor=image_processor,
-            tokenizer=tokenizer,
-            decoder_start_token_id=model.config.decoder_start_token_id,
-            max_tgt_len=max_tgt_len,
-            image_path_key=image_path_key,
-            text_key=text_key),
+        collate_fn=partial(collate_fn, **collate_fn_kwargs),
         apply_fn=model,
         loss_fn=loss_fn,
-        params=model.params,
+        params=ckpt['params'],
+        opt_state=ckpt['opt_state'],
+        last_ckpt_info=info,
         optimizer=optimizer,
-        lr_schedule_fn=lr_schedule_fn)
+        lr_schedule_fn=lr_schedule_fn,
+        accumulate_grad_batches=accumulate_grad_batches,
+        params_sharding_rules=params_sharding_rules)
 
-    predictor = trainer.get_default_predictor(
-        pred_fn=partial(pred_fn, model=model, gen_kwargs=gen_kwargs),
-        output_fn=partial(output_fn, tokenizer=tokenizer))
+    predictor = Predictor(
+        deployer=deployer,
+        collate_fn=partial(collate_fn, **collate_fn_kwargs),
+        pred_fn=partial(pred_fn, model=model),
+        output_fn=partial(output_fn, tokenizer=tokenizer),
+        params_sharding_rules=params_sharding_rules)
 
     trainer.fit(
         train_examples=dataset['train'],
         per_device_batch_size=per_device_batch_size,
         n_epochs=n_epochs,
         eval_examples=dataset['validation'],
-        eval_per_device_batch_size=eval_per_device_batch_size,
-        eval_loss=True,
         eval_predictor=predictor,
-        eval_metric_fn=partial(eval_rouge, text_key=text_key))
+        eval_metric_fn=partial(eval_rouge, text_key=text_key),
+        save_last_ckpt=False,
+        save_argmax_ckpt_by_metrics=['rougeL'])
 
 
 if __name__ == '__main__':
