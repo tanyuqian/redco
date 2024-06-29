@@ -25,6 +25,7 @@ from flax.training.common_utils import shard_prng_key
 from flax.core.frozen_dict import freeze
 from orbax.checkpoint.utils import \
     fully_replicated_host_local_array_to_global_array
+from orbax.checkpoint.multihost.utils import sync_global_processes
 
 from .utils import train_step, eval_step
 
@@ -170,6 +171,10 @@ class Trainer:
                 train_rng = jax.random.split(
                     train_rng, num=jax.process_count())[jax.process_index()]
                 train_rng = shard_prng_key(train_rng)
+            sync_global_processes(
+                f'TRAINING ({desc})',
+                processes=set(range(jax.process_count())),
+                timeout=1800)
             self._state, metrics = self._deployer.run_model_step(
                 step_fn=self._p_train_step,
                 input_args=(train_rng, self._state, batch))

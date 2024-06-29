@@ -13,7 +13,6 @@
 #  limitations under the License.
 
 from functools import partial
-import numpy as np
 import jax
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
@@ -113,12 +112,10 @@ class Predictor:
             batch_preds_with_idxes = self._deployer.run_model_step(
                 step_fn=self._p_pred_step,
                 input_args=(pred_rng, params, batch))
-
             batch_preds = process_batch_preds(
                 batch_preds_with_idxes=batch_preds_with_idxes, mesh=self.mesh)
-            batch_preds = jax.tree.map(np.asarray, batch_preds)
-
             batch_preds = self._output_fn(batch_preds)
+
             assert isinstance(batch_preds, list) and \
                    len(batch_preds) == global_micro_batch_size
             preds.extend(batch_preds)
