@@ -162,6 +162,10 @@ class Trainer:
             is_train=True,
             accumulate_grad_batches=self._accumulate_grad_batches)
 
+        sync_global_processes(
+            f'TRAINING ({desc})',
+            processes=set(range(jax.process_count())),
+            timeout=1800)
         for batch in data_batches:
             if self._p_train_step is None:
                 self.setup_running_step(dummy_batch=batch)
@@ -171,10 +175,6 @@ class Trainer:
                 train_rng = jax.random.split(
                     train_rng, num=jax.process_count())[jax.process_index()]
                 train_rng = shard_prng_key(train_rng)
-            sync_global_processes(
-                f'TRAINING ({desc})',
-                processes=set(range(jax.process_count())),
-                timeout=1800)
             self._state, metrics = self._deployer.run_model_step(
                 step_fn=self._p_train_step,
                 input_args=(train_rng, self._state, batch))
