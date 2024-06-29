@@ -25,7 +25,6 @@ from flax.training.common_utils import shard_prng_key
 from flax.core.frozen_dict import freeze
 from orbax.checkpoint.utils import \
     fully_replicated_host_local_array_to_global_array
-from orbax.checkpoint.multihost.utils import sync_global_processes
 
 from .utils import train_step, eval_step
 
@@ -162,10 +161,6 @@ class Trainer:
             is_train=True,
             accumulate_grad_batches=self._accumulate_grad_batches)
 
-        sync_global_processes(
-            f'TRAINING ({desc})',
-            processes=set(range(jax.process_count())),
-            timeout=1800)
         for batch in data_batches:
             if self._p_train_step is None:
                 self.setup_running_step(dummy_batch=batch)
