@@ -1,7 +1,6 @@
 from functools import partial
 import os
 import fire
-import tqdm
 from PIL import Image
 import numpy as np
 import multiprocessing
@@ -135,7 +134,7 @@ def main(data_dir='./mscoco_data',
         image_path_key=image_path_key)
     for split in dataset.keys():
         deployer.log_info(f'Convering {split} set images to pixel values...')
-        with multiprocessing.Pool(processes=n_processes) as pool:
+        with multiprocessing.Pool(processes=os.cpu_count()) as pool:
             dataset[split] = pool.map(process_image_fn, list(dataset[split]))
 
     accumulate_grad_batches = deployer.get_accumulate_grad_batches(
