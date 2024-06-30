@@ -1,8 +1,10 @@
-import os
 from functools import partial
+import os
 import fire
+import tqdm
 from PIL import Image
 import numpy as np
+import multiprocessing
 import jax.numpy as jnp
 import optax
 import datasets
@@ -15,20 +17,21 @@ import evaluate
 from redco import Deployer, Trainer, Predictor
 
 
+def process_example_image(example, image_processor, image_path_key):
+    pixel_values = image_processor(
+        [Image.open(example[image_path_key]).convert('RGB')],
+        return_tensors='np').pixel_values[0]
+    return {**example, 'pixel_values': pixel_values}
+
 def collate_fn(examples,
-               image_processor,
                tokenizer,
                decoder_start_token_id,
                max_tgt_len,
-               image_path_key='image_path',
                text_key='caption'):
     model_inputs = {
-        'pixel_values': image_processor([
-            Image.open(example[image_path_key]).convert('RGB')
-            for example in examples
-        ], return_tensors='np').pixel_values
+        'pixel_values': np.stack(
+            [example['pixel_values'] for example in examples], axis=0)
     }
-
     decoder_inputs = tokenizer(
         [example[text_key] for example in examples],
         max_length=max_tgt_len,
@@ -44,7 +47,6 @@ def collate_fn(examples,
     model_inputs['labels'] = labels
     for key in decoder_inputs:
         model_inputs[f'decoder_{key}'] = np.array(decoder_inputs[key])
-
     return model_inputs
 
 
@@ -110,12 +112,6 @@ def main(data_dir='./mscoco_data',
         process_id=process_id,
         n_local_devices=n_local_devices)
 
-    dataset = datasets.load_dataset(
-        "ydshieh/coco_dataset_script", "2017",
-        data_dir=os.path.abspath(f'{data_dir}/raw'),
-        cache_dir=f'{data_dir}/cache')
-    dataset = {key: list(dataset[key]) for key in dataset.keys()}
-
     image_processor = AutoImageProcessor.from_pretrained(model_name_or_path)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = FlaxVisionEncoderDecoderModel._from_config(
@@ -126,6 +122,21 @@ def main(data_dir='./mscoco_data',
         max_length=max_tgt_len,
         pad_token_id=tokenizer.pad_token_id,
         num_beams=num_beams)
+
+    deployer.log_info(f'Caching dataset into {data_dir}/cache ...')
+    dataset = datasets.load_dataset(
+        "ydshieh/coco_dataset_script", "2017",
+        data_dir=os.path.abspath(f'{data_dir}/raw'),
+        cache_dir=f'{data_dir}/cache')
+
+    process_image_fn = partial(
+        process_example_image,
+        image_processor=image_processor,
+        image_path_key=image_path_key)
+    for split in dataset.keys():
+        deployer.log_info(f'Convering {split} set images to pixel values...')
+        with multiprocessing.Pool(processes=n_processes) as pool:
+            dataset[split] = pool.map(process_image_fn, list(dataset[split]))
 
     accumulate_grad_batches = deployer.get_accumulate_grad_batches(
         global_batch_size=global_batch_size,
@@ -156,11 +167,9 @@ def main(data_dir='./mscoco_data',
             title='Sharding rules')
 
     collate_fn_kwargs = {
-        'image_processor': image_processor,
         'tokenizer': tokenizer,
         'decoder_start_token_id': model.config.decoder_start_token_id,
         'max_tgt_len': max_tgt_len,
-        'image_path_key': image_path_key,
         'text_key': text_key
     }
     trainer = Trainer(
