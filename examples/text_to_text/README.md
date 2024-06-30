@@ -11,7 +11,7 @@ It supports
 
 ```shell
 # Install RedCoast
-pip install redco==0.4.18
+pip install redco==0.4.19
 # Install nltk, rouge for evaluation
 pip install nltk rouge-score
 # Install torchvision/torch (cpu version) for loading PyTorch initializations
