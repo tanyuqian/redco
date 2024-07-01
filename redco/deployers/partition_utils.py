@@ -50,6 +50,8 @@ def _replacement_rules(rules):
 
 
 def set_partitions(in_dict, rules):
+    if rules is None:
+        return jax.tree.map(lambda _: P(), in_dict)
     replace = _replacement_rules(rules)
     initd = {k: _unmatched for k in flatten_dict(in_dict)}
     result = {k: replace(k, v) for k, v in initd.items()}
