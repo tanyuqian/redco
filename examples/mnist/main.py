@@ -100,11 +100,11 @@ def main(data_dir='./data/',
         }
 
     from flax.traverse_util import flatten_dict
-    for key, value in flatten_dict(params).items():
+    for key, value in flatten_dict(ckpt['params']).items():
         print(key, value.shape, value.dtype)
 
     params_sharding_rules = deployer.get_sharding_rules(
-        params_shape_or_params=params)
+        params_shape_or_params=ckpt['params'])
     if params_sharding_rules is not None:
         deployer.log_info(
             info='\n'.join([str(t) for t in params_sharding_rules]),
@@ -115,8 +115,8 @@ def main(data_dir='./data/',
         collate_fn=collate_fn,
         apply_fn=model.apply,
         loss_fn=loss_fn,
-        params=params,
-        opt_state=opt_state,
+        params=ckpt['params'],
+        opt_state=ckpt['opt_state'],
         last_ckpt_info=last_ckpt_info,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
