@@ -1,17 +1,3 @@
-#  Copyright 2021 Google LLC
-#  #
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#  #
-#      https://www.apache.org/licenses/LICENSE-2.0
-#  #
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
 from functools import partial
 import fire
 import jax
@@ -73,12 +59,10 @@ def eval_metric_fn(examples, preds):
 
 def main(data_dir='./data/',
          per_device_batch_size=64,
+         n_model_shards=1,
          n_epochs=20,
          learning_rate=1e-3,
          jax_seed=42):
-    # import wandb
-    # wandb.init(project='redco-mnist', name='11111')
-
     dataset = {
         'train': [{'image': t[0], 'label': t[1]} for t in list(
             MNIST(data_dir, train=True, download=True))][:10000],
@@ -90,8 +74,8 @@ def main(data_dir='./data/',
         jax_seed=jax_seed,
         workdir='./workdir',
         run_tensorboard=False,
-        run_wandb=False,
-        n_model_shards=2)
+        wandb_init_kwargs=None,
+        n_model_shards=n_model_shards)
 
     model = CNN()
     lr_schedule_fn = deployer.get_lr_schedule_fn(
@@ -105,50 +89,26 @@ def main(data_dir='./data/',
     optimizer = optax.adamw(learning_rate=lr_schedule_fn, weight_decay=0.01)
     optimizer = optax.MultiSteps(optimizer, every_k_schedule=2)
 
-    # optimizer = optax.chain(optax.clip(0.1), optimizer)
-
-    # dummy_batch = collate_fn([dataset['train'][0]])
-    # params_shape = jax.eval_shape(
-    #     partial(model.init, training=False),
-    #     jax.random.PRNGKey(0), dummy_batch['images'])['params']
-    # params_sharding_rules = deployer.get_sharding_rules(
-    #     params_shape_or_params=params_shape)
-
-    # optimizer = optax.multi_transform(
-    #     transforms={'trainable': optimizer, 'zero': optax.set_to_zero()},
-    #     param_labels=freeze(path_aware_map(lambda path, param: 'trainable' if path[-1] == 'kernel' else 'zero', params_shape)))
-
     ckpt, last_ckpt_info = deployer.load_last_ckpt(
         optimizer=optimizer,
-        # params_sharding_rules=params_sharding_rules,
         float_dtype=jnp.float32)
-    # ckpt['opt_state'] = ckpt['opt_state'][1]
-
     if ckpt is None:
         dummy_batch = collate_fn([dataset['train'][0]])
-        params = model.init(
-            deployer.gen_rng(), dummy_batch['images'], training=False)['params']
-        opt_state = None
-    else:
-        params = ckpt['params']
-        opt_state = ckpt['opt_state']
-
-    # jax.tree_util.tree_map(lambda x, y: print(x.dtype, y.dtype), opt_state, optimizer.init(params))
-    # exit()
-
+        ckpt = {
+            'params': model.init(deployer.gen_rng(), dummy_batch['images'], training=False)['params'],
+            'opt_state': None
+        }
 
     from flax.traverse_util import flatten_dict
     for key, value in flatten_dict(params).items():
         print(key, value.shape, value.dtype)
 
-    params_sharding_rules = deployer.get_sharding_rules(params_shape_or_params=params)
-
-    from jax.sharding import PartitionSpec
-    params_sharding_rules = [(key, PartitionSpec()) for key, _ in params_sharding_rules]
-    deployer.log_info(
-        info='\n'.join([str(t) for t in params_sharding_rules]),
-        title='Sharding rules')
-
+    params_sharding_rules = deployer.get_sharding_rules(
+        params_shape_or_params=params)
+    if params_sharding_rules is not None:
+        deployer.log_info(
+            info='\n'.join([str(t) for t in params_sharding_rules]),
+            title='Sharding rules')
 
     trainer = Trainer(
         deployer=deployer,
@@ -178,6 +138,7 @@ def main(data_dir='./data/',
         eval_loss=True,
         eval_predictor=predictor,
         eval_metric_fn=eval_metric_fn,
+        eval_sanity_check=True,
         save_every_ckpt=True,
         save_opt_states=True,
         save_float_dtype=jnp.float16,

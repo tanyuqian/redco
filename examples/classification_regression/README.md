@@ -1,39 +1,70 @@
-## Classification/Regression
+## Classification / Regression
 
-This example implements classification/regression with Redco. 
-It supports 
-* assigning a dataset from [datasets](https://github.com/huggingface/datasets) or customizing by yourself
-* assigning a classfication model from [transformers](https://github.com/huggingface/transformers) 
-* multi-host running
+This example implements classification tasks language models, supporting sequence-classification models from [transformers](https://github.com/huggingface/transformers) (`FacebookAI/roberta-large` by default)
 
 ### Requirement
 
-Install Redco
+
 ```shell
-pip install redco==0.4.16
+# Install RedCoast
+pip install redco==0.4.19
+# Install torchvision/torch (cpu version)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
 
 ### Usage
 
+*Commands below are tested on 8 x 80Gb H100 machines. You may want to adjust some numbers based on your hardware.*
+
+#### [For Multi-Host] Prepare initialization
+In multi-host environments, HuggingFace's FlaxModel.init_weights() function cannot utilize the CPU backend to load the model into CPU memory before sharding it to GPU/TPUs. Therefore, it is necessary to prepare a JAX format checkpoint in advance for multi-host execution,
+e.g.,
+```
+python save_init_ckpt.py --model_name_or_path FacebookAI/roberta-large
+```
+The prepared ckpt would be saved into `./roberta-large`.
+
+
+#### Data Parallel Only
+When `--n_model_shards=1`, it doesn't shard the model and runs data parallelism only, which usually applied on smaller models, e.g., GPT-2.
 ```shell
-python main.py \
-    --dataset_name sst2 \
-    --model_name_or_path roberta-large \
-    --n_model_shards 2
+XLA_PYTHON_CLIENT_MEM_FRACTION=.90 python main.py
 ```
-* `--n_model_shards`: number of pieces to split your large model, 1 by default (pure data parallelism). 
+Regarding `XLA_PYTHON_CLIENT_MEM_FRACTION`, see [here](https://jax.readthedocs.io/en/latest/gpu_memory_allocation.html) for more details about Jax's GPU memory preallocation.
 
-See `def main(...)` in [glue_main.py](glue_main.py) for all the tunable arguments. 
-
-
-#### For Multi-host Envs
+#### Multi-GPU Model Parallel
+This code supports tensor parallel to accommodate large diffusion models:
+```shell
+XLA_PYTHON_CLIENT_MEM_FRACTION=.90 python main.py --n_model_shards 8 
 ```
-python glue_main.py \
-    --n_processes 2 \
-    --host0_address 192.168.0.1 \ 
-    --process_id 1 \
-...
+
+See `def main(...)` in [main.py](main.py) for all the tunable arguments. 
+
+#### Multi-Node Running (SLURM)
+
+Here is an example sbatch script under SLURM, running this code on `N` nodes.
 ```
-* `--n_processes`: number of hosts.
-* `--host0_address`: the ip of host 0.
-* `--process_id`: id of the current host (should vary across all hosts).
+#!/bin/bash
+#SBATCH --job-name=stable-diffusion
+#SBATCH --partition=xxx
+#SBATCH --nodes=N
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=100
+#SBATCH --gres=gpu:8
+#SBATCH --mem=1000G
+#SBATCH --output=slurm.out
+#SBATCH --error=slurm.err
+
+module load cuda/12.3 cuDNN/9.1 nvhpc/24.3
+
+nodes_array=($(scontrol show hostnames "$SLURM_JOB_NODELIST"))
+head_node=${nodes_array[0]}
+master_addr=$(srun --nodes=1 --ntasks=1 -w "$head_node" hostname --ip-address)
+
+export XLA_PYTHON_CLIENT_MEM_FRACTION=.90
+# export XLA_PYTHON_CLIENT_PREALLOCATE=false
+
+srun python main.py --host0_address ${master_addr} --n_local_devices 8 
+```
+
+The sharding can go cross multiple hosts, e.g., `--n_model_shards 16` if one has 2 (or more) nodes. 
