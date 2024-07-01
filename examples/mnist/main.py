@@ -142,7 +142,8 @@ def main(data_dir='./data/',
         save_every_ckpt=True,
         save_opt_states=True,
         save_float_dtype=jnp.float16,
-        save_argmin_ckpt_by_metrics=['loss'])
+        save_argmin_ckpt_by_metrics=['loss'],
+        save_argmax_ckpt_by_metrics=['acc'])
 
 
 if __name__ == '__main__':
