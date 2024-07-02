@@ -54,7 +54,7 @@ def process_batch_preds(batch_preds_with_idxes, mesh):
     if mesh is None:
         batch_preds_with_idxes = unreplicate(batch_preds_with_idxes)
 
-    jax.tree.map(np.asarray, batch_preds_with_idxes)
+    batch_preds_with_idxes = jax.tree.map(np.asarray, batch_preds_with_idxes)
     preds = jax.tree.map(
         lambda t: t.reshape((-1,) + t.shape[2:]),
         batch_preds_with_idxes['raw_preds'])

@@ -14,67 +14,51 @@
 
 import jax
 import jax.numpy as jnp
-
-
-def global_norm(updates):
-    return jnp.sqrt(sum(jnp.sum(x * x) for x in jax.tree.leaves(updates)))
-
-
-def loss_and_grads(train_rng, state, batch, loss_fn):
-    def compute_loss(params):
-        return loss_fn(
-            train_rng=train_rng,
-            state=state,
-            params=params,
-            batch=batch,
-            is_training=True)
-
-    grad_fn = jax.value_and_grad(compute_loss)
-    return grad_fn(state.params)
+from jax.example_libraries.optimizers import l2_norm
 
 
 def train_step(train_rng, state, batch, loss_fn, lr_schedule_fn, mesh):
+    def loss_and_grads(batch_):
+        return jax.value_and_grad(
+            lambda params: loss_fn(
+                train_rng=train_rng,
+                state=state,
+                params=params,
+                batch=batch_,
+                is_training=True)
+        )(state.params)
+
     if mesh is None:
-        loss, grads = loss_and_grads(
-            train_rng=train_rng, state=state, batch=batch, loss_fn=loss_fn)
-        grads = jax.lax.pmean(grads, 'batch')
+        loss, grads = loss_and_grads(batch)
+        grads = jax.lax.pmean(grads, axis_name='dp')
     else:
-        loss, grads = jax.vmap(lambda b: loss_and_grads(
-            train_rng=train_rng, state=state, batch=b, loss_fn=loss_fn))(batch)
+        loss, grads = jax.vmap(loss_and_grads)(batch)
         loss = jnp.mean(loss)
         grads = jax.tree.map(lambda x: jnp.mean(x, axis=0), grads)
 
     new_state = state.apply_gradients(grads=grads)
 
-    metrics = {
-        'loss': loss, 'step': state.step, 'grad_norm': global_norm(grads)
-    }
+    metrics = {'loss': loss, 'step': state.step, 'grad_norm': l2_norm(grads)}
     if lr_schedule_fn is not None:
         metrics['lr'] = lr_schedule_fn(state.step)
-
     if mesh is None:
-        metrics = jax.lax.pmean(metrics, axis_name='batch')
+        metrics = jax.lax.pmean(metrics, axis_name='dp')
 
     return new_state, metrics
 
 
 def eval_step(state, batch, loss_fn, mesh):
-    if mesh is None:
-        loss = loss_fn(
+    def loss_fn_batch(batch_):
+        return loss_fn(
             train_rng=jax.random.PRNGKey(0),
             state=state,
             params=state.params,
-            batch=batch,
+            batch=batch_,
             is_training=False)
-        loss = jax.lax.pmean(loss, axis_name='batch')
+
+    if mesh is None:
+        loss = jax.lax.pmean(loss_fn_batch(batch), axis_name='dp')
     else:
-        loss = jax.vmap(
-            lambda b: loss_fn(
-                train_rng=jax.random.PRNGKey(0),
-                state=state,
-                params=state.params,
-                batch=b,
-                is_training=False))(batch)
-        loss = jnp.mean(loss)
+        loss = jnp.mean(jax.vmap(loss_fn_batch)(batch))
 
     return {'loss': loss}

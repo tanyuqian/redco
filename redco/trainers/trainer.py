@@ -136,8 +136,8 @@ class Trainer:
             eval_step, loss_fn=self._loss_fn, mesh=self.mesh)
 
         if self.mesh is None:
-            self._p_train_step = jax.pmap(train_step_fn, axis_name='batch')
-            self._p_eval_step = jax.pmap(eval_step_fn, axis_name='batch')
+            self._p_train_step = jax.pmap(train_step_fn, axis_name='dp')
+            self._p_eval_step = jax.pmap(eval_step_fn, axis_name='dp')
         else:
             data_spec = jax.tree.map(lambda x: P('dp'), dummy_batch)
             self._p_train_step = pjit(
