@@ -48,7 +48,7 @@ class Predictor:
         else:
             self._output_fn = output_fn
 
-    def setup_running_step(self, dummy_batch, params, params_sharding_rules):
+    def setup_running_step(self, dummy_batch, params):
         pred_step_fn = partial(pred_step, pred_fn=self._pred_fn, mesh=self.mesh)
 
         if self.mesh is None:
@@ -57,7 +57,7 @@ class Predictor:
             data_spec = jax.tree.map(lambda x: P('dp'), dummy_batch)
             params_spec = self._deployer.get_params_spec(
                 params_shape_or_params=params,
-                params_sharding_rules=params_sharding_rules)
+                params_sharding_rules=self._params_sharding_rules)
             self._p_pred_step = pjit(
                 pred_step_fn,
                 in_shardings=(None, params_spec, data_spec),
@@ -98,10 +98,7 @@ class Predictor:
         preds = []
         for batch in data_batches:
             if self._p_pred_step is None:
-                self.setup_running_step(
-                    dummy_batch=batch,
-                    params=params,
-                    params_sharding_rules=self._params_sharding_rules)
+                self.setup_running_step(dummy_batch=batch, params=params)
 
             pred_rng = self._deployer.gen_rng()
             if self.mesh is None:

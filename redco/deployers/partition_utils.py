@@ -77,7 +77,7 @@ def get_params_spec(params_shape_or_params, params_sharding_rules):
         lambda params_sharding_rules_, params_: set_partitions(
             params_, rules=params_sharding_rules_),
         params_sharding_rules, unfreeze(params_shape_or_params),
-        is_leaf=lambda x: isinstance(x, list))
+        is_leaf=lambda x: isinstance(x, list) or x is None)
 
     return freeze(params_spec)
 
