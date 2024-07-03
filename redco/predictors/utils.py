@@ -18,36 +18,34 @@ from flax.jax_utils import unreplicate
 
 
 def add_idxes(examples):
-    assert all(['__idx__' not in example for example in examples])
-    return [{**example, '__idx__': idx} for idx, example in enumerate(examples)]
+    return [
+        {'example': example, 'idx': idx}
+        for idx, example in enumerate(examples)
+    ]
 
 
 def collate_fn_wrapper(examples, collate_fn):
-    idxes = [example.pop('__idx__') for example in examples]
-    return {**collate_fn(examples), '__idx__': np.array(idxes)}
+    return {
+        'batch': collate_fn([example['example'] for example in examples]),
+        'idxes': np.array([example['idx'] for example in examples])
+    }
 
 
 def pred_fn_wrapper(pred_rng, params, batch, pred_fn):
-    idxes = batch.pop('__idx__')
     return {
-        'raw_preds': pred_fn(pred_rng=pred_rng, params=params, batch=batch),
-        '__idx__': idxes
+        'preds': pred_fn(
+            pred_rng=pred_rng, params=params, batch=batch['batch']),
+        'idxes': batch['idxes']
     }
 
 
 def pred_step(pred_rng, params, batch, pred_fn, mesh):
     if mesh is None:
         preds = pred_fn(pred_rng=pred_rng, params=params, batch=batch)
-        return jax.lax.all_gather(preds, axis_name='batch')
+        return jax.lax.all_gather(preds, axis_name='dp')
     else:
         return jax.vmap(lambda b: pred_fn(
             pred_rng=pred_rng, params=params, batch=b))(batch)
-
-
-def default_output_fn(preds):
-    batch_size = jax.tree.leaves(preds)[0].shape[0]
-    assert jax.tree.all(jax.tree.map(lambda x: x.shape[0] == batch_size, preds))
-    return [jax.tree.map(lambda x: x[i], preds) for i in range(batch_size)]
 
 
 def process_batch_preds(batch_preds_with_idxes, mesh):
@@ -57,7 +55,13 @@ def process_batch_preds(batch_preds_with_idxes, mesh):
     batch_preds_with_idxes = jax.tree.map(np.asarray, batch_preds_with_idxes)
     preds = jax.tree.map(
         lambda t: t.reshape((-1,) + t.shape[2:]),
-        batch_preds_with_idxes['raw_preds'])
-    idxes_argsort = np.argsort(batch_preds_with_idxes['__idx__'].reshape(-1))
+        batch_preds_with_idxes['preds'])
+    idxes_argsort = np.argsort(batch_preds_with_idxes['idxes'].reshape(-1))
 
     return jax.tree.map(lambda t: t[idxes_argsort], preds)
+
+
+def default_output_fn(preds):
+    batch_size = jax.tree.leaves(preds)[0].shape[0]
+    assert jax.tree.all(jax.tree.map(lambda x: x.shape[0] == batch_size, preds))
+    return [jax.tree.map(lambda x: x[i], preds) for i in range(batch_size)]

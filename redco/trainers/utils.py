@@ -48,7 +48,7 @@ def train_step(train_rng, state, batch, loss_fn, lr_schedule_fn, mesh):
 
 
 def eval_step(state, batch, loss_fn, mesh):
-    def loss_fn_batch(batch_):
+    def get_loss(batch_):
         return loss_fn(
             train_rng=jax.random.PRNGKey(0),
             state=state,
@@ -57,8 +57,8 @@ def eval_step(state, batch, loss_fn, mesh):
             is_training=False)
 
     if mesh is None:
-        loss = jax.lax.pmean(loss_fn_batch(batch), axis_name='dp')
+        loss = jax.lax.pmean(get_loss(batch), axis_name='dp')
     else:
-        loss = jnp.mean(jax.vmap(loss_fn_batch)(batch))
+        loss = jnp.mean(jax.vmap(get_loss)(batch))
 
     return {'loss': loss}

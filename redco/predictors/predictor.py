@@ -52,7 +52,7 @@ class Predictor:
         pred_step_fn = partial(pred_step, pred_fn=self._pred_fn, mesh=self.mesh)
 
         if self.mesh is None:
-            self._p_pred_step = jax.pmap(pred_step_fn, axis_name='batch')
+            self._p_pred_step = jax.pmap(pred_step_fn, axis_name='dp')
         else:
             data_spec = jax.tree.map(lambda x: P('dp'), dummy_batch)
             params_spec = self._deployer.get_params_spec(
