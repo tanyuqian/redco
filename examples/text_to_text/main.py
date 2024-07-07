@@ -125,6 +125,7 @@ def main(dataset_name='EdinburghNLP/xsum',
     accumulate_grad_batches = deployer.get_accumulate_grad_batches(
         global_batch_size=global_batch_size,
         per_device_batch_size=per_device_batch_size)
+    deployer.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
     lr_schedule_fn = deployer.get_lr_schedule_fn(
         train_size=len(dataset['train']),
         per_device_batch_size=per_device_batch_size,

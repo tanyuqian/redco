@@ -1,5 +1,7 @@
 ## Meta Learning (MAML)
 
+This examples implements MAML algorithm for few-shot learning on `omniglot` dataset.
+
 ### Requirement
 
 Install `learn2learn` for few-shot datasets.
@@ -7,9 +9,9 @@ Install `learn2learn` for few-shot datasets.
 pip install learn2learn
 ```
 
-Install Redco
+Install RedCoast
 ```shell
-pip install redco==0.4.11
+pip install redco==0.4.19
 ```
 
 ### Use

@@ -1,17 +1,3 @@
-#  Copyright 2021 Google LLC
-#  #
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#  #
-#      https://www.apache.org/licenses/LICENSE-2.0
-#  #
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
 from functools import partial
 import fire
 import tqdm
@@ -20,7 +6,7 @@ import jax
 import flax.linen as nn
 import optax
 import learn2learn as l2l
-from redco import Deployer, Trainer
+from redco import Deployer, Trainer, Predictor
 
 
 class CNN(nn.Module):
@@ -146,7 +132,7 @@ def main(dataset_name='omniglot',
          inner_learning_rate=0.5,
          inner_n_steps=1,
          jax_seed=42):
-    deployer = Deployer(jax_seed=jax_seed)
+    deployer = Deployer(jax_seed=jax_seed, n_model_shards=1)
 
     taskset = l2l.vision.benchmarks.get_tasksets(
         name=dataset_name,
@@ -161,6 +147,12 @@ def main(dataset_name='omniglot',
     params = model.init(deployer.gen_rng(), dummy_inputs)['params']
     optimizer = optax.adamw(learning_rate=learning_rate)
 
+    params_sharding_rules = deployer.get_sharding_rules(params)
+    if params_sharding_rules is not None:
+        deployer.log_info(
+            info='\n'.join([str(t) for t in params_sharding_rules]),
+            title='Sharding rules')
+
     trainer = Trainer(
         deployer=deployer,
         collate_fn=collate_fn,
@@ -171,14 +163,18 @@ def main(dataset_name='omniglot',
             inner_learning_rate=inner_learning_rate,
             inner_n_steps=inner_n_steps),
         params=params,
-        optimizer=optimizer)
+        optimizer=optimizer,
+        params_sharding_rules=params_sharding_rules)
 
-    predictor = trainer.get_default_predictor(
+    predictor = Predictor(
+        deployer=deployer,
+        collate_fn=collate_fn,
         pred_fn=partial(
             pred_fn,
             model=model,
             inner_learning_rate=inner_learning_rate,
-            inner_n_steps=inner_n_steps))
+            inner_n_steps=inner_n_steps),
+        params_sharding_rules=params_sharding_rules)
 
     eval_examples = [
         preprocess(taskset.validation.sample())

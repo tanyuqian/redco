@@ -109,7 +109,6 @@ class Deployer:
             per_device_batch_size=per_device_batch_size)
         assert global_batch_size % global_micro_batch_size == 0
         accumulate_grad_batches = global_batch_size // global_micro_batch_size
-        self.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
 
         return accumulate_grad_batches
 

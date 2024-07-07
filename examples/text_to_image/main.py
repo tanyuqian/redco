@@ -178,6 +178,7 @@ def main(dataset_name='lambdalabs/naruto-blip-captions',
     accumulate_grad_batches = deployer.get_accumulate_grad_batches(
         global_batch_size=global_batch_size,
         per_device_batch_size=per_device_batch_size)
+    deployer.log_info(accumulate_grad_batches, title='accumulate_grad_batches')
     optimizer = optax.MultiSteps(optax.chain(
         optax.clip_by_global_norm(grad_norm_clip),
         optax.adamw(learning_rate=learning_rate, weight_decay=weight_decay)
