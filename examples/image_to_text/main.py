@@ -22,6 +22,7 @@ def process_example_image(example, image_processor, image_path_key):
         return_tensors='np').pixel_values[0]
     return {**example, 'pixel_values': pixel_values}
 
+
 def collate_fn(examples,
                tokenizer,
                decoder_start_token_id,
@@ -176,8 +177,8 @@ def main(data_dir='./mscoco_data',
         collate_fn=partial(collate_fn, **collate_fn_kwargs),
         apply_fn=model,
         loss_fn=loss_fn,
-        params=ckpt['params'],
-        opt_state=ckpt['opt_state'],
+        params=ckpt.pop('params'),
+        opt_state=ckpt.pop('opt_state'),
         last_ckpt_info=info,
         optimizer=optimizer,
         lr_schedule_fn=lr_schedule_fn,
