@@ -268,7 +268,7 @@ class Deployer:
                   float_dtype=None,
                   load_params=True,
                   load_opt_state=True,
-                  update_rng=True):
+                  update_rng=False):
         ckpt_dir = os.path.abspath(ckpt_dir)
         self.log_info(f'Loading ckpt from {ckpt_dir} ...')
 
