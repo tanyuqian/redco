@@ -1,4 +1,5 @@
 from functools import partial
+import json
 import fire
 import numpy as np
 import jax.numpy as jnp
@@ -37,8 +38,8 @@ def main(dataset_name='tatsu-lab/alpaca',
          max_src_len=128,
          max_tgt_len=128,
          top_p=0.95,
-         n_model_shards=1,
-         per_device_batch_size=4,
+         n_model_shards=4,
+         per_device_batch_size=32,
          workdir='./workdir',
          jax_seed=42,
          n_processes=None,
