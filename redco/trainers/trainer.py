@@ -17,6 +17,7 @@ from functools import partial
 import json
 import numpy as np
 import jax
+import jax.numpy as jnp
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
 from flax.jax_utils import replicate, unreplicate
@@ -38,6 +39,7 @@ class Trainer:
                  params,
                  optimizer,
                  opt_state=None,
+                 compute_dtype=jnp.float32,
                  last_ckpt_info=None,
                  lr_schedule_fn=None,
                  accumulate_grad_batches=None,
@@ -47,6 +49,7 @@ class Trainer:
         self._apply_fn = apply_fn
         self._loss_fn = loss_fn
         self._optimizer = optimizer
+        self._compute_dtype = compute_dtype
         self._lr_schedule_fn = lr_schedule_fn
         self._accumulate_grad_batches = accumulate_grad_batches
         self._params_sharding_rules = params_sharding_rules
@@ -131,9 +134,13 @@ class Trainer:
             train_step,
             loss_fn=self._loss_fn,
             lr_schedule_fn=self._lr_schedule_fn,
-            mesh=self.mesh)
+            mesh=self.mesh,
+            compute_dtype=self._compute_dtype)
         eval_step_fn = partial(
-            eval_step, loss_fn=self._loss_fn, mesh=self.mesh)
+            eval_step,
+            loss_fn=self._loss_fn,
+            mesh=self.mesh,
+            compute_dtype=self._compute_dtype)
 
         if self.mesh is None:
             self._p_train_step = jax.pmap(train_step_fn, axis_name='dp')
