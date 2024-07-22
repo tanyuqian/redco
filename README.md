@@ -2,6 +2,10 @@
 
 **Red Coast** (redco) is a lightweight and user-friendly tool designed to automate distributed training and inference for large models while simplifying the ML pipeline development process without necessitating MLSys expertise from users.
 
+RedCoast supports *Large Models* + *Complex Algorithms*, in a *lightweight* and *user-friendly* manner: 
+* Large Models beyond Transformers, e.g, [Stable Diffusion](examples/text_to_image), etc.
+* Complex algorithms beyond cross entropy, e.g., [Meta Learning](examples/meta_learning), etc.
+
 Check out our [Tech Report](https://aclanthology.org/2024.naacl-demo.14/) for more details! 
 
 **RedCoast: A Lightweight Tool to Automate Distributed Training of LLMs on Any GPU/TPUs** \
@@ -11,11 +15,8 @@ NAACL 2024, Demo / MLSys Workshop @ NeurIPS 2023 \
 [[Twitter]](https://x.com/BowenTan8/status/1730240627068031295?s=20) 
 [[Slides]](https://drive.google.com/file/d/1MmBjxP5gInqhg0ydasby2a5UauLZFxQH/view) 
 [[Demo Video]](https://bowentan.bitcron.com/RedCoast_demo.webm) \
-<span style="color:red">(Best Demo Paper Runner Up @ NAACL 2024)</span>
+*Best Demo Paper Runner Up @ NAACL 2024*
 
-RedCoast supports *Large Models* + *Complex Algorithms*, in a *lightweight* and *user-friendly* manner: 
-* Large Models beyond Transformers, e.g, [Stable Diffusion](examples/text_to_image), etc.
-* Complex algorithms beyond cross entropy, e.g., [Meta Learning](examples/meta_learning), etc.
 
 ![](images/redco_coding.png)
 
