@@ -42,7 +42,7 @@ def train_step(train_rng,
         loss = jnp.mean(loss)
         grads = jax.tree.map(lambda x: jnp.mean(x, axis=0), grads)
 
-    new_state = state.apply_gradients(grads=jax.tree_map(
+    new_state = state.apply_gradients(grads=jax.tree.map(
         lambda grad, param: grad.astype(param.dtype), grads, state.params))
 
     metrics = {'loss': loss, 'step': state.step, 'grad_norm': l2_norm(grads)}
