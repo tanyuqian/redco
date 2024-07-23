@@ -113,9 +113,10 @@ def main(dataset_name='EdinburghNLP/xsum',
     }
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+    compute_dtype = jnp.bfloat16
     model = FlaxAutoModelForSeq2SeqLM.from_config(
         AutoConfig.from_pretrained(model_name_or_path),
-        dtype=jnp.bfloat16, _do_init=False)
+        dtype=compute_dtype, _do_init=False)
     model.generation_config.update(
         decoder_start_token_id=model.config.decoder_start_token_id,
         max_length=max_tgt_len,
@@ -168,6 +169,7 @@ def main(dataset_name='EdinburghNLP/xsum',
         opt_state=ckpt.pop('opt_state'),
         last_ckpt_info=info,
         optimizer=optimizer,
+        compute_dtype=compute_dtype,
         lr_schedule_fn=lr_schedule_fn,
         accumulate_grad_batches=accumulate_grad_batches,
         params_sharding_rules=params_sharding_rules)

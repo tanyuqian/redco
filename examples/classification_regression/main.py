@@ -103,9 +103,10 @@ def main(dataset_name='sst2',
     deployer.log_info(num_labels, title='num_labels')
 
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+    compute_dtype = jnp.bfloat16
     model = FlaxAutoModelForSequenceClassification.from_config(
         AutoConfig.from_pretrained(model_name_or_path, num_labels=num_labels),
-        dtype=jnp.bfloat16, _do_init=False)
+        dtype=compute_dtype, _do_init=False)
 
     accumulate_grad_batches = deployer.get_accumulate_grad_batches(
         global_batch_size=global_batch_size,
@@ -151,6 +152,7 @@ def main(dataset_name='sst2',
         opt_state=ckpt.pop('opt_state'),
         last_ckpt_info=info,
         optimizer=optimizer,
+        compute_dtype=compute_dtype,
         lr_schedule_fn=lr_schedule_fn,
         accumulate_grad_batches=accumulate_grad_batches,
         params_sharding_rules=params_sharding_rules)
