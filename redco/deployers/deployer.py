@@ -156,7 +156,7 @@ class Deployer:
                            n_epochs,
                            learning_rate,
                            schedule_type='linear',
-                           warmup_rate=0.,
+                           warmup_ratio=0.,
                            warmup_steps=None,
                            init_learning_rate=0.,
                            end_learning_rate=0.):
@@ -165,7 +165,7 @@ class Deployer:
         total_train_steps = n_epochs * (train_size // global_micro_batch_size)
 
         if warmup_steps is None:
-            warmup_steps = int(total_train_steps * warmup_rate)
+            warmup_steps = int(total_train_steps * warmup_ratio)
 
         return get_lr_schedule_fn(
             schedule_type=schedule_type,
