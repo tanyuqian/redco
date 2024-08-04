@@ -37,7 +37,7 @@ class Trainer:
         step: Current training step.
         workdir: Working directory for saving checkpoints and logs.
         mesh: Mesh used for distributed training.
-        state: Current training state.
+        state: A Flax TrainState instance as current training state.
     """
     def __init__(self,
                  deployer,
@@ -52,21 +52,22 @@ class Trainer:
                  lr_schedule_fn=None,
                  accumulate_grad_batches=None,
                  params_sharding_rules=None):
-        """Initializes the Trainer with initial parameters, etc..
+        """Initializes the Trainer with initial parameters, etc.
 
         Args:
-           deployer: A redco.Deployer instance supporting low-level operations.
-           collate_fn: A function used to collate data batches.
-           apply_fn: The function to apply the model.
-           loss_fn: The loss function to use for training.
-           params: Initial model parameters.
-           optimizer: The optimizer used for training.
-           opt_state: The initial state of the optimizer.
-           compute_dtype: The computation dtype for mixed-precision training.
-           last_ckpt_info: A dict assigning the beginning step and epoch.
-           lr_schedule_fn: (For logging) The learning rate schedule function.
-           accumulate_grad_batches: Gradient accumulation steps.
-           params_sharding_rules: Rules for sharding parameters across devices.
+            deployer: A redco.Deployer instance supporting low-level operations.
+            collate_fn: A function used to collate data batches.
+            apply_fn: The function to apply the model.
+            loss_fn: The loss function to use for training.
+            params: Initial model parameters.
+            optimizer: The optimizer used for training.
+            opt_state: (Optional) optimizer state (a flax.TrainState instance).
+            compute_dtype: (Optional) Computation dtype (for mixed-precision
+                training).
+            last_ckpt_info: (Optional) the beginning step and epoch (in a dict).
+            lr_schedule_fn: (Optional) The learning rate schedule function.
+            accumulate_grad_batches: (Optional) Gradient accumulation steps.
+            params_sharding_rules: (Optional) Rules for sharding parameters.
         """
         self._deployer = deployer
         self._collate_fn = collate_fn
@@ -101,14 +102,14 @@ class Trainer:
 
     def set_train_state(
             self, apply_fn, params, optimizer, step, opt_state=None):
-        """Sets/Reset the training state with given parameters and optimizer.
+        """Sets/Resets the training state with given parameters and optimizer.
 
         Args:
-           apply_fn: The function to apply the model.
-           params: Model parameters.
-           optimizer: The optimizer used for training.
-           step: The training step.
-           opt_state: The state of the optimizer. "None" for re-initializing.
+            apply_fn: The function to apply the model.
+            params: Model parameters.
+            optimizer: The optimizer used for training.
+            step: The training step.
+            opt_state: (Optional) The state of the optimizer.
         """
         self._deployer.log_info('Setting train_state ...')
         params = freeze(params)
@@ -201,7 +202,7 @@ class Trainer:
         Args:
             examples: Training examples in python list.
             per_device_batch_size: The batch size per device.
-            desc: Description for the training process in the progress bar.
+            desc: (Optional) Description in the progress bar.
         """
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
@@ -237,7 +238,7 @@ class Trainer:
         Args:
             examples: Evaluation examples in list.
             per_device_batch_size: The batch size per device.
-            desc: Description for the evaluation process in the progress bar.
+            desc: (Optional) Description in the progress bar.
 
         Returns:
             The average loss over the evaluation examples.
@@ -288,24 +289,25 @@ class Trainer:
         Args:
             train_examples: Training examples, can be a python list or a
                 function by epoch_idx (for assigning different examples in
-                sararate epochs/chunks),
+                separate epochs/chunks),
                 e.g., `train_examples=lambda epoch_idx: load_data(chunk_idx)`
             per_device_batch_size: The batch size per device.
             n_epochs: Number of epochs to train.
-            eval_examples: Evaluation examples.
-            eval_per_device_batch_size: The batch size for evaluation.
-            eval_loss: Whether to evaluate loss.
-            eval_predictor: A redco.Predictor for evaluation.
-            eval_metric_fn: Metric function for evaluation.
-            eval_sanity_check: Whether to run a sanity check before training.
-            save_every_ckpt: Whether to save a checkpoint after every epoch.
-            save_last_ckpt: Whether to save the last checkpoint.
-            save_argmin_ckpt_by_metrics: Metrics to save checkpoints based on
-                minimum values.
-            save_argmax_ckpt_by_metrics: Metrics to save checkpoints based on
-                maximum values.
-            save_opt_states: Whether to save optimizer states in checkpoints.
-            save_float_dtype: The data type for saving checkpoints.
+            eval_examples: (Optional) Evaluation examples.
+            eval_per_device_batch_size: (Optional) Batch size for evaluation
+            eval_loss: (Optional) Whether to evaluate loss.
+            eval_predictor: (Optional) A redco.Predictor for prediction.
+            eval_metric_fn: (Optional) Metric function for prediction.
+            eval_sanity_check: (Optional) if to run a sanity check for
+                evaluation & predict functions before training.
+            save_every_ckpt: (Optional) if to save a ckpt after every epoch.
+            save_last_ckpt: (Optional) Whether to save the last checkpoint.
+            save_argmin_ckpt_by_metrics: (Optional) Metrics to save checkpoints
+                based on minimum values.
+            save_argmax_ckpt_by_metrics: (Optional) Metrics to save checkpoints
+                based on maximum values.
+            save_opt_states: (Optional) of to save optimizer states in ckpts.
+            save_float_dtype: (Optional) The data type for saving checkpoints.
         """
         if eval_per_device_batch_size is None:
             eval_per_device_batch_size = per_device_batch_size
