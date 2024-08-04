@@ -31,6 +31,14 @@ from .utils import train_step, eval_step
 
 
 class Trainer:
+    """Trainer class managing distributed training process.
+
+    Attributes:
+        step: Current training step.
+        workdir: Working directory for saving checkpoints and logs.
+        mesh: Mesh used for distributed training.
+        state: Current training state.
+    """
     def __init__(self,
                  deployer,
                  collate_fn,
@@ -44,6 +52,22 @@ class Trainer:
                  lr_schedule_fn=None,
                  accumulate_grad_batches=None,
                  params_sharding_rules=None):
+        """Initializes the Trainer with initial parameters, etc..
+
+        Args:
+           deployer: A redco.Deployer instance supporting low-level operations.
+           collate_fn: A function used to collate data batches.
+           apply_fn: The function to apply the model.
+           loss_fn: The loss function to use for training.
+           params: Initial model parameters.
+           optimizer: The optimizer used for training.
+           opt_state: The initial state of the optimizer.
+           compute_dtype: The computation dtype for mixed-precision training.
+           last_ckpt_info: A dict assigning the beginning step and epoch.
+           lr_schedule_fn: (For logging) The learning rate schedule function.
+           accumulate_grad_batches: Gradient accumulation steps.
+           params_sharding_rules: Rules for sharding parameters across devices.
+        """
         self._deployer = deployer
         self._collate_fn = collate_fn
         self._apply_fn = apply_fn
@@ -77,6 +101,15 @@ class Trainer:
 
     def set_train_state(
             self, apply_fn, params, optimizer, step, opt_state=None):
+        """Sets/Reset the training state with given parameters and optimizer.
+
+        Args:
+           apply_fn: The function to apply the model.
+           params: Model parameters.
+           optimizer: The optimizer used for training.
+           step: The training step.
+           opt_state: The state of the optimizer. "None" for re-initializing.
+        """
         self._deployer.log_info('Setting train_state ...')
         params = freeze(params)
 
@@ -130,6 +163,11 @@ class Trainer:
                 step=None)
 
     def setup_running_step(self, dummy_batch):
+        """Sets up the running step functions for training and evaluation.
+
+        Args:
+            dummy_batch: A dummy batch of data for initializing step functions.
+        """
         train_step_fn = partial(
             train_step,
             loss_fn=self._loss_fn,
@@ -158,6 +196,13 @@ class Trainer:
                 out_shardings=None)
 
     def train(self, examples, per_device_batch_size, desc=None):
+        """Trains the model on the provided examples.
+
+        Args:
+            examples: Training examples in python list.
+            per_device_batch_size: The batch size per device.
+            desc: Description for the training process in the progress bar.
+        """
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
@@ -187,6 +232,16 @@ class Trainer:
             self._deployer.log_metrics(metrics=metrics, step=self.step)
 
     def eval_loss(self, examples, per_device_batch_size, desc=None):
+        """Evaluates the loss on the provided examples.
+
+        Args:
+            examples: Evaluation examples in list.
+            per_device_batch_size: The batch size per device.
+            desc: Description for the evaluation process in the progress bar.
+
+        Returns:
+            The average loss over the evaluation examples.
+        """
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
             per_device_batch_size=per_device_batch_size,
@@ -227,6 +282,31 @@ class Trainer:
             save_argmax_ckpt_by_metrics=None,
             save_opt_states=True,
             save_float_dtype=None):
+        """Fits the model on the training data for a given number of epochs,
+        optionally evaluating and saving checkpoints.
+
+        Args:
+            train_examples: Training examples, can be a python list or a
+                function by epoch_idx (for assigning different examples in
+                sararate epochs/chunks),
+                e.g., `train_examples=lambda epoch_idx: load_data(chunk_idx)`
+            per_device_batch_size: The batch size per device.
+            n_epochs: Number of epochs to train.
+            eval_examples: Evaluation examples.
+            eval_per_device_batch_size: The batch size for evaluation.
+            eval_loss: Whether to evaluate loss.
+            eval_predictor: A redco.Predictor for evaluation.
+            eval_metric_fn: Metric function for evaluation.
+            eval_sanity_check: Whether to run a sanity check before training.
+            save_every_ckpt: Whether to save a checkpoint after every epoch.
+            save_last_ckpt: Whether to save the last checkpoint.
+            save_argmin_ckpt_by_metrics: Metrics to save checkpoints based on
+                minimum values.
+            save_argmax_ckpt_by_metrics: Metrics to save checkpoints based on
+                maximum values.
+            save_opt_states: Whether to save optimizer states in checkpoints.
+            save_float_dtype: The data type for saving checkpoints.
+        """
         if eval_per_device_batch_size is None:
             eval_per_device_batch_size = per_device_batch_size
 
@@ -386,6 +466,14 @@ class Trainer:
                 self.save_ckpt(ckpt_name='last', **save_ckpt_kwargs)
 
     def save_ckpt(self, epoch_idx, ckpt_name, save_opt_state, float_dtype):
+        """Saves a checkpoint into `{self.workdir}/ckpts`.
+
+        Args:
+            epoch_idx: The current epoch index.
+            ckpt_name: The name of the checkpoint.
+            save_opt_state: Whether to save the optimizer state.
+            float_dtype: The data type for saving the checkpoint.
+        """
         if self.mesh is None:
             params = jax.tree.map(
                 fully_replicated_host_local_array_to_global_array,
@@ -417,6 +505,7 @@ class Trainer:
 
     @property
     def step(self):
+        """Returns the current training step."""
         if self.mesh is None:
             return unreplicate(self._state.step).item()
         else:
@@ -424,12 +513,15 @@ class Trainer:
 
     @property
     def workdir(self):
+        """Returns the working directory for saving checkpoints and logs."""
         return self._deployer.workdir
 
     @property
     def mesh(self):
+        """Returns the mesh used for distributed training."""
         return self._deployer.mesh
 
     @property
     def state(self):
+        """Returns the current training state."""
         return self._state
