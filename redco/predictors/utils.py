@@ -19,8 +19,7 @@ from flax.jax_utils import unreplicate
 
 def add_idxes(examples):
     return [
-        {'example': example, 'idx': idx}
-        for idx, example in enumerate(examples)
+        {'example': example, 'idx': idx} for idx, example in enumerate(examples)
     ]
 
 

@@ -56,9 +56,12 @@ class Trainer:
 
         Args:
             deployer: A redco.Deployer instance supporting low-level operations.
-            collate_fn: A function used to collate data batches.
-            apply_fn: The function to apply the model.
-            loss_fn: The loss function to use for training.
+            collate_fn: A function converting a data batch to model inputs,
+                e.g., tokenizing sentences into input_ids.
+            apply_fn: The function to apply the model. Can be used as
+                state.apply_fn in loss_fn.
+            loss_fn: The loss function converting model inputs to a scalar loss,
+                e.g., computing cross-entropy loss with an LM from input_ids.
             params: Initial model parameters.
             optimizer: The optimizer used for training.
             opt_state: (Optional) optimizer state (a flax.TrainState instance).
