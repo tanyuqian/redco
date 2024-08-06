@@ -32,6 +32,14 @@ DEFAULT_HOST0_PORT = 11111
 
 
 class Deployer:
+    """ Handles low-level operations to support Trainer and Predictor,
+        e.g., automatic data/model parallelism, distributed checkpointing,
+        data processing, logging, randomness controlling, etc.
+
+    Attributes:
+        workdir: Working directory for saving checkpoints and logs.
+        mesh: Mesh used for model sharding.
+    """
     def __init__(self,
                  jax_seed,
                  n_model_shards=1,
@@ -44,6 +52,21 @@ class Deployer:
                  n_local_devices=None,
                  run_tensorboard=False,
                  wandb_init_kwargs=None):
+        """ Initializes a Deployer.
+
+        Args:
+            jax_seed: Seed for random number generation.
+            n_model_shards: (Optional) Number of shards for running large model.
+            verbose: (Optional) Whether to enable verbose logging.
+            workdir:  (Optional) Directory for saving logs and checkpoints.
+            n_processes:  (Optional) For multi-host, number of processes/nodes.
+            host0_address:  (Optional) For multi-host, address of the host0.
+            host0_port: (Optional) For multi-host, port of the host0.
+            process_id: (Optional) For multi-host, index of the current process.
+            n_local_devices: (Optional) For multi-host, number of local devices.
+            run_tensorboard:  (Optional) Whether to enable TensorBoard logging.
+            wandb_init_kwargs: (Optional) wandb.init arguments if using wandb.
+        """
         if n_processes is None:
             if 'SLURM_JOB_NUM_NODES' in os.environ:
                 n_processes = int(os.environ['SLURM_JOB_NUM_NODES'])
@@ -92,6 +115,7 @@ class Deployer:
         self._checkpointer = ocp.PyTreeCheckpointer()
 
     def get_local_global_micro_batch_size(self, per_device_batch_size):
+        """Get local/global micro batch sizes based on per-device batch size."""
         if self._mesh is None:
             local_micro_batch_size = \
                 per_device_batch_size * jax.local_device_count()
@@ -105,6 +129,7 @@ class Deployer:
 
     def get_accumulate_grad_batches(
             self, global_batch_size, per_device_batch_size):
+        """Calculates the number of gradient accumulation batches."""
         _, global_micro_batch_size = self.get_local_global_micro_batch_size(
             per_device_batch_size=per_device_batch_size)
         assert global_batch_size % global_micro_batch_size == 0
@@ -121,6 +146,21 @@ class Deployer:
                                 desc,
                                 is_train=False,
                                 accumulate_grad_batches=None):
+        """Prepares model input batches from examples.
+
+        Args:
+            examples: List of input examples.
+            per_device_batch_size: Batch size per device.
+            collate_fn: Function to collate the examples.
+            shuffle: Whether to shuffle the examples.
+            shuffle_rng: PRNGKey for the randomness of shuffling.
+            desc: Description in the progress bar.
+            is_train: (Optional) Whether the data is for training.
+            accumulate_grad_batches: (Optional) gradient accumulation batches.
+
+        Returns:
+            A python generator of batched model inputs.
+        """
         local_micro_batch_size, global_micro_batch_size = \
             self.get_local_global_micro_batch_size(
                 per_device_batch_size=per_device_batch_size)
@@ -160,6 +200,22 @@ class Deployer:
                            warmup_steps=None,
                            init_learning_rate=0.,
                            end_learning_rate=0.):
+        """Creates a learning rate schedule function.
+
+        Args:
+            train_size: Number of training examples per epoch.
+            per_device_batch_size: Batch size per device.
+            n_epochs: Number of epochs.
+            learning_rate: Peak learning rate.
+            schedule_type: (Optional) Type of lr schedule, "linear" or "cosine".
+            warmup_ratio: (Optional) Ratio of lr warmup.
+            warmup_steps: (Optional) Number of warmup steps.
+            init_learning_rate: (Optional) Initial learning rate before warmup.
+            end_learning_rate: (Optional) End learning rate for the schedule.
+
+        Returns:
+            A lr schedule function, step (int) -> learning rate (float).
+        """
         _, global_micro_batch_size = self.get_local_global_micro_batch_size(
             per_device_batch_size=per_device_batch_size)
         total_train_steps = n_epochs * (train_size // global_micro_batch_size)
@@ -176,6 +232,7 @@ class Deployer:
             end_learning_rate=end_learning_rate)
 
     def get_sharding_rules(self, params_shape_or_params):
+        """Get sharding rules based on the parameter shapes."""
         if self._mesh is None:
             return None
         else:
@@ -185,25 +242,27 @@ class Deployer:
             return sharding_rules
 
     def get_params_spec(self, params_shape_or_params, params_sharding_rules):
+        """Generates parameter specs based on sharding rules."""
         return get_params_spec(
             params_shape_or_params=params_shape_or_params,
             params_sharding_rules=params_sharding_rules)
 
-    def get_opt_state_spec(self,
-                           params_shape_or_params,
-                           params_spec,
-                           optimizer):
+    def get_opt_state_spec(
+            self, params_shape_or_params, params_spec, optimizer):
+        """Get optimizer state specs"""
         return get_opt_state_spec(
             params_shape_or_params=params_shape_or_params,
             params_spec=params_spec,
             optimizer=optimizer)
 
     def shard_params(self, params, params_spec, desc='params'):
+        """Distributes parameters to all devices based on the provided specs."""
         self.log_info(info=f'Sharding {desc} ...')
         return shard_params(
             mesh=self._mesh, params=params, params_spec=params_spec)
 
     def run_model_step(self, step_fn, input_args):
+        """Executes a model step function with the provided inputs."""
         if self._mesh is None:
             return step_fn(*input_args)
         else:
@@ -211,10 +270,12 @@ class Deployer:
                 return step_fn(*input_args)
 
     def gen_rng(self):
+        """Get a new random number generator key and update the random state."""
         self._rng, new_rng = jax.random.split(self._rng)
         return new_rng
 
     def log_info(self, info, title=None, step=None):
+        """Logs a messages"""
         log_info(
             info=info,
             title=title,
@@ -223,6 +284,7 @@ class Deployer:
             step=step)
 
     def log_metrics(self, metrics, step):
+        """Logs metrics to TensorBoard and Weights and Biases (wandb)."""
         if self._summary_writer is not None:
             for metric_name, value in metrics.items():
                 self._summary_writer.scalar(metric_name, value, step=step)
@@ -231,6 +293,7 @@ class Deployer:
             self._wandb_log_fn(metrics, step)
 
     def save_outputs(self, outputs, desc, step):
+        """Saves model outputs to workdir."""
         if self._workdir is not None and jax.process_index() == 0:
             save_outputs(
                 workdir=self._workdir,
@@ -240,12 +303,18 @@ class Deployer:
                 logger=self._logger,
                 summary_writer=self._summary_writer)
 
-    def save_ckpt(self,
-                  ckpt_dir,
-                  params,
-                  opt_state=None,
-                  float_dtype=None,
-                  **kwargs):
+    def save_ckpt(
+            self, ckpt_dir, params, opt_state=None, float_dtype=None, **kwargs):
+        """Saves a checkpoint to the specified directory.
+
+        Args:
+            ckpt_dir: Directory to save the checkpoint.
+            params: Model parameters.
+            opt_state: (Optional) Optimizer state.
+            float_dtype: (Optional) Data type for floating point numbers.
+            **kwargs: (Optional) Additional information to be saved into
+                info.json, e.g., current training step, epoch index, etc.
+        """
         ckpt_dir = os.path.abspath(ckpt_dir)
         self.log_info(f'Saving ckpt to {ckpt_dir} ...')
         save_ckpt(
@@ -259,6 +328,7 @@ class Deployer:
         self.log_info(f'Ckpt saved into {ckpt_dir}')
 
     def load_params_shape(self, ckpt_dir):
+        """Loads the shape of the parameters from a checkpoint."""
         return load_params_shape(ckpt_dir=ckpt_dir)
 
     def load_ckpt(self,
@@ -269,6 +339,22 @@ class Deployer:
                   load_params=True,
                   load_opt_state=True,
                   update_rng=False):
+        """Loads a checkpoint from the specified directory.
+
+        Args:
+            ckpt_dir: Directory of the checkpoint.
+            params_sharding_rules: (Optional) Sharding rules for the parameters.
+            optimizer: (Optional) Optimizer for loading optimizer state.
+            float_dtype: (Optional) Data type for floating point numbers.
+            load_params: (Optional) Whether to load the parameters.
+            load_opt_state: (Optional) Whether to load the optimizer state.
+            update_rng: (Optional) if updating the random state of the deployer.
+
+        Returns:
+            A tuple with the loaded checkpoint (in a dict with "params" and
+            "opt_state") and additional information (in a dict, usually
+            including training steps, epoch_idx, and rng).
+        """
         ckpt_dir = os.path.abspath(ckpt_dir)
         self.log_info(f'Loading ckpt from {ckpt_dir} ...')
 
@@ -318,6 +404,9 @@ class Deployer:
                        load_params=True,
                        load_opt_state=True,
                        update_rng=True):
+        """Loads the last checkpoint from the work directory (self.workdir).
+        See load_ckpt() for the explanation of arguments.
+        """
         try:
             last_ckpt_name = open(
                 f'{self._workdir}/ckpts/last_ckpt.txt').read().strip()
@@ -338,8 +427,10 @@ class Deployer:
 
     @property
     def mesh(self):
+        """Returns the mesh for model sharding"""
         return self._mesh
 
     @property
     def workdir(self):
+        """Returns the work directory."""
         return self._workdir
