@@ -1,4 +1,4 @@
-![](images/redco_logo.png)
+![](docs/images/redco_banner.png)
 
 **Red Coast** (redco) is a lightweight and user-friendly tool designed to automate distributed training and inference for large models while simplifying the ML pipeline development process without necessitating MLSys expertise from users.
 
@@ -15,10 +15,11 @@ NAACL 2024, Demo / MLSys Workshop @ NeurIPS 2023 \
 [[Twitter]](https://x.com/BowenTan8/status/1730240627068031295?s=20) 
 [[Slides]](https://drive.google.com/file/d/1MmBjxP5gInqhg0ydasby2a5UauLZFxQH/view) 
 [[Demo Video]](https://bowentan.bitcron.com/RedCoast_demo.webm) \
+[[Documentation]](https://tanyuqian.github.io/redco) \
 *Best Demo Paper Runner Up @ NAACL 2024*
 
 
-![](images/redco_coding.png)
+![](docs/images/redco_coding.png)
 
 ### Installation
 
@@ -95,4 +96,4 @@ Go to [example/language_modeling](examples%2Flanguage_modeling) and [examples/te
 
 The name of this package is inspired by *Red Coast Base*, a key location in the story of Three-Body. From Red Coast Base, humanity broadcasts its first message into the vast universe. We thank Cixin Liu for such a masterpiece!
 
-![](images/red_coast.png)
+![](docs/images/red_coast.png)

@@ -56,23 +56,23 @@ class Trainer:
 
         Args:
             deployer (Deployer): A deployer supporting low-level operations.
-            collate_fn (Callable): A function converting a data batch to model
+            collate_fn (Callable): The function converting a data batch to model
                 inputs, e.g., tokenizing sentences into input_ids.
             apply_fn (Callable): The function to apply the model, such as
                 model.apply for Flax modules, or model itself for HuggingFace
                 models. It would be set as state.apply_fn, and used in loss_fn.
             loss_fn (Callable): The loss function converting model inputs to a
                 scalar loss, e.g., computing cross-entropy loss from input_ids.
-            params (PyTree): Initial model parameters.
-            optimizer (optax optimizer): The optimizer used for training.
-            opt_state: (PyTree, optional) optimizer state.
-            compute_dtype: (jax.numpy dtype, Optional) Computation dtype
-                independent to param dtypes. (for mixed-precision training)
-            last_ckpt_info: (dict, optional) the beginning step and epoch.
-            lr_schedule_fn: (Callable, optional) The learning rate schedule
+            params (dict): Initial model parameters.
+            optimizer (`optax.optimizer`): The optimizer used for training.
+            opt_state (dict): optimizer state.
+            compute_dtype (dtype): Computation dtype, e.g., `jnp.bfloat16`,
+                independent of param dtypes. (for mixed-precision training)
+            last_ckpt_info (dict): the beginning step and epoch.
+            lr_schedule_fn (Callable): The learning rate schedule
                 function converting step to learning rate.
-            accumulate_grad_batches: (int, optional) Gradient accumulation step.
-            params_sharding_rules: (list[tuple], optional) Sharding rules.
+            accumulate_grad_batches (int): Gradient accumulation step.
+            params_sharding_rules (list): Sharding rules.
         """
         self._deployer = deployer
         self._collate_fn = collate_fn
@@ -110,11 +110,11 @@ class Trainer:
         """Sets/Resets the training state with given parameters and optimizer.
 
         Args:
-            apply_fn: The function to apply the model.
-            params: Model parameters.
-            optimizer: The optimizer used for training.
-            step: The training step.
-            opt_state: (Optional) The state of the optimizer.
+            apply_fn (Callable): The function to apply the model.
+            params (dict): Model parameters.
+            optimizer (dict): The optimizer used for training.
+            step (int): The training step.
+            opt_state (dict): The state of the optimizer.
         """
         self._deployer.log_info('Setting train_state ...')
         params = freeze(params)
@@ -172,7 +172,7 @@ class Trainer:
         """Sets up the running step functions for training and evaluation.
 
         Args:
-            dummy_batch: A dummy batch of data for initializing step functions.
+            dummy_batch (PyTree): A dummy batch of data.
         """
         train_step_fn = partial(
             train_step,
@@ -205,9 +205,9 @@ class Trainer:
         """Trains the model on the provided examples.
 
         Args:
-            examples: Training examples in python list.
-            per_device_batch_size: The batch size per device.
-            desc: (Optional) Description in the progress bar.
+            examples (list): Training examples in python list.
+            per_device_batch_size (int): The batch size per device.
+            desc (str): Description in the progress bar.
         """
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
@@ -241,12 +241,12 @@ class Trainer:
         """Evaluates the loss on the provided examples.
 
         Args:
-            examples: Evaluation examples in list.
-            per_device_batch_size: The batch size per device.
-            desc: (Optional) Description in the progress bar.
+            examples (list): Evaluation examples in list.
+            per_device_batch_size (int): The batch size per device.
+            desc (str): Description in the progress bar.
 
         Returns:
-            The average loss over the evaluation examples.
+            (float): The average loss over the evaluation examples.
         """
         data_batches = self._deployer.get_model_input_batches(
             examples=examples,
@@ -292,27 +292,27 @@ class Trainer:
         optionally evaluating and saving checkpoints.
 
         Args:
-            train_examples: Training examples, can be a python list or a
-                function by epoch_idx (for assigning different examples in
-                separate epochs/chunks),
+            train_examples (list or Callable): Training examples, can be a
+                list or a function of epoch_idx (for assigning different
+                examples in separate epochs/chunks),
                 e.g., `train_examples=lambda epoch_idx: load_data(chunk_idx)`
-            per_device_batch_size: The batch size per device.
-            n_epochs: Number of epochs to train.
-            eval_examples: (Optional) Evaluation examples.
-            eval_per_device_batch_size: (Optional) Batch size for evaluation
-            eval_loss: (Optional) Whether to evaluate loss.
-            eval_predictor: (Optional) A redco.Predictor for prediction.
-            eval_metric_fn: (Optional) Metric function for prediction.
-            eval_sanity_check: (Optional) if to run a sanity check for
+            per_device_batch_size (int): The batch size per device.
+            n_epochs (int): Number of epochs to train.
+            eval_examples (list): Examples for evaluation and prediction.
+            eval_per_device_batch_size (int): Batch size for evaluation
+            eval_loss (bool): Whether to evaluate loss.
+            eval_predictor (`redco.Predictor`): Predicting on `eval_examples`.
+            eval_metric_fn (Callable): Metric function for prediction.
+            eval_sanity_check (bool): if to run a sanity check for
                 evaluation & predict functions before training.
-            save_every_ckpt: (Optional) if to save a ckpt after every epoch.
-            save_last_ckpt: (Optional) Whether to save the last checkpoint.
-            save_argmin_ckpt_by_metrics: (Optional) Metrics to save checkpoints
+            save_every_ckpt (bool): if to save a ckpt after every epoch.
+            save_last_ckpt (bool): Whether to save the last checkpoint.
+            save_argmin_ckpt_by_metrics (list[str]): Metrics to save checkpoints
                 based on minimum values.
-            save_argmax_ckpt_by_metrics: (Optional) Metrics to save checkpoints
+            save_argmax_ckpt_by_metrics (list[str]): Metrics to save checkpoints
                 based on maximum values.
-            save_opt_states: (Optional) of to save optimizer states in ckpts.
-            save_float_dtype: (Optional) The data type for saving checkpoints.
+            save_opt_states (bool): of to save optimizer states in ckpts.
+            save_float_dtype (bool): The data type for saving checkpoints.
         """
         if eval_per_device_batch_size is None:
             eval_per_device_batch_size = per_device_batch_size
@@ -476,10 +476,10 @@ class Trainer:
         """Saves a checkpoint into `{self.workdir}/ckpts`.
 
         Args:
-            epoch_idx: The current epoch index.
-            ckpt_name: The name of the checkpoint.
-            save_opt_state: Whether to save the optimizer state.
-            float_dtype: The data type for saving the checkpoint.
+            epoch_idx (int): The current epoch index.
+            ckpt_name (str): The name of the checkpoint.
+            save_opt_state (bool): Whether to save the optimizer state.
+            float_dtype (`jax.numpy.dtype`): Data type for saving float params.
         """
         if self.mesh is None:
             params = jax.tree.map(

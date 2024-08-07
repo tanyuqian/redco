@@ -1,0 +1,58 @@
+site_name: RedCoast
+repo_url: https://github.com/tanyuqian/redco
+site_url: https://tanyuqian.github.io/redco/
+
+
+nav:
+  - MNIST Example: mnist.md
+  - Documentation:
+    - Trainer: trainer.md
+    - Predictor: predictor.md
+    - Deployer: deployer.md
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: redco/
+  - search
+
+
+theme:
+  name: material
+  font:
+    text: Ubuntu
+    code: Ubuntu Mono
+  favicon: images/redco_logo.png
+  logo: images/redco_logo.png
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.instant
+    - navigation.top
+    - navigation.tracking
+    - toc.follow
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      primary: brown
+      scheme: black
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets
+  - toc:
+      permalink: true

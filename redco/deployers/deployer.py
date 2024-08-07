@@ -37,8 +37,8 @@ class Deployer:
         data processing, logging, randomness controlling, etc.
 
     Attributes:
-        workdir: Working directory for saving checkpoints and logs.
-        mesh: Mesh used for model sharding.
+        workdir (str): Working directory for saving checkpoints and logs.
+        mesh (`jax.sharding.Mesh`): Mesh used for model sharding.
     """
     def __init__(self,
                  jax_seed,
@@ -55,17 +55,17 @@ class Deployer:
         """ Initializes a Deployer.
 
         Args:
-            jax_seed: Seed for random number generation.
-            n_model_shards: (Optional) Number of shards for running large model.
-            verbose: (Optional) Whether to enable verbose logging.
-            workdir:  (Optional) Directory for saving logs and checkpoints.
-            n_processes:  (Optional) For multi-host, number of processes/nodes.
-            host0_address:  (Optional) For multi-host, address of the host0.
-            host0_port: (Optional) For multi-host, port of the host0.
-            process_id: (Optional) For multi-host, index of the current process.
-            n_local_devices: (Optional) For multi-host, number of local devices.
-            run_tensorboard:  (Optional) Whether to enable TensorBoard logging.
-            wandb_init_kwargs: (Optional) wandb.init arguments if using wandb.
+            jax_seed (`jax.numpy.Array`): Seed for random number generation.
+            n_model_shards (int): Number of shards for running large model.
+            verbose (bool): Whether to enable verbose logging.
+            workdir (str):  Directory for saving logs and checkpoints.
+            n_processes (int):  For multi-host, number of processes/nodes.
+            host0_address (str):  For multi-host, address of the host0.
+            host0_port (int): For multi-host, port of the host0.
+            process_id (int): For multi-host, index of the current process.
+            n_local_devices (int): For multi-host, number of local devices.
+            run_tensorboard (bool):  Whether to enable TensorBoard logging.
+            wandb_init_kwargs (dict): wandb.init arguments if using wandb.
         """
         if n_processes is None:
             if 'SLURM_JOB_NUM_NODES' in os.environ:
@@ -149,17 +149,17 @@ class Deployer:
         """Prepares model input batches from examples.
 
         Args:
-            examples: List of input examples.
-            per_device_batch_size: Batch size per device.
-            collate_fn: Function to collate the examples.
-            shuffle: Whether to shuffle the examples.
-            shuffle_rng: PRNGKey for the randomness of shuffling.
-            desc: Description in the progress bar.
-            is_train: (Optional) Whether the data is for training.
-            accumulate_grad_batches: (Optional) gradient accumulation batches.
+            examples (list): List of input examples.
+            per_device_batch_size (int): Batch size per device.
+            collate_fn (Callable): Function to collate the examples.
+            shuffle (bool): Whether to shuffle the examples.
+            shuffle_rng (`jax.numpy.Array`): RNG for randomness of shuffling.
+            desc (str): Description in the progress bar.
+            is_train (bool): Whether the data is for training.
+            accumulate_grad_batches (int): gradient accumulation batches.
 
         Returns:
-            A python generator of batched model inputs.
+            (generator): A python generator of batched model inputs.
         """
         local_micro_batch_size, global_micro_batch_size = \
             self.get_local_global_micro_batch_size(
@@ -203,18 +203,18 @@ class Deployer:
         """Creates a learning rate schedule function.
 
         Args:
-            train_size: Number of training examples per epoch.
-            per_device_batch_size: Batch size per device.
-            n_epochs: Number of epochs.
-            learning_rate: Peak learning rate.
-            schedule_type: (Optional) Type of lr schedule, "linear" or "cosine".
-            warmup_ratio: (Optional) Ratio of lr warmup.
-            warmup_steps: (Optional) Number of warmup steps.
-            init_learning_rate: (Optional) Initial learning rate before warmup.
-            end_learning_rate: (Optional) End learning rate for the schedule.
+            train_size (int): Number of training examples per epoch.
+            per_device_batch_size (int): Batch size per device.
+            n_epochs (int): Number of epochs.
+            learning_rate (float): Peak learning rate.
+            schedule_type (str): Type of lr schedule, "linear" or "cosine".
+            warmup_ratio (float): Ratio of lr warmup.
+            warmup_steps (int): Number of warmup steps.
+            init_learning_rate (float): Initial learning rate before warmup.
+            end_learning_rate (float): End learning rate for the schedule.
 
         Returns:
-            A lr schedule function, step (int) -> learning rate (float).
+            (Callable): A lr schedule function, step -> learning rate.
         """
         _, global_micro_batch_size = self.get_local_global_micro_batch_size(
             per_device_batch_size=per_device_batch_size)
@@ -308,11 +308,11 @@ class Deployer:
         """Saves a checkpoint to the specified directory.
 
         Args:
-            ckpt_dir: Directory to save the checkpoint.
-            params: Model parameters.
-            opt_state: (Optional) Optimizer state.
-            float_dtype: (Optional) Data type for floating point numbers.
-            **kwargs: (Optional) Additional information to be saved into
+            ckpt_dir (str): Directory to save the checkpoint.
+            params (dict): Model parameters.
+            opt_state (dict): Optimizer state.
+            float_dtype (`jax.numpy.dtype`): Dtype for floating point numbers.
+            **kwargs (dict): Additional information to be saved into
                 info.json, e.g., current training step, epoch index, etc.
         """
         ckpt_dir = os.path.abspath(ckpt_dir)
@@ -342,18 +342,18 @@ class Deployer:
         """Loads a checkpoint from the specified directory.
 
         Args:
-            ckpt_dir: Directory of the checkpoint.
-            params_sharding_rules: (Optional) Sharding rules for the parameters.
-            optimizer: (Optional) Optimizer for loading optimizer state.
-            float_dtype: (Optional) Data type for floating point numbers.
-            load_params: (Optional) Whether to load the parameters.
-            load_opt_state: (Optional) Whether to load the optimizer state.
-            update_rng: (Optional) if updating the random state of the deployer.
+            ckpt_dir (str): Directory of the checkpoint.
+            params_sharding_rules (list[tuple]): Sharding rules for parameters.
+            optimizer (`optax.optimizer`): Optimizer for loading opt_state.
+            float_dtype (`jax.numpy.dtype`): Dtype for floating point numbers.
+            load_params (bool): Whether to load the parameters.
+            load_opt_state (bool): Whether to load the optimizer state.
+            update_rng (bool): if updating the random state of the deployer.
 
         Returns:
-            A tuple with the loaded checkpoint (in a dict with "params" and
-            "opt_state") and additional information (in a dict, usually
-            including training steps, epoch_idx, and rng).
+            (tuple): A tuple with the loaded checkpoint (in a dict with
+                `"params"` and `"opt_state"`) and additional information (in a
+                dict, usually including `"steps"`, `"epoch_idx"`, and `"rng"`).
         """
         ckpt_dir = os.path.abspath(ckpt_dir)
         self.log_info(f'Loading ckpt from {ckpt_dir} ...')

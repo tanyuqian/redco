@@ -33,7 +33,7 @@ class Predictor:
     """Predictor class managing distributed inference process.
 
     Attributes:
-        mesh: Mesh used for distributed inference.
+        mesh (`jax.sharding.Mesh`): Mesh used for distributed inference.
     """
     def __init__(self,
                  deployer,
@@ -44,14 +44,14 @@ class Predictor:
         """Initializes a Predictor instance.
 
         Args:
-            deployer: A redco.Deployer instance supporting low-level operations.
-            collate_fn: A function converting a data batch to model inputs,
+            deployer (`redco.Deployer`): A deployer for low-level operations.
+            collate_fn (Callable): A function converting a data batch to model inputs,
                 e.g., tokenizing sentences into input_ids.
-            pred_fn: A function to produce model outputs with model inputs,
+            pred_fn (Callable): A function to produce model outputs with model inputs,
                 e.g., running beam search with a language model.
-            output_fn: (Optional) A function finalizing model outputs (on CPU),
+            output_fn (Callable): A function finalizing model outputs (on CPU),
                 e.g., decoding generated ids to text.
-            params_sharding_rules: (Optional) Rules for sharding parameters.
+            params_sharding_rules (list[tuple]): Rules for sharding parameters.
         """
         self._deployer = deployer
         self._collate_fn = partial(collate_fn_wrapper, collate_fn=collate_fn)
@@ -68,8 +68,8 @@ class Predictor:
         """Sets up the prediction step function for distributed inference.
 
         Args:
-            dummy_batch: A dummy data batch used to determine data shapes.
-            params_shape_or_params: The shape of params or the actual params.
+            dummy_batch (PyTree): A dummy batch used to determine data shapes.
+            params_shape_or_params (dict): The shape of params or actual params.
         """
         pred_step_fn = partial(pred_step, pred_fn=self._pred_fn, mesh=self.mesh)
 
@@ -95,15 +95,15 @@ class Predictor:
         """Runs distributed prediction on a list of examples.
 
         Args:
-            examples: A list of input examples for prediction.
-            per_device_batch_size: Batch size per device.
-            params: Model parameters in a dict/FrozenDict.
-            params_replicated: (Optional) if the params are already replicated.
-            params_sharded: (Optional) if the parameters are already sharded.
-            desc: (Optional) Description to show in the progress bar.
+            examples (list): Input examples for prediction.
+            per_device_batch_size (int): Batch size per device.
+            params (dict): Model parameters in a dict/FrozenDict.
+            params_replicated (bool): if the params are already replicated.
+            params_sharded (bool): if the parameters are already sharded.
+            desc (str): Description to show in the progress bar.
 
         Returns:
-            A list of predictions corresponding to the input examples.
+            (list): A list of predictions corresponding to the input examples.
         """
         raw_n_inputs = len(examples)
         _, global_micro_batch_size = \
