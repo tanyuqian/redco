@@ -13,7 +13,7 @@
       
       
       
-      <link rel="icon" href="red_coast.png">
+      <link rel="icon" href="images/redco_logo.png">
       <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.28">
     
     
@@ -71,11 +71,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#installation" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -88,7 +83,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="." title="RedCoast" class="md-header__button md-logo" aria-label="RedCoast" data-md-component="logo">
       
-  <img src="red_coast.png" alt="logo">
+  <img src="images/redco_logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -128,7 +123,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="brown" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3 3.19.09m3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95 2.06.05m-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31Z"/></svg>
@@ -210,19 +205,35 @@
         
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="." class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="mnist/" class="md-tabs__link">
         
   
     
   
-  Home
+  MNIST Example
 
       </a>
     </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="trainer/" class="md-tabs__link">
+          
+  
+  Documentation
+
+        </a>
+      </li>
+    
   
 
       
@@ -250,7 +261,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="." title="RedCoast" class="md-nav__button md-logo" aria-label="RedCoast" data-md-component="logo">
       
-  <img src="red_coast.png" alt="logo">
+  <img src="images/redco_logo.png" alt="logo">
 
     </a>
     RedCoast
@@ -274,122 +285,127 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Home
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="mnist/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Home
+    MNIST Example
   </span>
   
 
       </a>
-      
-        
+    </li>
+  
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+    
       
-        <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Installation
-    </span>
-  </a>
+      
   
-    <nav class="md-nav" aria-label="Installation">
-      <ul class="md-nav__list">
+  
+  
+  
+    
+    
+    
+      
+      
         
-          <li class="md-nav__item">
-  <a href="#install-redcoast" class="md-nav__link">
-    <span class="md-ellipsis">
-      Install RedCoast
-    </span>
-  </a>
-  
-</li>
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
         
-          <li class="md-nav__item">
-  <a href="#adjust-jax-to-gputpu-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      Adjust Jax to GPU/TPU version
-    </span>
-  </a>
-  
-</li>
         
-      </ul>
-    </nav>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      Examples
-    </span>
-  </a>
+  <span class="md-ellipsis">
+    Documentation
+  </span>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#exemplar-large-model-settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      Exemplar large model settings
-    </span>
-  </a>
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Documentation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      Reference
-    </span>
-  </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#acknowledgement" class="md-nav__link">
-    <span class="md-ellipsis">
-      Acknowledgement
-    </span>
-  </a>
   
-</li>
-      
-    </ul>
   
-</nav>
+    <li class="md-nav__item">
+      <a href="trainer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trainer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="predictor/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predictor
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="deployer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -413,83 +429,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Installation
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Installation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#install-redcoast" class="md-nav__link">
-    <span class="md-ellipsis">
-      Install RedCoast
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#adjust-jax-to-gputpu-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      Adjust Jax to GPU/TPU version
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      Examples
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#exemplar-large-model-settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      Exemplar large model settings
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      Reference
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#acknowledgement" class="md-nav__link">
-    <span class="md-ellipsis">
-      Acknowledgement
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -508,85 +447,14 @@
 
   <h1>Home</h1>
 
-<p><img alt="" src="images/redco_logo.png" /></p>
+<p><img alt="" src="images/redco_banner.png" /></p>
 <p><strong>Red Coast</strong> (redco) is a lightweight and user-friendly tool designed to automate distributed training and inference for large models while simplifying the ML pipeline development process without necessitating MLSys expertise from users.</p>
-<p>Check out our <a href="https://arxiv.org/pdf/2310.16355.pdf">Tech Report</a> for details! 
-Here is also a <a href="tutorials/quick.md">Quick Tutorial</a> for you to become an expert of distributed training with Redco in several minutes!</p>
+<p>RedCoast supports <em>Large Models</em> + <em>Complex Algorithms</em>, in a <em>lightweight</em> and <em>user-friendly</em> manner: </p>
 <ul>
-<li>Redco allows for the simple implementation of distributed training and inference, eliminating the need for additional coding efforts or complex configurations, but still exhibits efficiency comparable to the most advanced model parallel tools.</li>
-<li>Redco enables customization of arbitrary ML pipelines within three functions, eliminating repetitive ans boilerplate coding, such as multi-host related processing, etc. We demonstrate that this mechanism is widely applicable to various ML algorithms</li>
-<li>The backend of Redco is based on JAX, but users doesn't need to be JAX experts. Knowing <code>numpy</code> is good enough!</li>
+<li>Large Models beyond Transformers, e.g, <a href="https://github.com/tanyuqian/redco/examples/text_to_image">Stable Diffusion</a>, etc.</li>
+<li>Complex algorithms beyond cross entropy, e.g., <a href="https://github.com/tanyuqian/redco/examples/meta_learning">Meta Learning</a>, etc.</li>
 </ul>
-<p><img alt="" src="images/redco_coding.png" /></p>
-<h3 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h3>
-<h4 id="install-redcoast">Install RedCoast<a class="headerlink" href="#install-redcoast" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code>pip install redco
-</code></pre></div>
-<h4 id="adjust-jax-to-gputpu-version">Adjust Jax to GPU/TPU version<a class="headerlink" href="#adjust-jax-to-gputpu-version" title="Permanent link">&para;</a></h4>
-<p>The command above would automatically install cpu version of jax, so the version of Jax need to be adjusted based on your device. 
-For example, on GPUs,
-<div class="highlight"><pre><span></span><code># for cuda-12.x
-pip install --upgrade &quot;jax[cuda12]&quot;
-# for cuda-11.x
-pip install --upgrade jax[cuda11_pip] -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-</code></pre></div>
-If you are using TPU/CPU/AMD/Apple, see <a href="https://github.com/google/jax#installation">here</a> for corresponding installation commands.</p>
-<h3 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h3>
-<p>Examples across a set of paradigms can be found in <a href="examples/">examples/</a>, including</p>
-<ul>
-<li><a href="examples%2Fclassification_regression">Classification/regression (GLUE &amp; MNIST)</a></li>
-<li><a href="examples%2Ffaderated_learning">Faderated learning (FedAvg)</a></li>
-<li><a href="examples%2Fimage_to_text">Image to text (Image captioning)</a></li>
-<li><a href="examples%2Flanguage_modeling">Language modeling (Instruction Tuning of LLMs)</a></li>
-<li><a href="examples%2Fmeta_learning">Meta learning (MAML)</a></li>
-<li><a href="examples%2Freinforcement_learning">Reinforcement learning (PPO &amp; DDPG)</a></li>
-<li><a href="examples%2Ftext_to_image">Text to image (StableDiffusion)</a></li>
-<li><a href="examples%2Ftext_to_text">Text to text (Seq2seq)</a></li>
-</ul>
-<h3 id="exemplar-large-model-settings">Exemplar large model settings<a class="headerlink" href="#exemplar-large-model-settings" title="Permanent link">&para;</a></h3>
-<p>The table below shows runnable model LLM finetuning on different kinds of servers. Numbers inside the brackets are the maximum length in training. All the settings are with full precision (fp32) and Adam optimizer.</p>
-<table>
-<thead>
-<tr>
-<th>2 $\times$ 1080Ti <br/>(2 $\times$ 10G)</th>
-<th>4 $\times$ A100 <br/>(4 $\times$ 40G)</th>
-<th>2 $\times$ TPU-v4 <br/>(2 hosts $\times$ 4 chips $\times$ 32G)</th>
-<th>16 $\times$ TPU-v4 <br/>(16 hosts $\times$ 4 chips $\times$ 32G)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>BART-Large (1024)</td>
-<td>LLaMA-7B (1024)</td>
-<td>T5-XL-11B (512)</td>
-<td>OPT-66B (512)</td>
-</tr>
-<tr>
-<td>GPT2-Large (512)</td>
-<td>GPT-J-6B (1024)</td>
-<td>OPT-13B (1024)</td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<p>Go to <a href="examples%2Flanguage_modeling">example/language_modeling</a> and <a href="examples%2Ftext_to_text">examples/text_to_text</a> to try them out!</p>
-<h2 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h2>
-<p>We now have a <a href="https://arxiv.org/pdf/2310.16355.pdf">paper</a> you can cite for the Red Coast library:</p>
-<div class="highlight"><pre><span></span><code>RedCoast: A Lightweight Tool to Automate Distributed Training of LLMs on Any GPU/TPUs
-Bowen Tan, Yun Zhu, Lijuan Liu, Hongyi Wang, Yonghao Zhuang, Jindong Chen, Eric Xing, Zhiting Hu
-NAACL 2024, Demo
-Mlsys Workshop @ NeurIPS 2023
-
-@article{tan2023redco,
-  title={RedCoast: A Lightweight Tool to Automate Distributed Training of LLMs on Any GPU/TPUs},
-  author={Tan, Bowen and Zhu, Yun and Liu, Lijuan and Wang, Hongyi and Zhuang, Yonghao and Chen, Jindong and Xing, Eric and Hu, Zhiting},
-  journal={arXiv preprint arXiv:2310.16355},
-  year={2023}
-}
-</code></pre></div>
-<h2 id="acknowledgement">Acknowledgement<a class="headerlink" href="#acknowledgement" title="Permanent link">&para;</a></h2>
-<p>The name of this package is inspired by <em>Red Coast Base</em>, a key location in the story of Three-Body. From Red Coast Base, humanity broadcasts its first message into the vast universe. We thank Cixin Liu for such a masterpiece!</p>
-<p><img alt="" src="images/red_coast.png" /></p>
+<p>Check out our <a href="https://aclanthology.org/2024.naacl-demo.14/">Tech Report</a> for more details! </p>
 
 
 
