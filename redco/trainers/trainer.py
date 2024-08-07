@@ -34,10 +34,10 @@ class Trainer:
     """Trainer class managing distributed training process.
 
     Attributes:
-        step: Current training step.
-        workdir: Working directory for saving checkpoints and logs.
-        mesh: Mesh used for distributed training.
-        state: A Flax TrainState instance as current training state.
+        step (int): Current training step.
+        workdir (str): Working directory for saving checkpoints and logs.
+        mesh (jax Mesh): Mesh used for distributed training.
+        state (flax TrainState): Current training state.
     """
     def __init__(self,
                  deployer,
@@ -55,22 +55,24 @@ class Trainer:
         """Initializes the Trainer with initial parameters, etc.
 
         Args:
-            deployer: A redco.Deployer instance supporting low-level operations.
-            collate_fn: A function converting a data batch to model inputs,
-                e.g., tokenizing sentences into input_ids.
-            apply_fn: The function to apply the model. Can be used as
-                state.apply_fn in loss_fn.
-            loss_fn: The loss function converting model inputs to a scalar loss,
-                e.g., computing cross-entropy loss with an LM from input_ids.
-            params: Initial model parameters.
-            optimizer: The optimizer used for training.
-            opt_state: (Optional) optimizer state (a flax.TrainState instance).
-            compute_dtype: (Optional) Computation dtype (for mixed-precision
-                training).
-            last_ckpt_info: (Optional) the beginning step and epoch (in a dict).
-            lr_schedule_fn: (Optional) The learning rate schedule function.
-            accumulate_grad_batches: (Optional) Gradient accumulation steps.
-            params_sharding_rules: (Optional) Rules for sharding parameters.
+            deployer (Deployer): A deployer supporting low-level operations.
+            collate_fn (Callable): A function converting a data batch to model
+                inputs, e.g., tokenizing sentences into input_ids.
+            apply_fn (Callable): The function to apply the model, such as
+                model.apply for Flax modules, or model itself for HuggingFace
+                models. It would be set as state.apply_fn, and used in loss_fn.
+            loss_fn (Callable): The loss function converting model inputs to a
+                scalar loss, e.g., computing cross-entropy loss from input_ids.
+            params (PyTree): Initial model parameters.
+            optimizer (optax optimizer): The optimizer used for training.
+            opt_state: (PyTree, optional) optimizer state.
+            compute_dtype: (jax.numpy dtype, Optional) Computation dtype
+                independent to param dtypes. (for mixed-precision training)
+            last_ckpt_info: (dict, optional) the beginning step and epoch.
+            lr_schedule_fn: (Callable, optional) The learning rate schedule
+                function converting step to learning rate.
+            accumulate_grad_batches: (int, optional) Gradient accumulation step.
+            params_sharding_rules: (list[tuple], optional) Sharding rules.
         """
         self._deployer = deployer
         self._collate_fn = collate_fn
