@@ -14,7 +14,7 @@ NAACL 2024, Demo / MLSys Workshop @ NeurIPS 2023 \
 [[Paper]](https://aclanthology.org/2024.naacl-demo.14/) 
 [[Twitter]](https://x.com/BowenTan8/status/1730240627068031295?s=20) 
 [[Slides]](https://drive.google.com/file/d/1MmBjxP5gInqhg0ydasby2a5UauLZFxQH/view) 
-[[Demo Video]](https://bowentan.bitcron.com/RedCoast_demo.webm) \
+[[Demo Video]](https://bowentan.bitcron.com/RedCoast_demo.webm) 
 [[Documentation]](https://tanyuqian.github.io/redco) \
 *Best Demo Paper Runner Up @ NAACL 2024*
 
