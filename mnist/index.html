@@ -11,6 +11,8 @@
         <link rel="canonical" href="https://tanyuqian.github.io/redco/mnist/">
       
       
+        <link rel="prev" href="..">
+      
       
         <link rel="next" href="../trainer/">
       
@@ -212,6 +214,23 @@
         
   
   
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+    
+  
+  RedCoast
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
     
   
   
@@ -289,6 +308,26 @@
     </div>
   
   <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RedCoast
+  </span>
+  
+
+      </a>
+    </li>
+  
+
     
       
       
@@ -389,10 +428,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -403,8 +442,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Documentation
           </label>
@@ -549,25 +588,27 @@
   <h1>MNIST Example</h1>
 
 <h2 id="mnist">MNIST<a class="headerlink" href="#mnist" title="Permanent link">&para;</a></h2>
-<p>A trivial MNIST example with RedCoast.</p>
+<p>A trivial MNIST example with RedCoast. Runnable by 
+<div class="highlight"><pre><span></span><code>python main.py
+</code></pre></div></p>
 <p>To simulate multiple devices in cpu-only envs,
-<div class="highlight"><pre><span></span><code>XLA_FLAGS=&quot;--xla_force_host_platform_device_count=8&quot; python main.py --n_model_shards 2
+<div class="highlight"><pre><span></span><code>XLA_FLAGS=&quot;--xla_force_host_platform_device_count=8&quot; python main.py
 </code></pre></div></p>
 <h3 id="source-code">Source Code<a class="headerlink" href="#source-code" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
 <span class="kn">import</span> <span class="nn">fire</span>
-<span class="kn">import</span> <span class="nn">jax</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
 <span class="kn">from</span> <span class="nn">flax</span> <span class="kn">import</span> <span class="n">linen</span> <span class="k">as</span> <span class="n">nn</span>
 <span class="kn">import</span> <span class="nn">optax</span>
 <span class="kn">from</span> <span class="nn">torchvision.datasets</span> <span class="kn">import</span> <span class="n">MNIST</span>
 <span class="kn">from</span> <span class="nn">redco</span> <span class="kn">import</span> <span class="n">Deployer</span><span class="p">,</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">Predictor</span>
 
 
+<span class="c1"># A simple CNN model </span>
+<span class="c1"># Copied from https://github.com/google/flax/blob/main/examples/mnist/train.py</span>
 <span class="k">class</span> <span class="nc">CNN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
     <span class="nd">@nn</span><span class="o">.</span><span class="n">compact</span>
-    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">training</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv</span><span class="p">(</span><span class="n">features</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">avg_pool</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">window_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">strides</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
@@ -575,131 +616,75 @@
         <span class="n">x</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">avg_pool</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">window_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">strides</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>  <span class="c1"># flatten</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">rate</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="ow">not</span> <span class="n">training</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">features</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float16</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">features</span><span class="o">=</span><span class="mi">256</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">features</span><span class="o">=</span><span class="mi">10</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">x</span>
 
 
+<span class="c1"># Collate function converting a batch of raw examples to model inputs (in numpy) </span>
 <span class="k">def</span> <span class="nf">collate_fn</span><span class="p">(</span><span class="n">examples</span><span class="p">):</span>
-    <span class="n">images</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">example</span><span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">]),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">example</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">])</span>
-
+    <span class="n">images</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">example</span><span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">])[:,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">]</span> <span class="k">for</span> <span class="n">example</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">])</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">example</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">example</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">])</span>
 
     <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;images&#39;</span><span class="p">:</span> <span class="n">images</span><span class="p">,</span> <span class="s1">&#39;labels&#39;</span><span class="p">:</span> <span class="n">labels</span><span class="p">}</span>
 
 
+<span class="c1"># Loss function converting model inputs to a scalar loss</span>
 <span class="k">def</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">train_rng</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">is_training</span><span class="p">):</span>
-    <span class="n">logits</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">apply_fn</span><span class="p">(</span>
-        <span class="p">{</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">],</span>
-        <span class="n">training</span><span class="o">=</span><span class="n">is_training</span><span class="p">,</span> <span class="n">rngs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;dropout&#39;</span><span class="p">:</span> <span class="n">train_rng</span><span class="p">})</span>
-    <span class="n">loss</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">softmax_cross_entropy_with_integer_labels</span><span class="p">(</span>
-        <span class="n">logits</span><span class="o">=</span><span class="n">logits</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">batch</span><span class="p">[</span><span class="s1">&#39;labels&#39;</span><span class="p">])</span>
-    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+    <span class="n">logits</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">apply_fn</span><span class="p">({</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">optax</span><span class="o">.</span><span class="n">softmax_cross_entropy_with_integer_labels</span><span class="p">(</span>
+        <span class="n">logits</span><span class="o">=</span><span class="n">logits</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">batch</span><span class="p">[</span><span class="s1">&#39;labels&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
 
 
+<span class="c1"># Predict function converting model inputs to the model outputs</span>
 <span class="k">def</span> <span class="nf">pred_fn</span><span class="p">(</span><span class="n">pred_rng</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
-    <span class="n">accs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
-        <span class="p">{</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">],</span> <span class="n">training</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">accs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">apply</span><span class="p">({</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
     <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;acc&#39;</span><span class="p">:</span> <span class="n">accs</span><span class="p">}</span>
 
 
+<span class="c1"># (Optional) Evaluation function in trainer.fit. Here it computes accuracy.</span>
 <span class="k">def</span> <span class="nf">eval_metric_fn</span><span class="p">(</span><span class="n">examples</span><span class="p">,</span> <span class="n">preds</span><span class="p">):</span>
     <span class="n">preds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">pred</span><span class="p">[</span><span class="s1">&#39;acc&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">preds</span><span class="p">])</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">example</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">example</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">])</span>
     <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;acc&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">preds</span> <span class="o">==</span> <span class="n">labels</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()}</span>
 
 
-<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">data_dir</span><span class="o">=</span><span class="s1">&#39;./data/&#39;</span><span class="p">,</span>
-         <span class="n">per_device_batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
-         <span class="n">n_model_shards</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-         <span class="n">n_epochs</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
-         <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
-         <span class="n">jax_seed</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">per_device_batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">jax_seed</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
+    <span class="n">deployer</span> <span class="o">=</span> <span class="n">Deployer</span><span class="p">(</span><span class="n">jax_seed</span><span class="o">=</span><span class="n">jax_seed</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="s1">&#39;./workdir&#39;</span><span class="p">)</span>
+
     <span class="n">dataset</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;train&#39;</span><span class="p">:</span> <span class="p">[{</span><span class="s1">&#39;image&#39;</span><span class="p">:</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span>
-            <span class="n">MNIST</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">))][:</span><span class="mi">10000</span><span class="p">],</span>
+            <span class="n">MNIST</span><span class="p">(</span><span class="s1">&#39;./data&#39;</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">))],</span>
         <span class="s1">&#39;test&#39;</span><span class="p">:</span> <span class="p">[{</span><span class="s1">&#39;image&#39;</span><span class="p">:</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span>
-            <span class="n">MNIST</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">))],</span>
+            <span class="n">MNIST</span><span class="p">(</span><span class="s1">&#39;./data&#39;</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">))],</span>
     <span class="p">}</span>
 
-    <span class="n">deployer</span> <span class="o">=</span> <span class="n">Deployer</span><span class="p">(</span>
-        <span class="n">jax_seed</span><span class="o">=</span><span class="n">jax_seed</span><span class="p">,</span>
-        <span class="n">workdir</span><span class="o">=</span><span class="s1">&#39;./workdir&#39;</span><span class="p">,</span>
-        <span class="n">run_tensorboard</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">wandb_init_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">n_model_shards</span><span class="o">=</span><span class="n">n_model_shards</span><span class="p">)</span>
-
     <span class="n">model</span> <span class="o">=</span> <span class="n">CNN</span><span class="p">()</span>
-    <span class="n">lr_schedule_fn</span> <span class="o">=</span> <span class="n">deployer</span><span class="o">.</span><span class="n">get_lr_schedule_fn</span><span class="p">(</span>
-        <span class="n">train_size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">]),</span>
-        <span class="n">per_device_batch_size</span><span class="o">=</span><span class="n">per_device_batch_size</span><span class="p">,</span>
-        <span class="n">n_epochs</span><span class="o">=</span><span class="n">n_epochs</span><span class="p">,</span>
-        <span class="n">learning_rate</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">,</span>
-        <span class="n">schedule_type</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span>
-        <span class="n">warmup_rate</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
-
-    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">adamw</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="n">lr_schedule_fn</span><span class="p">,</span> <span class="n">weight_decay</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
-    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">MultiSteps</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">every_k_schedule</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-
-    <span class="n">ckpt</span><span class="p">,</span> <span class="n">last_ckpt_info</span> <span class="o">=</span> <span class="n">deployer</span><span class="o">.</span><span class="n">load_last_ckpt</span><span class="p">(</span>
-        <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
-        <span class="n">float_dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">ckpt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">dummy_batch</span> <span class="o">=</span> <span class="n">collate_fn</span><span class="p">([</span><span class="n">dataset</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]])</span>
-        <span class="n">ckpt</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">deployer</span><span class="o">.</span><span class="n">gen_rng</span><span class="p">(),</span> <span class="n">dummy_batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">],</span> <span class="n">training</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="s1">&#39;params&#39;</span><span class="p">],</span>
-            <span class="s1">&#39;opt_state&#39;</span><span class="p">:</span> <span class="kc">None</span>
-        <span class="p">}</span>
-
-    <span class="kn">from</span> <span class="nn">flax.traverse_util</span> <span class="kn">import</span> <span class="n">flatten_dict</span>
-    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">flatten_dict</span><span class="p">(</span><span class="n">ckpt</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">value</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-
-    <span class="n">params_sharding_rules</span> <span class="o">=</span> <span class="n">deployer</span><span class="o">.</span><span class="n">get_sharding_rules</span><span class="p">(</span>
-        <span class="n">params_shape_or_params</span><span class="o">=</span><span class="n">ckpt</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">])</span>
-    <span class="k">if</span> <span class="n">params_sharding_rules</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">deployer</span><span class="o">.</span><span class="n">log_info</span><span class="p">(</span>
-            <span class="n">info</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">params_sharding_rules</span><span class="p">]),</span>
-            <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Sharding rules&#39;</span><span class="p">)</span>
+    <span class="n">dummy_batch</span> <span class="o">=</span> <span class="n">collate_fn</span><span class="p">(</span><span class="n">examples</span><span class="o">=</span><span class="p">[</span><span class="n">dataset</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]])</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">deployer</span><span class="o">.</span><span class="n">gen_rng</span><span class="p">(),</span> <span class="n">dummy_batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">])[</span><span class="s1">&#39;params&#39;</span><span class="p">]</span>
 
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">Trainer</span><span class="p">(</span>
         <span class="n">deployer</span><span class="o">=</span><span class="n">deployer</span><span class="p">,</span>
         <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">,</span>
         <span class="n">apply_fn</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">apply</span><span class="p">,</span>
         <span class="n">loss_fn</span><span class="o">=</span><span class="n">loss_fn</span><span class="p">,</span>
-        <span class="n">params</span><span class="o">=</span><span class="n">ckpt</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">],</span>
-        <span class="n">opt_state</span><span class="o">=</span><span class="n">ckpt</span><span class="p">[</span><span class="s1">&#39;opt_state&#39;</span><span class="p">],</span>
-        <span class="n">last_ckpt_info</span><span class="o">=</span><span class="n">last_ckpt_info</span><span class="p">,</span>
-        <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
-        <span class="n">lr_schedule_fn</span><span class="o">=</span><span class="n">lr_schedule_fn</span><span class="p">,</span>
-        <span class="n">accumulate_grad_batches</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-        <span class="n">params_sharding_rules</span><span class="o">=</span><span class="n">params_sharding_rules</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+        <span class="n">optimizer</span><span class="o">=</span><span class="n">optax</span><span class="o">.</span><span class="n">adamw</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">))</span>
 
     <span class="n">predictor</span> <span class="o">=</span> <span class="n">Predictor</span><span class="p">(</span>
         <span class="n">deployer</span><span class="o">=</span><span class="n">deployer</span><span class="p">,</span>
         <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">,</span>
-        <span class="n">pred_fn</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">pred_fn</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">),</span>
-        <span class="n">params_sharding_rules</span><span class="o">=</span><span class="n">params_sharding_rules</span><span class="p">)</span>
+        <span class="n">pred_fn</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">pred_fn</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">))</span>
 
     <span class="n">trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
         <span class="n">train_examples</span><span class="o">=</span><span class="n">dataset</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">],</span>
         <span class="n">per_device_batch_size</span><span class="o">=</span><span class="n">per_device_batch_size</span><span class="p">,</span>
-        <span class="n">n_epochs</span><span class="o">=</span><span class="n">n_epochs</span><span class="p">,</span>
+        <span class="n">n_epochs</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="n">eval_examples</span><span class="o">=</span><span class="n">dataset</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">],</span>
-        <span class="n">eval_per_device_batch_size</span><span class="o">=</span><span class="n">per_device_batch_size</span><span class="p">,</span>
-        <span class="n">eval_loss</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">eval_predictor</span><span class="o">=</span><span class="n">predictor</span><span class="p">,</span>
-        <span class="n">eval_metric_fn</span><span class="o">=</span><span class="n">eval_metric_fn</span><span class="p">,</span>
-        <span class="n">eval_sanity_check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">save_every_ckpt</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">save_opt_states</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="n">save_float_dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span>
-        <span class="n">save_argmin_ckpt_by_metrics</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">],</span>
-        <span class="n">save_argmax_ckpt_by_metrics</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;acc&#39;</span><span class="p">])</span>
+        <span class="n">eval_metric_fn</span><span class="o">=</span><span class="n">eval_metric_fn</span><span class="p">)</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>

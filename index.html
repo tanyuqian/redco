@@ -12,6 +12,8 @@
       
       
       
+        <link rel="next" href="mnist/">
+      
       
       <link rel="icon" href="images/redco_logo.png">
       <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.31">
@@ -100,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              RedCoast
             
           </span>
         </div>
@@ -205,6 +207,25 @@
         
   
   
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="." class="md-tabs__link">
+        
+  
+    
+  
+  RedCoast
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
   
     <li class="md-tabs__item">
       <a href="mnist/" class="md-tabs__link">
@@ -285,6 +306,34 @@
       
   
   
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    RedCoast
+  </span>
+  
+
+      </a>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
   
   
     <li class="md-nav__item">
@@ -320,10 +369,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -334,8 +383,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Documentation
           </label>
@@ -445,7 +494,7 @@
   
 
 
-  <h1>Home</h1>
+  <h1>RedCoast</h1>
 
 <p><img alt="" src="images/redco_banner.png" /></p>
 <p><strong>Red Coast</strong> (redco) is a lightweight and user-friendly tool designed to automate distributed training and inference for large models while simplifying the ML pipeline development process without necessitating MLSys expertise from users.</p>
@@ -454,7 +503,14 @@
 <li>Large Models beyond Transformers, e.g, <a href="https://github.com/tanyuqian/redco/examples/text_to_image">Stable Diffusion</a>, etc.</li>
 <li>Complex algorithms beyond cross entropy, e.g., <a href="https://github.com/tanyuqian/redco/examples/meta_learning">Meta Learning</a>, etc.</li>
 </ul>
-<p>Check out our <a href="https://aclanthology.org/2024.naacl-demo.14/">Tech Report</a> for more details! </p>
+<p>With RedCoast, to define a ML pipeline, only three functions are needed:</p>
+<ul>
+<li><em>Collate function</em>: convert raw data examples into model inputs (e.g., text tokenization);</li>
+<li><em>Loss function</em>: execute the model and compute loss (e.g., cross-entropy);</li>
+<li><em>Predict function</em> to run the model and deliver outcomes (e.g., beam search).</li>
+</ul>
+<p>Redco <em>automates all the remaining</em> of pipeline execution such as data parallelism, multi-host related processing, distributed checkpointing, randomness controlling, logging, etc.</p>
+<p><img alt="" src="images/redco_coding.png" /></p>
 
 
 
