@@ -32,10 +32,7 @@ pip install redco
 The command above would automatically install cpu version of jax, so the version of Jax need to be adjusted based on your device. 
 For example, on GPUs,
 ```
-# for cuda-12.x
 pip install --upgrade "jax[cuda12]"
-# for cuda-11.x
-pip install --upgrade jax[cuda11_pip] -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
 If you are using TPU/CPU/AMD/Apple, see [here](https://github.com/google/jax#installation) for corresponding installation commands.
 
@@ -44,14 +41,14 @@ If you are using TPU/CPU/AMD/Apple, see [here](https://github.com/google/jax#ins
 
 Examples across a set of paradigms can be found in [examples/](examples/), including
 
-* [Classification/regression (GLUE & MNIST)](examples%2Fclassification_regression)
-* [Faderated learning (FedAvg)](examples%2Ffaderated_learning)
-* [Image to text (Image captioning)](examples%2Fimage_to_text)
-* [Language modeling (Instruction Tuning of LLMs)](examples%2Flanguage_modeling)
-* [Meta learning (MAML)](examples%2Fmeta_learning)
-* [Reinforcement learning (PPO & DDPG)](examples%2Freinforcement_learning)
-* [Text to image (StableDiffusion)](examples%2Ftext_to_image)
-* [Text to text (Seq2seq)](examples%2Ftext_to_text)
+* [Classification/regression (GLUE & MNIST)](https://github.com/tanyuqian/redco/examples/classification_regression)
+* [Faderated learning (FedAvg)](https://github.com/tanyuqian/redco/examples/faderated_learning)
+* [Image to text (Image captioning)](https://github.com/tanyuqian/redco/examples/image_to_text)
+* [Language modeling (Instruction Tuning of LLMs)](https://github.com/tanyuqian/redco/examples/language_modeling)
+* [Meta learning (MAML)](https://github.com/tanyuqian/redco/examples/meta_learning)
+* [Reinforcement learning (PPO & DDPG)](https://github.com/tanyuqian/redco/examples/reinforcement_learning)
+* [Text to image (StableDiffusion)](https://github.com/tanyuqian/redco/examples/text_to_image)
+* [Text to text (Seq2seq)](https://github.com/tanyuqian/redco/examples/text_to_text)
 
 ### Exemplar large model settings
 
@@ -62,7 +59,7 @@ The table below shows runnable model LLM finetuning on different kinds of server
 | BART-Large (1024)                       | LLaMA-7B (1024)                       | T5-XL-11B (512)                                                | OPT-66B (512)                                                    |
 | GPT2-Large (512)                        | GPT-J-6B (1024)                       | OPT-13B (1024)                                                 |                                                                  |
 
-Go to [example/language_modeling](examples%2Flanguage_modeling) and [examples/text_to_text](examples%2Ftext_to_text) to try them out!
+Go to [example/language_modeling](https://github.com/tanyuqian/redco/examples/language_modeling) and [examples/text_to_text](https://github.com/tanyuqian/redco/examples/text_to_text) to try them out!
 
 
 ## Reference
@@ -94,6 +91,6 @@ Go to [example/language_modeling](examples%2Flanguage_modeling) and [examples/te
 ## Acknowledgement
 
 
-The name of this package is inspired by *Red Coast Base*, a key location in the story of Three-Body. From Red Coast Base, humanity broadcasts its first message into the vast universe. We thank Cixin Liu for such a masterpiece!
+The name of this package is inspired by *Red Coast Base*, a key location in the story of *Three Body*. From Red Coast Base, humanity broadcasts its first message into the vast universe. We thank Cixin Liu for such a masterpiece!
 
 ![](docs/images/red_coast.png)

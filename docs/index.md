@@ -7,5 +7,12 @@ RedCoast supports *Large Models* + *Complex Algorithms*, in a *lightweight* and 
 * Large Models beyond Transformers, e.g, [Stable Diffusion](https://github.com/tanyuqian/redco/examples/text_to_image), etc.
 * Complex algorithms beyond cross entropy, e.g., [Meta Learning](https://github.com/tanyuqian/redco/examples/meta_learning), etc.
 
-Check out our [Tech Report](https://aclanthology.org/2024.naacl-demo.14/) for more details! 
+With RedCoast, to define a ML pipeline, only three functions are needed:
 
+* *Collate function*: convert raw data examples into model inputs (e.g., text tokenization);
+* *Loss function*: execute the model and compute loss (e.g., cross-entropy);
+* *Predict function* to run the model and deliver outcomes (e.g., beam search).
+
+Redco *automates all the remaining* of pipeline execution such as data parallelism, multi-host related processing, distributed checkpointing, randomness controlling, logging, etc.
+
+![](images/redco_coding.png)

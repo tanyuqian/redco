@@ -4,6 +4,7 @@ site_url: https://tanyuqian.github.io/redco/
 
 
 nav:
+  - RedCoast: index.md
   - MNIST Example: mnist.md
   - Documentation:
     - Trainer: trainer.md
