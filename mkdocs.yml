@@ -1,7 +1,6 @@
 site_name: RedCoast
 repo_url: https://github.com/tanyuqian/redco
-site_url: https://tanyuqian.github.io/redco/
-
+site_url: https://tanyuqian.github.io/redco
 
 nav:
   - RedCoast: index.md
@@ -43,7 +42,7 @@ theme:
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: blue
+      primary: indigo
       toggle:
         icon: material/weather-night
         name: Switch to light mode

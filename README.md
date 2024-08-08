@@ -3,8 +3,8 @@
 **Red Coast** (redco) is a lightweight and user-friendly tool designed to automate distributed training and inference for large models while simplifying the ML pipeline development process without necessitating MLSys expertise from users.
 
 RedCoast supports *Large Models* + *Complex Algorithms*, in a *lightweight* and *user-friendly* manner: 
-* Large Models beyond Transformers, e.g, [Stable Diffusion](examples/text_to_image), etc.
-* Complex algorithms beyond cross entropy, e.g., [Meta Learning](examples/meta_learning), etc.
+* Large Models beyond Transformers, e.g, [Stable Diffusion](https://github.com/tanyuqian/redco/tree/master/examples/text_to_image), etc.
+* Complex algorithms beyond cross entropy, e.g., [Meta Learning](https://github.com/tanyuqian/redco/tree/master/examples/meta_learning), etc.
 
 Check out our [Tech Report](https://aclanthology.org/2024.naacl-demo.14/) for more details! 
 
@@ -41,14 +41,14 @@ If you are using TPU/CPU/AMD/Apple, see [here](https://github.com/google/jax#ins
 
 Examples across a set of paradigms can be found in [examples/](examples/), including
 
-* [Classification/regression (GLUE & MNIST)](https://github.com/tanyuqian/redco/examples/classification_regression)
-* [Faderated learning (FedAvg)](https://github.com/tanyuqian/redco/examples/faderated_learning)
-* [Image to text (Image captioning)](https://github.com/tanyuqian/redco/examples/image_to_text)
-* [Language modeling (Instruction Tuning of LLMs)](https://github.com/tanyuqian/redco/examples/language_modeling)
-* [Meta learning (MAML)](https://github.com/tanyuqian/redco/examples/meta_learning)
-* [Reinforcement learning (PPO & DDPG)](https://github.com/tanyuqian/redco/examples/reinforcement_learning)
-* [Text to image (StableDiffusion)](https://github.com/tanyuqian/redco/examples/text_to_image)
-* [Text to text (Seq2seq)](https://github.com/tanyuqian/redco/examples/text_to_text)
+* [Classification/regression (GLUE & MNIST)](https://github.com/tanyuqian/redco/tree/master/examples/classification_regression)
+* [Faderated learning (FedAvg)](https://github.com/tanyuqian/redco/tree/master/examples/faderated_learning)
+* [Image to text (Image captioning)](https://github.com/tanyuqian/redco/tree/master/examples/image_to_text)
+* [Language modeling (Instruction Tuning of LLMs)](https://github.com/tanyuqian/redco/tree/master/examples/language_modeling)
+* [Meta learning (MAML)](https://github.com/tanyuqian/redco/tree/master/examples/meta_learning)
+* [Reinforcement learning (PPO & DDPG)](https://github.com/tanyuqian/redco/tree/master/examples/reinforcement_learning)
+* [Text to image (StableDiffusion)](https://github.com/tanyuqian/redco/tree/master/examples/text_to_image)
+* [Text to text (Seq2seq)](https://github.com/tanyuqian/redco/tree/master/examples/text_to_text)
 
 ### Exemplar large model settings
 
@@ -59,7 +59,7 @@ The table below shows runnable model LLM finetuning on different kinds of server
 | BART-Large (1024)                       | LLaMA-7B (1024)                       | T5-XL-11B (512)                                                | OPT-66B (512)                                                    |
 | GPT2-Large (512)                        | GPT-J-6B (1024)                       | OPT-13B (1024)                                                 |                                                                  |
 
-Go to [example/language_modeling](https://github.com/tanyuqian/redco/examples/language_modeling) and [examples/text_to_text](https://github.com/tanyuqian/redco/examples/text_to_text) to try them out!
+Go to [example/language_modeling](https://github.com/tanyuqian/redco/tree/master/examples/language_modeling) and [examples/text_to_text](https://github.com/tanyuqian/redco/tree/master/examples/text_to_text) to try them out!
 
 
 ## Reference
