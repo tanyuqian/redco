@@ -13,6 +13,6 @@ With RedCoast, to define a ML pipeline, only three functions are needed:
 * *Loss function*: execute the model and compute loss (e.g., cross-entropy);
 * *Predict function* to run the model and deliver outcomes (e.g., beam search).
 
-Redco *automates all the remaining* of pipeline execution such as data parallelism, multi-host related processing, distributed checkpointing, randomness controlling, logging, etc.
+Redco *automates all the remaining* of pipeline execution such as data and model parallelism, multi-host related processing, distributed checkpointing, randomness controlling, logging, etc.
 
 ![](images/redco_coding.png)

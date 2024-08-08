@@ -1,6 +1,4 @@
-## MNIST
-
-A trivial MNIST example with RedCoast. Runnable by 
+This is a trivial MNIST example with RedCoast. Runnable by 
 ```
 python main.py
 ```
