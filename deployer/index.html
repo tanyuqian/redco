@@ -1011,7 +1011,7 @@
           <tr class="doc-section-item">
             <td><code><a class="autorefs autorefs-internal" title="redco.deployers.deployer.Deployer.mesh" href="#redco.deployers.deployer.Deployer.mesh">mesh</a></code></td>
             <td>
-                  <code>`jax.sharding.Mesh`</code>
+                  <code>jax Mesh</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1433,7 +1433,7 @@
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        workdir (str): Working directory for saving checkpoints and logs.</span>
-<span class="sd">        mesh (`jax.sharding.Mesh`): Mesh used for model sharding.</span>
+<span class="sd">        mesh (jax Mesh): Mesh used for model sharding.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">jax_seed</span><span class="p">,</span>
@@ -1450,7 +1450,7 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot; Initializes a Deployer.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            jax_seed (`jax.numpy.Array`): Seed for random number generation.</span>
+<span class="sd">            jax_seed (int): Seed for random number generation.</span>
 <span class="sd">            n_model_shards (int): Number of shards for running large model.</span>
 <span class="sd">            verbose (bool): Whether to enable verbose logging.</span>
 <span class="sd">            workdir (str):  Directory for saving logs and checkpoints.</span>
@@ -1739,7 +1739,7 @@
 <span class="sd">        Args:</span>
 <span class="sd">            ckpt_dir (str): Directory of the checkpoint.</span>
 <span class="sd">            params_sharding_rules (list[tuple]): Sharding rules for parameters.</span>
-<span class="sd">            optimizer (`optax.optimizer`): Optimizer for loading opt_state.</span>
+<span class="sd">            optimizer (optax optimizer): Optimizer for loading opt_state.</span>
 <span class="sd">            float_dtype (`jax.numpy.dtype`): Dtype for floating point numbers.</span>
 <span class="sd">            load_params (bool): Whether to load the parameters.</span>
 <span class="sd">            load_opt_state (bool): Whether to load the optimizer state.</span>
@@ -1914,7 +1914,7 @@
           <tr class="doc-section-item">
             <td><code>jax_seed</code></td>
             <td>
-                  <code>`jax.numpy.Array`</code>
+                  <code>int</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2157,7 +2157,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot; Initializes a Deployer.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        jax_seed (`jax.numpy.Array`): Seed for random number generation.</span>
+<span class="sd">        jax_seed (int): Seed for random number generation.</span>
 <span class="sd">        n_model_shards (int): Number of shards for running large model.</span>
 <span class="sd">        verbose (bool): Whether to enable verbose logging.</span>
 <span class="sd">        workdir (str):  Directory for saving logs and checkpoints.</span>
@@ -3027,7 +3027,7 @@
           <tr class="doc-section-item">
             <td><code>optimizer</code></td>
             <td>
-                  <code>`optax.optimizer`</code>
+                  <code>optax optimizer</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3201,7 +3201,7 @@ dict, usually including <code>"steps"</code>, <code>"epoch_idx"</code>, and <cod
 <span class="sd">    Args:</span>
 <span class="sd">        ckpt_dir (str): Directory of the checkpoint.</span>
 <span class="sd">        params_sharding_rules (list[tuple]): Sharding rules for parameters.</span>
-<span class="sd">        optimizer (`optax.optimizer`): Optimizer for loading opt_state.</span>
+<span class="sd">        optimizer (optax optimizer): Optimizer for loading opt_state.</span>
 <span class="sd">        float_dtype (`jax.numpy.dtype`): Dtype for floating point numbers.</span>
 <span class="sd">        load_params (bool): Whether to load the parameters.</span>
 <span class="sd">        load_opt_state (bool): Whether to load the optimizer state.</span>

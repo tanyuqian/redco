@@ -1419,7 +1419,7 @@
 <span class="sd">            loss_fn (Callable): The loss function converting model inputs to a</span>
 <span class="sd">                scalar loss, e.g., computing cross-entropy loss from input_ids.</span>
 <span class="sd">            params (dict): Initial model parameters.</span>
-<span class="sd">            optimizer (`optax.optimizer`): The optimizer used for training.</span>
+<span class="sd">            optimizer (optax optimizer): The optimizer used for training.</span>
 <span class="sd">            opt_state (dict): optimizer state.</span>
 <span class="sd">            compute_dtype (dtype): Computation dtype, e.g., `jnp.bfloat16`,</span>
 <span class="sd">                independent of param dtypes. (for mixed-precision training)</span>
@@ -1656,7 +1656,7 @@
 <span class="sd">            eval_examples (list): Examples for evaluation and prediction.</span>
 <span class="sd">            eval_per_device_batch_size (int): Batch size for evaluation</span>
 <span class="sd">            eval_loss (bool): Whether to evaluate loss.</span>
-<span class="sd">            eval_predictor (`redco.Predictor`): Predicting on `eval_examples`.</span>
+<span class="sd">            eval_predictor (Predictor): Predictor working on `eval_examples`.</span>
 <span class="sd">            eval_metric_fn (Callable): Metric function for prediction.</span>
 <span class="sd">            eval_sanity_check (bool): if to run a sanity check for</span>
 <span class="sd">                evaluation &amp; predict functions before training.</span>
@@ -2088,7 +2088,7 @@ scalar loss, e.g., computing cross-entropy loss from input_ids.</p>
           <tr class="doc-section-item">
             <td><code>optimizer</code></td>
             <td>
-                  <code>`optax.optimizer`</code>
+                  <code>optax optimizer</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2279,7 +2279,7 @@ function converting step to learning rate.</p>
 <span class="sd">        loss_fn (Callable): The loss function converting model inputs to a</span>
 <span class="sd">            scalar loss, e.g., computing cross-entropy loss from input_ids.</span>
 <span class="sd">        params (dict): Initial model parameters.</span>
-<span class="sd">        optimizer (`optax.optimizer`): The optimizer used for training.</span>
+<span class="sd">        optimizer (optax optimizer): The optimizer used for training.</span>
 <span class="sd">        opt_state (dict): optimizer state.</span>
 <span class="sd">        compute_dtype (dtype): Computation dtype, e.g., `jnp.bfloat16`,</span>
 <span class="sd">            independent of param dtypes. (for mixed-precision training)</span>
@@ -2609,11 +2609,11 @@ e.g., <code>train_examples=lambda epoch_idx: load_data(chunk_idx)</code></p>
           <tr class="doc-section-item">
             <td><code>eval_predictor</code></td>
             <td>
-                  <code>`redco.Predictor`</code>
+                  <code><a class="autorefs autorefs-internal" title="redco.predictors.Predictor" href="../predictor/#redco.predictors.predictor.Predictor">Predictor</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Predicting on <code>eval_examples</code>.</p>
+                <p>Predictor working on <code>eval_examples</code>.</p>
               </div>
             </td>
             <td>
@@ -2967,7 +2967,7 @@ based on maximum values.</p>
 <span class="sd">        eval_examples (list): Examples for evaluation and prediction.</span>
 <span class="sd">        eval_per_device_batch_size (int): Batch size for evaluation</span>
 <span class="sd">        eval_loss (bool): Whether to evaluate loss.</span>
-<span class="sd">        eval_predictor (`redco.Predictor`): Predicting on `eval_examples`.</span>
+<span class="sd">        eval_predictor (Predictor): Predictor working on `eval_examples`.</span>
 <span class="sd">        eval_metric_fn (Callable): Metric function for prediction.</span>
 <span class="sd">        eval_sanity_check (bool): if to run a sanity check for</span>
 <span class="sd">            evaluation &amp; predict functions before training.</span>

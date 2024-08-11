@@ -712,7 +712,7 @@
           <tr class="doc-section-item">
             <td><code><a class="autorefs autorefs-internal" title="redco.predictors.predictor.Predictor.mesh" href="#redco.predictors.predictor.Predictor.mesh">mesh</a></code></td>
             <td>
-                  <code>`jax.sharding.Mesh`</code>
+                  <code>jax Mesh</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -858,7 +858,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Predictor class managing distributed inference process.</span>
 
 <span class="sd">    Attributes:</span>
-<span class="sd">        mesh (`jax.sharding.Mesh`): Mesh used for distributed inference.</span>
+<span class="sd">        mesh (jax Mesh): Mesh used for distributed inference.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                  <span class="n">deployer</span><span class="p">,</span>
@@ -869,12 +869,12 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes a Predictor instance.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            deployer (`redco.Deployer`): A deployer for low-level operations.</span>
-<span class="sd">            collate_fn (Callable): A function converting a data batch to model inputs,</span>
+<span class="sd">            deployer (Deployer): A deployer for low-level operations.</span>
+<span class="sd">            collate_fn (Callable): A function making model inputs from raw data,</span>
 <span class="sd">                e.g., tokenizing sentences into input_ids.</span>
-<span class="sd">            pred_fn (Callable): A function to produce model outputs with model inputs,</span>
+<span class="sd">            pred_fn (Callable): A function producing model outputs from inputs,</span>
 <span class="sd">                e.g., running beam search with a language model.</span>
-<span class="sd">            output_fn (Callable): A function finalizing model outputs (on CPU),</span>
+<span class="sd">            output_fn (Callable): A function post-processing model outputs,</span>
 <span class="sd">                e.g., decoding generated ids to text.</span>
 <span class="sd">            params_sharding_rules (list[tuple]): Rules for sharding parameters.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1048,7 +1048,7 @@
           <tr class="doc-section-item">
             <td><code>deployer</code></td>
             <td>
-                  <code>`redco.Deployer`</code>
+                  <code><a class="autorefs autorefs-internal" title="redco.deployers.Deployer" href="../deployer/#redco.deployers.deployer.Deployer">Deployer</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1066,7 +1066,7 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>A function converting a data batch to model inputs,
+                <p>A function making model inputs from raw data,
 e.g., tokenizing sentences into input_ids.</p>
               </div>
             </td>
@@ -1081,7 +1081,7 @@ e.g., tokenizing sentences into input_ids.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>A function to produce model outputs with model inputs,
+                <p>A function producing model outputs from inputs,
 e.g., running beam search with a language model.</p>
               </div>
             </td>
@@ -1096,7 +1096,7 @@ e.g., running beam search with a language model.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>A function finalizing model outputs (on CPU),
+                <p>A function post-processing model outputs,
 e.g., decoding generated ids to text.</p>
               </div>
             </td>
@@ -1159,12 +1159,12 @@ e.g., decoding generated ids to text.</p>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initializes a Predictor instance.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        deployer (`redco.Deployer`): A deployer for low-level operations.</span>
-<span class="sd">        collate_fn (Callable): A function converting a data batch to model inputs,</span>
+<span class="sd">        deployer (Deployer): A deployer for low-level operations.</span>
+<span class="sd">        collate_fn (Callable): A function making model inputs from raw data,</span>
 <span class="sd">            e.g., tokenizing sentences into input_ids.</span>
-<span class="sd">        pred_fn (Callable): A function to produce model outputs with model inputs,</span>
+<span class="sd">        pred_fn (Callable): A function producing model outputs from inputs,</span>
 <span class="sd">            e.g., running beam search with a language model.</span>
-<span class="sd">        output_fn (Callable): A function finalizing model outputs (on CPU),</span>
+<span class="sd">        output_fn (Callable): A function post-processing model outputs,</span>
 <span class="sd">            e.g., decoding generated ids to text.</span>
 <span class="sd">        params_sharding_rules (list[tuple]): Rules for sharding parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
