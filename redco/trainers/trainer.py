@@ -64,7 +64,7 @@ class Trainer:
             loss_fn (Callable): The loss function converting model inputs to a
                 scalar loss, e.g., computing cross-entropy loss from input_ids.
             params (dict): Initial model parameters.
-            optimizer (`optax.optimizer`): The optimizer used for training.
+            optimizer (optax optimizer): The optimizer used for training.
             opt_state (dict): optimizer state.
             compute_dtype (dtype): Computation dtype, e.g., `jnp.bfloat16`,
                 independent of param dtypes. (for mixed-precision training)
@@ -301,7 +301,7 @@ class Trainer:
             eval_examples (list): Examples for evaluation and prediction.
             eval_per_device_batch_size (int): Batch size for evaluation
             eval_loss (bool): Whether to evaluate loss.
-            eval_predictor (`redco.Predictor`): Predicting on `eval_examples`.
+            eval_predictor (Predictor): Predictor working on `eval_examples`.
             eval_metric_fn (Callable): Metric function for prediction.
             eval_sanity_check (bool): if to run a sanity check for
                 evaluation & predict functions before training.

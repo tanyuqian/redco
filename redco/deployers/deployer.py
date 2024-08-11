@@ -38,7 +38,7 @@ class Deployer:
 
     Attributes:
         workdir (str): Working directory for saving checkpoints and logs.
-        mesh (`jax.sharding.Mesh`): Mesh used for model sharding.
+        mesh (jax Mesh): Mesh used for model sharding.
     """
     def __init__(self,
                  jax_seed,
@@ -55,7 +55,7 @@ class Deployer:
         """ Initializes a Deployer.
 
         Args:
-            jax_seed (`jax.numpy.Array`): Seed for random number generation.
+            jax_seed (int): Seed for random number generation.
             n_model_shards (int): Number of shards for running large model.
             verbose (bool): Whether to enable verbose logging.
             workdir (str):  Directory for saving logs and checkpoints.
@@ -344,7 +344,7 @@ class Deployer:
         Args:
             ckpt_dir (str): Directory of the checkpoint.
             params_sharding_rules (list[tuple]): Sharding rules for parameters.
-            optimizer (`optax.optimizer`): Optimizer for loading opt_state.
+            optimizer (optax optimizer): Optimizer for loading opt_state.
             float_dtype (`jax.numpy.dtype`): Dtype for floating point numbers.
             load_params (bool): Whether to load the parameters.
             load_opt_state (bool): Whether to load the optimizer state.

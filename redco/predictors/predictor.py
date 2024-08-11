@@ -33,7 +33,7 @@ class Predictor:
     """Predictor class managing distributed inference process.
 
     Attributes:
-        mesh (`jax.sharding.Mesh`): Mesh used for distributed inference.
+        mesh (jax Mesh): Mesh used for distributed inference.
     """
     def __init__(self,
                  deployer,
@@ -44,12 +44,12 @@ class Predictor:
         """Initializes a Predictor instance.
 
         Args:
-            deployer (`redco.Deployer`): A deployer for low-level operations.
-            collate_fn (Callable): A function converting a data batch to model inputs,
+            deployer (Deployer): A deployer for low-level operations.
+            collate_fn (Callable): A function making model inputs from raw data,
                 e.g., tokenizing sentences into input_ids.
-            pred_fn (Callable): A function to produce model outputs with model inputs,
+            pred_fn (Callable): A function producing model outputs from inputs,
                 e.g., running beam search with a language model.
-            output_fn (Callable): A function finalizing model outputs (on CPU),
+            output_fn (Callable): A function post-processing model outputs,
                 e.g., decoding generated ids to text.
             params_sharding_rules (list[tuple]): Rules for sharding parameters.
         """

@@ -9,9 +9,9 @@ RedCoast supports *Large Models* + *Complex Algorithms*, in a *lightweight* and 
 
 With RedCoast, to define a ML pipeline, only three functions are needed:
 
-* *Collate function*: convert raw data examples into model inputs (e.g., text tokenization);
-* *Loss function*: execute the model and compute loss (e.g., cross-entropy);
-* *Predict function* to run the model and deliver outcomes (e.g., beam search).
+* <u>Collate function</u>: convert raw data into model inputs (e.g., text tokenization);
+* <u>Loss function</u>: execute the model and compute loss (e.g., cross-entropy);
+* <u>Predict function</u>: run the model and deliver outcomes (e.g., beam search).
 
 Redco *automates all the remaining* of pipeline execution such as data and model parallelism, multi-host related processing, distributed checkpointing, randomness controlling, logging, etc.
 
