@@ -27,7 +27,7 @@ from flax.core.frozen_dict import freeze
 from orbax.checkpoint.utils import \
     fully_replicated_host_local_array_to_global_array
 
-from .utils import train_step, eval_step
+from .utils import default_train_step, eval_step
 
 
 class Trainer:
@@ -51,7 +51,8 @@ class Trainer:
                  last_ckpt_info=None,
                  lr_schedule_fn=None,
                  accumulate_grad_batches=None,
-                 params_sharding_rules=None):
+                 params_sharding_rules=None,
+                 train_step_fn=None):
         """Initializes the Trainer with initial parameters, etc.
 
         Args:
@@ -73,6 +74,8 @@ class Trainer:
                 function converting step to learning rate.
             accumulate_grad_batches (int): Gradient accumulation step.
             params_sharding_rules (list): Sharding rules.
+            train_step_fn (Callable): For fully customizing every training step,
+                e.g., per-sample gradient noising for data-private training.
         """
         self._deployer = deployer
         self._collate_fn = collate_fn
@@ -83,6 +86,7 @@ class Trainer:
         self._lr_schedule_fn = lr_schedule_fn
         self._accumulate_grad_batches = accumulate_grad_batches
         self._params_sharding_rules = params_sharding_rules
+        self._train_step_fn = train_step_fn
 
         self._state = None
         self._state_spec = None
@@ -175,7 +179,7 @@ class Trainer:
             dummy_batch (PyTree): A dummy batch of data.
         """
         train_step_fn = partial(
-            train_step,
+            self._train_step_fn or default_train_step,
             loss_fn=self._loss_fn,
             lr_schedule_fn=self._lr_schedule_fn,
             mesh=self.mesh,

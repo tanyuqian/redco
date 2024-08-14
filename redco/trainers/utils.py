@@ -17,13 +17,8 @@ import jax.numpy as jnp
 from jax.example_libraries.optimizers import l2_norm
 
 
-def train_step(train_rng,
-               state,
-               batch,
-               loss_fn,
-               lr_schedule_fn,
-               mesh,
-               compute_dtype):
+def default_train_step(
+        train_rng, state, batch, loss_fn, lr_schedule_fn, mesh, compute_dtype):
     def loss_and_grads(batch_):
         return jax.value_and_grad(
             lambda params: loss_fn(
