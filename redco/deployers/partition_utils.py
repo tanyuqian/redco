@@ -13,7 +13,6 @@
 #  limitations under the License.
 #
 #  adapted from https://github.com/google-research/google-research/blob/fce923e9dad97cd67492c2a65b9ecdc4b2495204/flax_models/t5x/partitions.py
-"""Utilities for constructing PyTrees of PartitionSpecs."""
 
 import re
 import numpy as np
@@ -62,14 +61,12 @@ def set_partitions(in_dict, rules):
 def get_mesh(n_model_shards):
     if n_model_shards == 1:
         return None
-
-    assert jax.device_count() % n_model_shards == 0
-
-    mesh_devices = np.array(jax.devices()).reshape(
-        jax.device_count() // n_model_shards, n_model_shards)
-    mesh = Mesh(mesh_devices, ('dp', 'mp'))
-
-    return mesh
+    else:
+        assert jax.device_count() % n_model_shards == 0
+        return Mesh(
+            devices=np.array(jax.devices()).reshape(
+                jax.device_count() // n_model_shards, n_model_shards),
+            axis_names=('dp', 'mp'))
 
 
 def get_params_spec(params_shape_or_params, params_sharding_rules):

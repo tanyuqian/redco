@@ -14,7 +14,8 @@
 
 import numpy as np
 import jax
-from flax.jax_utils import unreplicate
+from jax.sharding import Mesh, PartitionSpec
+from jax.experimental.multihost_utils import host_local_array_to_global_array
 
 
 def add_idxes(examples):
@@ -40,8 +41,7 @@ def pred_fn_wrapper(pred_rng, params, batch, pred_fn):
 
 def pred_step(pred_rng, params, batch, pred_fn, mesh):
     if mesh is None:
-        preds = pred_fn(pred_rng=pred_rng, params=params, batch=batch)
-        return jax.lax.all_gather(preds, axis_name='dp')
+        return pred_fn(pred_rng=pred_rng, params=params, batch=batch)
     else:
         return jax.vmap(lambda b: pred_fn(
             pred_rng=pred_rng, params=params, batch=b))(batch)
@@ -49,7 +49,14 @@ def pred_step(pred_rng, params, batch, pred_fn, mesh):
 
 def process_batch_preds(batch_preds_with_idxes, mesh):
     if mesh is None:
-        batch_preds_with_idxes = unreplicate(batch_preds_with_idxes)
+        global_mesh = Mesh(
+            devices=np.array(jax.devices()).reshape(
+                jax.process_count(), jax.local_device_count()),
+            axis_names=('host', 'local'))
+        batch_preds_with_idxes = host_local_array_to_global_array(
+            batch_preds_with_idxes,
+            global_mesh=global_mesh,
+            pspecs=PartitionSpec('host'))
 
     batch_preds_with_idxes = jax.tree.map(np.asarray, batch_preds_with_idxes)
     preds = jax.tree.map(
