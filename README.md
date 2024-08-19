@@ -4,7 +4,7 @@
 
 RedCoast supports *Large Models* + *Complex Algorithms*, in a *lightweight* and *user-friendly* manner: 
 * Large Models beyond Transformers, e.g, [Stable Diffusion](https://github.com/tanyuqian/redco/tree/master/examples/text_to_image), etc.
-* Complex algorithms beyond cross entropy, e.g., [Meta Learning](https://github.com/tanyuqian/redco/tree/master/examples/meta_learning), etc.
+* Complex algorithms beyond cross entropy, e.g., [Meta Learning](https://github.com/tanyuqian/redco/tree/master/examples/meta_learning), [Differentially-Private (DP) Training](https://github.com/tanyuqian/redco/tree/master/examples/differential_private_training), etc.
 
 Check out our [Tech Report](https://aclanthology.org/2024.naacl-demo.14/) for more details! 
 
