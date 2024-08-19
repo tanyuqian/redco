@@ -17,10 +17,10 @@ from setuptools import find_packages, setup
 
 setup(
     name="redco",
-    version="0.4.20",
+    version="0.4.21",
     author="Bowen Tan",
     packages=find_packages(),
-    install_requires=['jax', 'flax', 'optax', 'numpy'],
+    install_requires=['jax', 'flax', 'optax'],
     include_package_data=True,
     python_requires=">=3.8",
     long_description=open('README.md').read(),

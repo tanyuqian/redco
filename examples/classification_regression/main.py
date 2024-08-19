@@ -75,7 +75,7 @@ def main(dataset_name='sst2',
          per_device_batch_size=4,
          n_epochs=2,
          learning_rate=2e-5,
-         warmup_rate=0.1,
+         warmup_ratio=0.1,
          lr_schedule_type='linear',
          grad_norm_clip=1.,
          weight_decay=0.,
@@ -117,7 +117,7 @@ def main(dataset_name='sst2',
         n_epochs=n_epochs,
         learning_rate=learning_rate,
         schedule_type=lr_schedule_type,
-        warmup_rate=warmup_rate)
+        warmup_ratio=warmup_ratio)
     optimizer = optax.MultiSteps(optax.chain(
         optax.clip_by_global_norm(grad_norm_clip),
         optax.adamw(learning_rate=lr_schedule_fn, weight_decay=weight_decay)
