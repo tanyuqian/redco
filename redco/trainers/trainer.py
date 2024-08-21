@@ -22,7 +22,6 @@ from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
 from flax.jax_utils import replicate, unreplicate
 from flax.training import train_state
-from flax.training.common_utils import shard_prng_key
 from flax.core.frozen_dict import freeze
 from orbax.checkpoint.utils import \
     fully_replicated_host_local_array_to_global_array
@@ -227,11 +226,7 @@ class Trainer:
             if self._p_train_step is None:
                 self.setup_running_step(dummy_batch=batch)
 
-            rng = self._deployer.gen_rng()
-            if self.mesh is None:
-                rng = jax.random.split(
-                    rng, num=jax.process_count())[jax.process_index()]
-                rng = shard_prng_key(rng)
+            rng = self._deployer.gen_model_step_rng()
             self._state, metrics = self._deployer.run_model_step(
                 step_fn=self._p_train_step,
                 input_args=(rng, self._state, batch))
@@ -265,9 +260,9 @@ class Trainer:
             if self._p_eval_step is None:
                 self.setup_running_step(dummy_batch=batch)
 
+            rng = self._deployer.gen_model_step_rng()
             metrics = self._deployer.run_model_step(
-                step_fn=self._p_eval_step,
-                input_args=(jax.random.PRNGKey(0), self._state, batch))
+                step_fn=self._p_eval_step, input_args=(rng, self._state, batch))
             if self.mesh is None:
                 metrics = unreplicate(metrics)
 

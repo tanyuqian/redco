@@ -136,11 +136,7 @@ class Predictor:
                 self.setup_running_step(
                     dummy_batch=batch, params_shape_or_params=params)
 
-            rng = self._deployer.gen_rng()
-            if self.mesh is None:
-                rng = jax.random.split(
-                    rng, num=jax.process_count())[jax.process_index()]
-                rng = shard_prng_key(rng)
+            rng = self._deployer.gen_model_step_rng()
             batch_preds_with_idxes = self._deployer.run_model_step(
                 step_fn=self._p_pred_step, input_args=(rng, params, batch))
             batch_preds = process_batch_preds(

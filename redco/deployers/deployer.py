@@ -14,6 +14,7 @@
 
 import os
 import jax
+from flax.training.common_utils import shard_prng_key
 import orbax.checkpoint as ocp
 
 from .data_utils import get_host_examples, get_data_batches
@@ -273,6 +274,14 @@ class Deployer:
         """Get a new random number generator key and update the random state."""
         self._rng, new_rng = jax.random.split(self._rng)
         return new_rng
+
+    def gen_model_step_rng(self):
+        rng = self.gen_rng()
+        if self.mesh is None:
+            rng = jax.random.split(
+                rng, num=jax.process_count())[jax.process_index()]
+            rng = shard_prng_key(rng)
+        return rng
 
     def log_info(self, info, title=None, step=None):
         """Logs a messages"""
