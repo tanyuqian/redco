@@ -848,13 +848,7 @@
 <span class="normal">152</span>
 <span class="normal">153</span>
 <span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Predictor</span><span class="p">:</span>
+<span class="normal">155</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Predictor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Predictor class managing distributed inference process.</span>
 
 <span class="sd">    Attributes:</span>
@@ -961,15 +955,9 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">setup_running_step</span><span class="p">(</span>
                     <span class="n">dummy_batch</span><span class="o">=</span><span class="n">batch</span><span class="p">,</span> <span class="n">params_shape_or_params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
 
-            <span class="n">pred_rng</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deployer</span><span class="o">.</span><span class="n">gen_rng</span><span class="p">()</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">pred_rng</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span>
-                    <span class="n">pred_rng</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">process_count</span><span class="p">())[</span><span class="n">jax</span><span class="o">.</span><span class="n">process_index</span><span class="p">()]</span>
-                <span class="n">pred_rng</span> <span class="o">=</span> <span class="n">shard_prng_key</span><span class="p">(</span><span class="n">pred_rng</span><span class="p">)</span>
-
+            <span class="n">rng</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deployer</span><span class="o">.</span><span class="n">gen_model_step_rng</span><span class="p">()</span>
             <span class="n">batch_preds_with_idxes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deployer</span><span class="o">.</span><span class="n">run_model_step</span><span class="p">(</span>
-                <span class="n">step_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_p_pred_step</span><span class="p">,</span>
-                <span class="n">input_args</span><span class="o">=</span><span class="p">(</span><span class="n">pred_rng</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">))</span>
+                <span class="n">step_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_p_pred_step</span><span class="p">,</span> <span class="n">input_args</span><span class="o">=</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">))</span>
             <span class="n">batch_preds</span> <span class="o">=</span> <span class="n">process_batch_preds</span><span class="p">(</span>
                 <span class="n">batch_preds_with_idxes</span><span class="o">=</span><span class="n">batch_preds_with_idxes</span><span class="p">,</span> <span class="n">mesh</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">)</span>
             <span class="n">batch_preds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_fn</span><span class="p">(</span><span class="n">batch_preds</span><span class="p">)</span>
@@ -1383,13 +1371,7 @@ e.g., decoding generated ids to text.</p>
 <span class="normal">147</span>
 <span class="normal">148</span>
 <span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+<span class="normal">150</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
             <span class="n">examples</span><span class="p">,</span>
             <span class="n">per_device_batch_size</span><span class="p">,</span>
             <span class="n">params</span><span class="p">,</span>
@@ -1440,15 +1422,9 @@ e.g., decoding generated ids to text.</p>
             <span class="bp">self</span><span class="o">.</span><span class="n">setup_running_step</span><span class="p">(</span>
                 <span class="n">dummy_batch</span><span class="o">=</span><span class="n">batch</span><span class="p">,</span> <span class="n">params_shape_or_params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
 
-        <span class="n">pred_rng</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deployer</span><span class="o">.</span><span class="n">gen_rng</span><span class="p">()</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">pred_rng</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span>
-                <span class="n">pred_rng</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">process_count</span><span class="p">())[</span><span class="n">jax</span><span class="o">.</span><span class="n">process_index</span><span class="p">()]</span>
-            <span class="n">pred_rng</span> <span class="o">=</span> <span class="n">shard_prng_key</span><span class="p">(</span><span class="n">pred_rng</span><span class="p">)</span>
-
+        <span class="n">rng</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deployer</span><span class="o">.</span><span class="n">gen_model_step_rng</span><span class="p">()</span>
         <span class="n">batch_preds_with_idxes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deployer</span><span class="o">.</span><span class="n">run_model_step</span><span class="p">(</span>
-            <span class="n">step_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_p_pred_step</span><span class="p">,</span>
-            <span class="n">input_args</span><span class="o">=</span><span class="p">(</span><span class="n">pred_rng</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">))</span>
+            <span class="n">step_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_p_pred_step</span><span class="p">,</span> <span class="n">input_args</span><span class="o">=</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">))</span>
         <span class="n">batch_preds</span> <span class="o">=</span> <span class="n">process_batch_preds</span><span class="p">(</span>
             <span class="n">batch_preds_with_idxes</span><span class="o">=</span><span class="n">batch_preds_with_idxes</span><span class="p">,</span> <span class="n">mesh</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">)</span>
         <span class="n">batch_preds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_fn</span><span class="p">(</span><span class="n">batch_preds</span><span class="p">)</span>

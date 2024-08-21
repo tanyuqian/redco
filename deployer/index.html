@@ -529,6 +529,15 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#redco.deployers.deployer.Deployer.gen_model_step_rng" class="md-nav__link">
+    <span class="md-ellipsis">
+      gen_model_step_rng
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#redco.deployers.deployer.Deployer.gen_rng" class="md-nav__link">
     <span class="md-ellipsis">
       gen_rng
@@ -767,6 +776,15 @@
   <a href="#redco.deployers.deployer.Deployer.__init__" class="md-nav__link">
     <span class="md-ellipsis">
       __init__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#redco.deployers.deployer.Deployer.gen_model_step_rng" class="md-nav__link">
+    <span class="md-ellipsis">
+      gen_model_step_rng
     </span>
   </a>
   
@@ -1024,8 +1042,7 @@
 
               <details class="quote">
                 <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 34</span>
-<span class="normal"> 35</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 35</span>
 <span class="normal"> 36</span>
 <span class="normal"> 37</span>
 <span class="normal"> 38</span>
@@ -1426,7 +1443,19 @@
 <span class="normal">433</span>
 <span class="normal">434</span>
 <span class="normal">435</span>
-<span class="normal">436</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Deployer</span><span class="p">:</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Deployer</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot; Handles low-level operations to support Trainer and Predictor,</span>
 <span class="sd">        e.g., automatic data/model parallelism, distributed checkpointing,</span>
 <span class="sd">        data processing, logging, randomness controlling, etc.</span>
@@ -1668,6 +1697,17 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get a new random number generator key and update the random state.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_rng</span><span class="p">,</span> <span class="n">new_rng</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rng</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">new_rng</span>
+
+    <span class="k">def</span> <span class="nf">gen_model_step_rng</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get a new random number generator key for distributed model step and</span>
+<span class="sd">        update the random state.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gen_rng</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">rng</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span>
+                <span class="n">rng</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">process_count</span><span class="p">())[</span><span class="n">jax</span><span class="o">.</span><span class="n">process_index</span><span class="p">()]</span>
+            <span class="n">rng</span> <span class="o">=</span> <span class="n">shard_prng_key</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">rng</span>
 
     <span class="k">def</span> <span class="nf">log_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Logs a messages&quot;&quot;&quot;</span>
@@ -2070,8 +2110,7 @@
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 43</span>
-<span class="normal"> 44</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 44</span>
 <span class="normal"> 45</span>
 <span class="normal"> 46</span>
 <span class="normal"> 47</span>
@@ -2142,7 +2181,8 @@
 <span class="normal">112</span>
 <span class="normal">113</span>
 <span class="normal">114</span>
-<span class="normal">115</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+<span class="normal">115</span>
+<span class="normal">116</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
              <span class="n">jax_seed</span><span class="p">,</span>
              <span class="n">n_model_shards</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
              <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -2224,6 +2264,47 @@
 <div class="doc doc-object doc-function">
 
 
+<h3 id="redco.deployers.deployer.Deployer.gen_model_step_rng" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">gen_model_step_rng</span><span class="p">()</span></code>
+
+<a href="#redco.deployers.deployer.Deployer.gen_model_step_rng" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+      <p>Get a new random number generator key for distributed model step and
+update the random state.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">gen_model_step_rng</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get a new random number generator key for distributed model step and</span>
+<span class="sd">    update the random state.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gen_rng</span><span class="p">()</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span>
+            <span class="n">rng</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">process_count</span><span class="p">())[</span><span class="n">jax</span><span class="o">.</span><span class="n">process_index</span><span class="p">()]</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">shard_prng_key</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rng</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h3 id="redco.deployers.deployer.Deployer.gen_rng" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">gen_rng</span><span class="p">()</span></code>
 
@@ -2236,10 +2317,10 @@
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">272</span>
-<span class="normal">273</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">273</span>
 <span class="normal">274</span>
-<span class="normal">275</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">gen_rng</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">275</span>
+<span class="normal">276</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">gen_rng</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get a new random number generator key and update the random state.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_rng</span><span class="p">,</span> <span class="n">new_rng</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rng</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">new_rng</span>
@@ -2264,15 +2345,15 @@
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">130</span>
-<span class="normal">131</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">131</span>
 <span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
 <span class="normal">135</span>
 <span class="normal">136</span>
 <span class="normal">137</span>
-<span class="normal">138</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_accumulate_grad_batches</span><span class="p">(</span>
+<span class="normal">138</span>
+<span class="normal">139</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_accumulate_grad_batches</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">global_batch_size</span><span class="p">,</span> <span class="n">per_device_batch_size</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculates the number of gradient accumulation batches.&quot;&quot;&quot;</span>
     <span class="n">_</span><span class="p">,</span> <span class="n">global_micro_batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_local_global_micro_batch_size</span><span class="p">(</span>
@@ -2302,8 +2383,7 @@
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">117</span>
-<span class="normal">118</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">118</span>
 <span class="normal">119</span>
 <span class="normal">120</span>
 <span class="normal">121</span>
@@ -2313,7 +2393,8 @@
 <span class="normal">125</span>
 <span class="normal">126</span>
 <span class="normal">127</span>
-<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_local_global_micro_batch_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">per_device_batch_size</span><span class="p">):</span>
+<span class="normal">128</span>
+<span class="normal">129</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_local_global_micro_batch_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">per_device_batch_size</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get local/global micro batch sizes based on per-device batch size.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">local_micro_batch_size</span> <span class="o">=</span> \
@@ -2510,8 +2591,7 @@
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">193</span>
-<span class="normal">194</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">194</span>
 <span class="normal">195</span>
 <span class="normal">196</span>
 <span class="normal">197</span>
@@ -2549,7 +2629,8 @@
 <span class="normal">229</span>
 <span class="normal">230</span>
 <span class="normal">231</span>
-<span class="normal">232</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_lr_schedule_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+<span class="normal">232</span>
+<span class="normal">233</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_lr_schedule_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                        <span class="n">train_size</span><span class="p">,</span>
                        <span class="n">per_device_batch_size</span><span class="p">,</span>
                        <span class="n">n_epochs</span><span class="p">,</span>
@@ -2760,8 +2841,7 @@
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">140</span>
-<span class="normal">141</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">141</span>
 <span class="normal">142</span>
 <span class="normal">143</span>
 <span class="normal">144</span>
@@ -2811,7 +2891,8 @@
 <span class="normal">188</span>
 <span class="normal">189</span>
 <span class="normal">190</span>
-<span class="normal">191</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_model_input_batches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+<span class="normal">191</span>
+<span class="normal">192</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_model_input_batches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                             <span class="n">examples</span><span class="p">,</span>
                             <span class="n">per_device_batch_size</span><span class="p">,</span>
                             <span class="n">collate_fn</span><span class="p">,</span>
@@ -2884,13 +2965,13 @@
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">250</span>
-<span class="normal">251</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">251</span>
 <span class="normal">252</span>
 <span class="normal">253</span>
 <span class="normal">254</span>
 <span class="normal">255</span>
-<span class="normal">256</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_opt_state_spec</span><span class="p">(</span>
+<span class="normal">256</span>
+<span class="normal">257</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_opt_state_spec</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">params_shape_or_params</span><span class="p">,</span> <span class="n">params_spec</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get optimizer state specs&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">get_opt_state_spec</span><span class="p">(</span>
@@ -2918,11 +2999,11 @@
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">244</span>
-<span class="normal">245</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">245</span>
 <span class="normal">246</span>
 <span class="normal">247</span>
-<span class="normal">248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_params_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params_shape_or_params</span><span class="p">,</span> <span class="n">params_sharding_rules</span><span class="p">):</span>
+<span class="normal">248</span>
+<span class="normal">249</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_params_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params_shape_or_params</span><span class="p">,</span> <span class="n">params_sharding_rules</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates parameter specs based on sharding rules.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">get_params_spec</span><span class="p">(</span>
         <span class="n">params_shape_or_params</span><span class="o">=</span><span class="n">params_shape_or_params</span><span class="p">,</span>
@@ -2948,15 +3029,15 @@
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">234</span>
-<span class="normal">235</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">235</span>
 <span class="normal">236</span>
 <span class="normal">237</span>
 <span class="normal">238</span>
 <span class="normal">239</span>
 <span class="normal">240</span>
 <span class="normal">241</span>
-<span class="normal">242</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_sharding_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params_shape_or_params</span><span class="p">):</span>
+<span class="normal">242</span>
+<span class="normal">243</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_sharding_rules</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params_shape_or_params</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get sharding rules based on the parameter shapes.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -3124,19 +3205,7 @@ dict, usually including <code>"steps"</code>, <code>"epoch_idx"</code>, and <cod
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">334</span>
-<span class="normal">335</span>
-<span class="normal">336</span>
-<span class="normal">337</span>
-<span class="normal">338</span>
-<span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span>
-<span class="normal">342</span>
-<span class="normal">343</span>
-<span class="normal">344</span>
-<span class="normal">345</span>
-<span class="normal">346</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">346</span>
 <span class="normal">347</span>
 <span class="normal">348</span>
 <span class="normal">349</span>
@@ -3188,7 +3257,19 @@ dict, usually including <code>"steps"</code>, <code>"epoch_idx"</code>, and <cod
 <span class="normal">395</span>
 <span class="normal">396</span>
 <span class="normal">397</span>
-<span class="normal">398</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_ckpt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_ckpt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
               <span class="n">ckpt_dir</span><span class="p">,</span>
               <span class="n">params_sharding_rules</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
               <span class="n">optimizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -3275,19 +3356,7 @@ See load_ckpt() for the explanation of arguments.</p>
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">400</span>
-<span class="normal">401</span>
-<span class="normal">402</span>
-<span class="normal">403</span>
-<span class="normal">404</span>
-<span class="normal">405</span>
-<span class="normal">406</span>
-<span class="normal">407</span>
-<span class="normal">408</span>
-<span class="normal">409</span>
-<span class="normal">410</span>
-<span class="normal">411</span>
-<span class="normal">412</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">412</span>
 <span class="normal">413</span>
 <span class="normal">414</span>
 <span class="normal">415</span>
@@ -3301,7 +3370,19 @@ See load_ckpt() for the explanation of arguments.</p>
 <span class="normal">423</span>
 <span class="normal">424</span>
 <span class="normal">425</span>
-<span class="normal">426</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_last_ckpt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_last_ckpt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
                    <span class="n">optimizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                    <span class="n">params_sharding_rules</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                    <span class="n">float_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -3349,9 +3430,9 @@ See load_ckpt() for the explanation of arguments.</p>
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_params_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ckpt_dir</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load_params_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ckpt_dir</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Loads the shape of the parameters from a checkpoint.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">load_params_shape</span><span class="p">(</span><span class="n">ckpt_dir</span><span class="o">=</span><span class="n">ckpt_dir</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -3375,14 +3456,14 @@ See load_ckpt() for the explanation of arguments.</p>
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">log_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">log_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Logs a messages&quot;&quot;&quot;</span>
     <span class="n">log_info</span><span class="p">(</span>
         <span class="n">info</span><span class="o">=</span><span class="n">info</span><span class="p">,</span>
@@ -3411,14 +3492,14 @@ See load_ckpt() for the explanation of arguments.</p>
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">log_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">log_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Logs metrics to TensorBoard and Weights and Biases (wandb).&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_summary_writer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -3447,13 +3528,13 @@ See load_ckpt() for the explanation of arguments.</p>
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">264</span>
-<span class="normal">265</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">265</span>
 <span class="normal">266</span>
 <span class="normal">267</span>
 <span class="normal">268</span>
 <span class="normal">269</span>
-<span class="normal">270</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">run_model_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_fn</span><span class="p">,</span> <span class="n">input_args</span><span class="p">):</span>
+<span class="normal">270</span>
+<span class="normal">271</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">run_model_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_fn</span><span class="p">,</span> <span class="n">input_args</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Executes a model step function with the provided inputs.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mesh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">step_fn</span><span class="p">(</span><span class="o">*</span><span class="n">input_args</span><span class="p">)</span>
@@ -3567,19 +3648,7 @@ info.json, e.g., current training step, epoch index, etc.</p>
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
-<span class="normal">309</span>
-<span class="normal">310</span>
-<span class="normal">311</span>
-<span class="normal">312</span>
-<span class="normal">313</span>
-<span class="normal">314</span>
-<span class="normal">315</span>
-<span class="normal">316</span>
-<span class="normal">317</span>
-<span class="normal">318</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">318</span>
 <span class="normal">319</span>
 <span class="normal">320</span>
 <span class="normal">321</span>
@@ -3589,7 +3658,19 @@ info.json, e.g., current training step, epoch index, etc.</p>
 <span class="normal">325</span>
 <span class="normal">326</span>
 <span class="normal">327</span>
-<span class="normal">328</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">save_ckpt</span><span class="p">(</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">save_ckpt</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ckpt_dir</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">opt_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">float_dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Saves a checkpoint to the specified directory.</span>
 
@@ -3633,16 +3714,16 @@ info.json, e.g., current training step, epoch index, etc.</p>
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">save_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">desc</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">save_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">desc</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Saves model outputs to workdir.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_workdir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">jax</span><span class="o">.</span><span class="n">process_index</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">save_outputs</span><span class="p">(</span>
@@ -3673,11 +3754,11 @@ info.json, e.g., current training step, epoch index, etc.</p>
 
             <details class="quote">
               <summary>Source code in <code>redco/deployers/deployer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">258</span>
-<span class="normal">259</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">259</span>
 <span class="normal">260</span>
 <span class="normal">261</span>
-<span class="normal">262</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">shard_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">params_spec</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;params&#39;</span><span class="p">):</span>
+<span class="normal">262</span>
+<span class="normal">263</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">shard_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">params_spec</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;params&#39;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Distributes parameters to all devices based on the provided specs.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">log_info</span><span class="p">(</span><span class="n">info</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;Sharding </span><span class="si">{</span><span class="n">desc</span><span class="si">}</span><span class="s1"> ...&#39;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">shard_params</span><span class="p">(</span>

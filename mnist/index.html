@@ -557,7 +557,7 @@
 
   <h1>MNIST Example</h1>
 
-<p>This is a trivial MNIST example with RedCoast. Runnable by 
+<p>This is a trivial MNIST example with RedCoast (<code>pip install redco==0.4.22</code>). Runnable by 
 <div class="highlight"><pre><span></span><code>python main.py
 </code></pre></div></p>
 <p>To simulate multiple devices in cpu-only envs,
@@ -601,14 +601,14 @@
 
 
 <span class="c1"># Loss function converting model inputs to a scalar loss</span>
-<span class="k">def</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">train_rng</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">is_training</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">loss_fn</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">is_training</span><span class="p">):</span>
     <span class="n">logits</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">apply_fn</span><span class="p">({</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">])</span>
     <span class="k">return</span> <span class="n">optax</span><span class="o">.</span><span class="n">softmax_cross_entropy_with_integer_labels</span><span class="p">(</span>
         <span class="n">logits</span><span class="o">=</span><span class="n">logits</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">batch</span><span class="p">[</span><span class="s1">&#39;labels&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
 
 
 <span class="c1"># Predict function converting model inputs to the model outputs</span>
-<span class="k">def</span> <span class="nf">pred_fn</span><span class="p">(</span><span class="n">pred_rng</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">pred_fn</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
     <span class="n">accs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">apply</span><span class="p">({</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
     <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;acc&#39;</span><span class="p">:</span> <span class="n">accs</span><span class="p">}</span>
 
