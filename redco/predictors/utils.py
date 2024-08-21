@@ -30,20 +30,20 @@ def collate_fn_wrapper(examples, collate_fn):
     }
 
 
-def pred_fn_wrapper(pred_rng, params, batch, pred_fn):
+def pred_fn_wrapper(rng, params, batch, pred_fn):
     return {
-        'preds': pred_fn(
-            pred_rng=pred_rng, params=params, batch=batch['batch']),
+        'preds': pred_fn(rng=rng, params=params, batch=batch['batch']),
         'idxes': batch['idxes']
     }
 
 
-def pred_step(pred_rng, params, batch, pred_fn, mesh):
+def pred_step(rng, params, batch, pred_fn, mesh):
     if mesh is None:
-        return pred_fn(pred_rng=pred_rng, params=params, batch=batch)
+        return pred_fn(rng=rng, params=params, batch=batch)
     else:
-        return jax.vmap(lambda b: pred_fn(
-            pred_rng=pred_rng, params=params, batch=b))(batch)
+        return jax.vmap(
+            lambda rng_, batch_: pred_fn(rng=rng_, params=params, batch=batch_)
+        )(jax.random.split(rng, num=mesh.shape['dp']), batch)
 
 
 def process_batch_preds(batch_preds_with_idxes, mesh):

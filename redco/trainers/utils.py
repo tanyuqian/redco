@@ -18,11 +18,11 @@ from jax.example_libraries.optimizers import l2_norm
 
 
 def default_train_step(
-        train_rng, state, batch, loss_fn, lr_schedule_fn, mesh, compute_dtype):
-    def loss_and_grads(batch_):
+        rng, state, batch, loss_fn, lr_schedule_fn, mesh, compute_dtype):
+    def loss_and_grads(rng_, batch_):
         return jax.value_and_grad(
             lambda params: loss_fn(
-                train_rng=train_rng,
+                rng=rng_,
                 state=state,
                 params=params,
                 batch=batch_,
@@ -30,10 +30,11 @@ def default_train_step(
         )(jax.tree.map(lambda x: x.astype(compute_dtype), state.params))
 
     if mesh is None:
-        loss, grads = loss_and_grads(batch)
+        loss, grads = loss_and_grads(rng, batch)
         grads = jax.lax.pmean(grads, axis_name='dp')
     else:
-        loss, grads = jax.vmap(loss_and_grads)(batch)
+        loss, grads = jax.vmap(loss_and_grads)(
+            jax.random.split(rng, num=mesh.shape['dp']), batch)
         loss = jnp.mean(loss)
         grads = jax.tree.map(lambda x: jnp.mean(x, axis=0), grads)
 
@@ -49,10 +50,10 @@ def default_train_step(
     return new_state, metrics
 
 
-def eval_step(state, batch, loss_fn, mesh, compute_dtype):
-    def get_loss(batch_):
+def eval_step(rng, state, batch, loss_fn, mesh, compute_dtype):
+    def get_loss(rng_, batch_):
         return loss_fn(
-            train_rng=jax.random.PRNGKey(0),
+            rng=rng_,
             state=state,
             params=jax.tree.map(
                 lambda x: x.astype(compute_dtype), state.params),
@@ -60,8 +61,9 @@ def eval_step(state, batch, loss_fn, mesh, compute_dtype):
             is_training=False)
 
     if mesh is None:
-        loss = jax.lax.pmean(get_loss(batch), axis_name='dp')
+        loss = jax.lax.pmean(get_loss(rng, batch), axis_name='dp')
     else:
-        loss = jnp.mean(jax.vmap(get_loss)(batch))
+        loss = jnp.mean(jax.vmap(get_loss)(
+            jax.random.split(rng, num=mesh.shape['dp']), batch))
 
     return {'loss': loss}

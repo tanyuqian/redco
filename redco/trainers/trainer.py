@@ -202,7 +202,7 @@ class Trainer:
                 donate_argnums=(1, ))
             self._p_eval_step = pjit(
                 eval_step_fn,
-                in_shardings=(self._state_spec, data_spec),
+                in_shardings=(None, self._state_spec, data_spec),
                 out_shardings=None)
 
     def train(self, examples, per_device_batch_size, desc=None):
@@ -227,14 +227,14 @@ class Trainer:
             if self._p_train_step is None:
                 self.setup_running_step(dummy_batch=batch)
 
-            train_rng = self._deployer.gen_rng()
+            rng = self._deployer.gen_rng()
             if self.mesh is None:
-                train_rng = jax.random.split(
-                    train_rng, num=jax.process_count())[jax.process_index()]
-                train_rng = shard_prng_key(train_rng)
+                rng = jax.random.split(
+                    rng, num=jax.process_count())[jax.process_index()]
+                rng = shard_prng_key(rng)
             self._state, metrics = self._deployer.run_model_step(
                 step_fn=self._p_train_step,
-                input_args=(train_rng, self._state, batch))
+                input_args=(rng, self._state, batch))
 
             if self.mesh is None:
                 metrics = unreplicate(metrics)
@@ -266,8 +266,8 @@ class Trainer:
                 self.setup_running_step(dummy_batch=batch)
 
             metrics = self._deployer.run_model_step(
-                step_fn=self._p_eval_step, input_args=(self._state, batch))
-
+                step_fn=self._p_eval_step,
+                input_args=(jax.random.PRNGKey(0), self._state, batch))
             if self.mesh is None:
                 metrics = unreplicate(metrics)
 
