@@ -276,6 +276,9 @@ class Deployer:
         return new_rng
 
     def gen_model_step_rng(self):
+        """Get a new random number generator key for distributed model step and
+        update the random state.
+        """
         rng = self.gen_rng()
         if self.mesh is None:
             rng = jax.random.split(

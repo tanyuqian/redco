@@ -1,4 +1,4 @@
-This is a trivial MNIST example with RedCoast. Runnable by 
+This is a trivial MNIST example with RedCoast (`pip install redco==0.4.22`). Runnable by 
 ```
 python main.py
 ```
@@ -47,14 +47,14 @@ def collate_fn(examples):
 
 
 # Loss function converting model inputs to a scalar loss
-def loss_fn(train_rng, state, params, batch, is_training):
+def loss_fn(rng, state, params, batch, is_training):
     logits = state.apply_fn({'params': params}, batch['images'])
     return optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch['labels']).mean()
 
 
 # Predict function converting model inputs to the model outputs
-def pred_fn(pred_rng, params, batch, model):
+def pred_fn(rng, params, batch, model):
     accs = model.apply({'params': params}, batch['images']).argmax(axis=-1)
     return {'acc': accs}
 
