@@ -2,6 +2,7 @@ This is a trivial MNIST example with RedCoast (`pip install redco==0.4.22`). Run
 ```
 python main.py
 ```
+This example supports data parallelism only, see the [model parallel example](https://tanyuqian.github.io/redco/tutorial/mnist_mp/) for model parallelism with one more argument. 
 
 To simulate multiple devices in cpu-only envs,
 ```
@@ -55,13 +56,12 @@ def loss_fn(rng, state, params, batch, is_training):
 
 # Predict function converting model inputs to the model outputs
 def pred_fn(rng, params, batch, model):
-    accs = model.apply({'params': params}, batch['images']).argmax(axis=-1)
-    return {'acc': accs}
+    return model.apply({'params': params}, batch['images']).argmax(axis=-1)
 
 
 # (Optional) Evaluation function in trainer.fit. Here it computes accuracy.
 def eval_metric_fn(examples, preds):
-    preds = np.array([pred['acc'] for pred in preds])
+    preds = np.array(preds)
     labels = np.array([example['label'] for example in examples])
     return {'acc': np.mean(preds == labels).item()}
 

@@ -1,3 +1,15 @@
+This is a MNIST example with RedCoast (`pip install redco==0.4.22`), supporting differentially-private training 
+```
+python main.py --noise_multiplier 1.
+```
+
+To simulate multiple devices in cpu-only envs,
+```
+XLA_FLAGS="--xla_force_host_platform_device_count=8" python main.py --noise_multiplier 1.
+```
+
+### Source Code
+```python
 from functools import partial
 import fire
 import numpy as np
@@ -8,8 +20,6 @@ from flax import linen as nn
 import optax
 from torchvision.datasets import MNIST
 from redco import Deployer, Trainer, Predictor
-from dp_accounting import dp_event
-from dp_accounting import rdp
 
 
 # A simple CNN model
@@ -24,7 +34,7 @@ class CNN(nn.Module):
         x = nn.relu(x)
         x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
         x = x.reshape((x.shape[0], -1))  # flatten
-        x = nn.Dense(features=64, dtype=jnp.float16)(x)
+        x = nn.Dense(features=256)(x)
         x = nn.relu(x)
         x = nn.Dense(features=10)(x)
         return x
@@ -51,26 +61,11 @@ def pred_fn(rng, params, batch, model):
     return model.apply({'params': params}, batch['images']).argmax(axis=-1)
 
 
-# (optional) Evaluation function in trainer.fit. Here it computes accuracy.
+# (Optional) Evaluation function in trainer.fit. Here it computes accuracy.
 def eval_metric_fn(examples, preds):
     preds = np.array(preds)
     labels = np.array([example['label'] for example in examples])
     return {'acc': np.mean(preds == labels).item()}
-
-
-# Copied from
-# https://github.com/google/jax/blob/main/examples/differentially_private_sgd.py
-def compute_epsilon(
-        steps, num_examples, batch_size, noise_multiplier, target_delta):
-  if num_examples * target_delta > 1.:
-    print('Your delta might be too high.')
-  q = batch_size / float(num_examples)
-  orders = list(jnp.linspace(1.1, 10.9, 99)) + list(range(11, 64))
-  accountant = rdp.rdp_privacy_accountant.RdpAccountant(orders)
-  accountant.compose(
-      dp_event.PoissonSampledDpEvent(
-          q, dp_event.GaussianDpEvent(noise_multiplier)), steps)
-  return accountant.get_epsilon(target_delta)
 
 
 # adapted from default_train_step(), added `loss_and_per_sample_grads`
@@ -114,14 +109,10 @@ def dp_train_step(
     return new_state, metrics
 
 
-def main(global_batch_size=256,
-         per_device_batch_size=256,
-         n_epochs=15,
+def main(per_device_batch_size=64,
          learning_rate=1e-3,
-         noise_multiplier=1.,
-         l2_norm_clip=1.5,
-         delta=1e-5,
-         jax_seed=42):
+         jax_seed=42,
+         noise_multiplier=1.):
     deployer = Deployer(jax_seed=jax_seed, workdir='./workdir')
 
     dataset = {
@@ -130,33 +121,18 @@ def main(global_batch_size=256,
         'test': [{'image': t[0], 'label': t[1]} for t in list(
             MNIST('./data', train=False, download=True))],
     }
-    print(len(dataset['train']), len(dataset['test']))
 
     model = CNN()
     dummy_batch = collate_fn(examples=[dataset['train'][0]])
     params = model.init(deployer.gen_rng(), dummy_batch['images'])['params']
 
-    accumulate_grad_batches = deployer.get_accumulate_grad_batches(
-        global_batch_size=global_batch_size,
-        per_device_batch_size=per_device_batch_size)
-    # optax.MultiSteps hasn't supported optax.differentially_private_aggregate
-    assert accumulate_grad_batches == 1
-
     optimizer = optax.chain(
         optax.contrib.differentially_private_aggregate(
-            l2_norm_clip=l2_norm_clip,
+            l2_norm_clip=1.,
             noise_multiplier=noise_multiplier,
             seed=jax_seed),
         optax.adamw(learning_rate=learning_rate)
     )
-
-    deployer.log_info(compute_epsilon(
-        steps=n_epochs * len(dataset['train']) // global_batch_size,
-        num_examples=len(dataset['train']),
-        batch_size=global_batch_size,
-        noise_multiplier=noise_multiplier,
-        target_delta=delta
-    ), title='Epsilon')
 
     trainer = Trainer(
         deployer=deployer,
@@ -165,7 +141,6 @@ def main(global_batch_size=256,
         loss_fn=loss_fn,
         params=params,
         optimizer=optimizer,
-        accumulate_grad_batches=accumulate_grad_batches,
         train_step_fn=dp_train_step)
 
     predictor = Predictor(
@@ -176,7 +151,7 @@ def main(global_batch_size=256,
     trainer.fit(
         train_examples=dataset['train'],
         per_device_batch_size=per_device_batch_size,
-        n_epochs=n_epochs,
+        n_epochs=2,
         eval_examples=dataset['test'],
         eval_predictor=predictor,
         eval_metric_fn=eval_metric_fn)
@@ -184,3 +159,4 @@ def main(global_batch_size=256,
 
 if __name__ == '__main__':
     fire.Fire(main)
+```

@@ -4,11 +4,14 @@ site_url: https://tanyuqian.github.io/redco
 
 nav:
   - RedCoast: index.md
-  - MNIST Example: mnist.md
+  - Tutorial:
+    - MNIST - Data Parallel Only: tutorial/mnist_dp.md
+    - MNIST - Model Parallel: tutorial/mnist_mp.md
+    - MNIST - Differential-Private: tutorial/mnist_private.md
   - Documentation:
-    - Trainer: trainer.md
-    - Predictor: predictor.md
-    - Deployer: deployer.md
+    - Trainer: docs/trainer.md
+    - Predictor: docs/predictor.md
+    - Deployer: docs/deployer.md
 
 plugins:
   - mkdocstrings:
