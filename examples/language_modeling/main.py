@@ -25,10 +25,10 @@ def collate_fn(examples):
     return {'input_ids': token_ids[:, :-1], 'labels': token_ids[:, 1:]}
 
 
-def loss_fn(train_rng, state, params, batch, is_training):
+def loss_fn(rng, state, params, batch, is_training):
     labels = batch.pop("labels")
     logits = state.apply_fn(
-        **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
+        **batch, params=params, dropout_rng=rng, train=is_training)[0]
     return optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels).mean()
 

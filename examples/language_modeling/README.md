@@ -7,7 +7,7 @@ This example implements training causal language models, supporting causal langu
 
 ```shell
 # Install RedCoast
-pip install redco==0.4.21
+pip install redco==0.4.22
 # Install torchvision/torch (cpu version)
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```

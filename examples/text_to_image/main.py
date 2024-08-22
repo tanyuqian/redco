@@ -41,7 +41,7 @@ def collate_fn(examples, image_key, text_key, resolution, tokenizer):
     return batch
 
 
-def loss_fn(train_rng,
+def loss_fn(rng,
             state,
             params,
             batch,
@@ -50,7 +50,7 @@ def loss_fn(train_rng,
             noise_scheduler,
             noise_scheduler_state,
             text_encoder):
-    sample_rng, noise_rng, timestep_rng = jax.random.split(train_rng, num=3)
+    sample_rng, noise_rng, timestep_rng = jax.random.split(rng, num=3)
 
     vae_outputs = vae.apply(
         {"params": params['vae']},
@@ -94,7 +94,7 @@ def loss_fn(train_rng,
     return jnp.mean((target - model_pred) ** 2)
 
 
-def pred_fn(pred_rng,
+def pred_fn(rng,
             batch,
             params,
             pipeline,
@@ -105,7 +105,7 @@ def pred_fn(pred_rng,
     return pipeline._generate(
         prompt_ids=batch['input_ids'],
         params={**params, 'scheduler': noise_scheduler_state},
-        prng_seed=pred_rng,
+        prng_seed=rng,
         num_inference_steps=n_infer_steps,
         guidance_scale=guidance_scale,
         height=resolution,

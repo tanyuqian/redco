@@ -24,8 +24,8 @@ def collate_fn(examples, tokenizer, max_src_len):
         return_tensors='np')
 
 
-def pred_fn(pred_rng, params, batch, model):
-    return model.generate(**batch, params=params, prng_key=pred_rng).sequences
+def pred_fn(rng, params, batch, model):
+    return model.generate(**batch, params=params, prng_key=rng).sequences
 
 
 def output_fn(batch_preds, tokenizer):

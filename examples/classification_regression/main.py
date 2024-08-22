@@ -29,10 +29,10 @@ def collate_fn(
     return batch
 
 
-def loss_fn(train_rng, state, params, batch, is_training, is_regression):
+def loss_fn(rng, state, params, batch, is_training, is_regression):
     labels = batch.pop('labels')
     logits = state.apply_fn(
-        **batch, params=params, dropout_rng=train_rng, train=is_training).logits
+        **batch, params=params, dropout_rng=rng, train=is_training).logits
 
     if is_regression:
         return jnp.mean(jnp.square(logits[..., 0] - labels))
@@ -41,9 +41,8 @@ def loss_fn(train_rng, state, params, batch, is_training, is_regression):
             logits=logits, labels=labels).mean()
 
 
-def pred_fn(pred_rng, params, batch, model, is_regression):
+def pred_fn(rng, params, batch, model, is_regression):
     batch.pop('labels')
-
     logits = model(**batch, params=params, train=False).logits
 
     if is_regression:

@@ -10,7 +10,7 @@ It supports
 
 ```shell
 # Install RedCoast
-pip install redco==0.4.19
+pip install redco==0.4.22
 # Install torchvision/torch (cpu version)
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```

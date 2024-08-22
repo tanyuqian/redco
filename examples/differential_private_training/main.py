@@ -40,21 +40,20 @@ def collate_fn(examples):
 
 
 # Loss function converting model inputs to a scalar loss
-def loss_fn(train_rng, state, params, batch, is_training):
+def loss_fn(rng, state, params, batch, is_training):
     logits = state.apply_fn({'params': params}, batch['images'])
     return optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=batch['labels']).mean()
 
 
 # Predict function converting model inputs to the model outputs
-def pred_fn(pred_rng, params, batch, model):
-    accs = model.apply({'params': params}, batch['images']).argmax(axis=-1)
-    return {'acc': accs}
+def pred_fn(rng, params, batch, model):
+    return model.apply({'params': params}, batch['images']).argmax(axis=-1)
 
 
 # (optional) Evaluation function in trainer.fit. Here it computes accuracy.
 def eval_metric_fn(examples, preds):
-    preds = np.array([pred['acc'] for pred in preds])
+    preds = np.array(preds)
     labels = np.array([example['label'] for example in examples])
     return {'acc': np.mean(preds == labels).item()}
 
@@ -76,34 +75,30 @@ def compute_epsilon(
 
 # adapted from default_train_step()
 # https://github.com/tanyuqian/redco/blob/master/redco/trainers/utils.py
-def dp_train_step(train_rng,
-                  state,
-                  batch,
-                  loss_fn,
-                  lr_schedule_fn,
-                  mesh,
-                  compute_dtype):
-    def loss_and_grads(batch_):
+def dp_train_step(
+        rng, state, batch, loss_fn, lr_schedule_fn, mesh, compute_dtype):
+    def loss_and_grads(rng_, batch_):
         return jax.value_and_grad(
             lambda params: loss_fn(
-                train_rng=train_rng,
+                rng=rng_,
                 state=state,
                 params=params,
                 batch=batch_,
                 is_training=True)
         )(jax.tree.map(lambda x: x.astype(compute_dtype), state.params))
 
-    def loss_and_per_sample_grads(batch_):
+    def loss_and_per_sample_grads(rng_, batch_):
         batch_ = jax.tree.map(lambda x: x[:, None], batch_)
-        loss, grads = jax.vmap(loss_and_grads)(batch_)
+        loss, grads = jax.vmap(lambda b: loss_and_grads(rng_, b))(batch_)
 
         return loss.mean(), grads
 
     if mesh is None:
-        loss, grads = loss_and_per_sample_grads(batch)
+        loss, grads = loss_and_per_sample_grads(rng, batch)
         grads = jax.lax.pmean(grads, axis_name='dp')
     else:
-        loss, grads = jax.vmap(loss_and_per_sample_grads)(batch)
+        loss, grads = jax.vmap(loss_and_per_sample_grads)(
+            jax.random.split(rng, num=mesh.shape['dp']), batch)
         loss = jnp.mean(loss)
         grads = jax.tree.map(lambda x: jnp.mean(x, axis=0), grads)
 
@@ -144,7 +139,6 @@ def main(global_batch_size=256,
     accumulate_grad_batches = deployer.get_accumulate_grad_batches(
         global_batch_size=global_batch_size,
         per_device_batch_size=per_device_batch_size)
-
     # optax.MultiSteps hasn't supported optax.differentially_private_aggregate
     assert accumulate_grad_batches == 1
 

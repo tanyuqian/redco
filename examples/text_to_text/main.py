@@ -42,22 +42,22 @@ def collate_fn(examples,
     return model_inputs
 
 
-def loss_fn(train_rng, state, params, batch, is_training):
+def loss_fn(rng, state, params, batch, is_training):
     labels = batch.pop('labels')
     label_weights = batch['decoder_attention_mask']
     logits = state.apply_fn(
-        **batch, params=params, dropout_rng=train_rng, train=is_training)[0]
+        **batch, params=params, dropout_rng=rng, train=is_training)[0]
     loss = optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels)
     return jnp.sum(loss * label_weights) / jnp.sum(label_weights)
 
 
-def pred_fn(pred_rng, params, batch, model):
+def pred_fn(rng, params, batch, model):
     return model.generate(
         input_ids=batch['input_ids'],
         attention_mask=batch['attention_mask'],
         params=params,
-        prng_key=pred_rng).sequences
+        prng_key=rng).sequences
 
 
 def output_fn(batch_preds, tokenizer):

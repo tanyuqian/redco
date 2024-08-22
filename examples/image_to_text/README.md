@@ -6,7 +6,7 @@ This example implements image-to-text with Redco.
 
 Install Redco
 ```shell
-pip install redco==0.4.21
+pip install redco==0.4.22
 ```
 
 ### Usage
