@@ -2,27 +2,37 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://tanyuqian.github.io/redco/</loc>
-         <lastmod>2024-08-21</lastmod>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://tanyuqian.github.io/redco/deployer/</loc>
-         <lastmod>2024-08-21</lastmod>
+         <loc>https://tanyuqian.github.io/redco/docs/deployer/</loc>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://tanyuqian.github.io/redco/mnist/</loc>
-         <lastmod>2024-08-21</lastmod>
+         <loc>https://tanyuqian.github.io/redco/docs/predictor/</loc>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://tanyuqian.github.io/redco/predictor/</loc>
-         <lastmod>2024-08-21</lastmod>
+         <loc>https://tanyuqian.github.io/redco/docs/trainer/</loc>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://tanyuqian.github.io/redco/trainer/</loc>
-         <lastmod>2024-08-21</lastmod>
+         <loc>https://tanyuqian.github.io/redco/tutorial/mnist_dp/</loc>
+         <lastmod>2024-08-22</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://tanyuqian.github.io/redco/tutorial/mnist_mp/</loc>
+         <lastmod>2024-08-22</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://tanyuqian.github.io/redco/tutorial/mnist_private/</loc>
+         <lastmod>2024-08-22</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>

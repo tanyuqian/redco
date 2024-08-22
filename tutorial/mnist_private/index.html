@@ -8,28 +8,28 @@
       
       
       
-        <link rel="canonical" href="https://tanyuqian.github.io/redco/mnist/">
+        <link rel="canonical" href="https://tanyuqian.github.io/redco/tutorial/mnist_private/">
       
       
-        <link rel="prev" href="..">
+        <link rel="prev" href="../mnist_mp/">
       
       
-        <link rel="next" href="../trainer/">
+        <link rel="next" href="../../docs/trainer/">
       
       
-      <link rel="icon" href="../images/redco_logo.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.28">
+      <link rel="icon" href="../../images/redco_logo.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.31">
     
     
       
-        <title>MNIST Example - RedCoast</title>
+        <title>MNIST - Differential-Private - RedCoast</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.3cba04c6.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -48,9 +48,9 @@
       
     
     
-      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -90,9 +90,9 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="RedCoast" class="md-header__button md-logo" aria-label="RedCoast" data-md-component="logo">
+    <a href="../.." title="RedCoast" class="md-header__button md-logo" aria-label="RedCoast" data-md-component="logo">
       
-  <img src="../images/redco_logo.png" alt="logo">
+  <img src="../../images/redco_logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              MNIST Example
+              MNIST - Differential-Private
             
           </span>
         </div>
@@ -189,7 +189,7 @@
         <a href="https://github.com/tanyuqian/redco" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
   </div>
   <div class="md-source__repository">
     GitHub
@@ -216,7 +216,7 @@
   
   
     <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
     
@@ -234,16 +234,17 @@
     
   
   
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
-        
-  
     
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../mnist_dp/" class="md-tabs__link">
+          
   
-  MNIST Example
+  Tutorial
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -254,7 +255,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../trainer/" class="md-tabs__link">
+        <a href="../../docs/trainer/" class="md-tabs__link">
           
   
   Documentation
@@ -287,9 +288,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="RedCoast" class="md-nav__button md-logo" aria-label="RedCoast" data-md-component="logo">
+    <a href="../.." title="RedCoast" class="md-nav__button md-logo" aria-label="RedCoast" data-md-component="logo">
       
-  <img src="../images/redco_logo.png" alt="logo">
+  <img src="../../images/redco_logo.png" alt="logo">
 
     </a>
     RedCoast
@@ -299,7 +300,7 @@
       <a href="https://github.com/tanyuqian/redco" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
   </div>
   <div class="md-source__repository">
     GitHub
@@ -316,7 +317,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -337,6 +338,93 @@
   
   
   
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Tutorial
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorial
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mnist_dp/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    MNIST - Data Parallel Only
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mnist_mp/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    MNIST - Model Parallel
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
     <li class="md-nav__item md-nav__item--active">
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
@@ -347,7 +435,7 @@
           
   
   <span class="md-ellipsis">
-    MNIST Example
+    MNIST - Differential-Private
   </span>
   
 
@@ -358,7 +446,7 @@
         
   
   <span class="md-ellipsis">
-    MNIST Example
+    MNIST - Differential-Private
   </span>
   
 
@@ -389,6 +477,14 @@
     </ul>
   
 </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -441,7 +537,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../trainer/" class="md-nav__link">
+      <a href="../../docs/trainer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -462,7 +558,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../predictor/" class="md-nav__link">
+      <a href="../../docs/predictor/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -483,7 +579,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../deployer/" class="md-nav__link">
+      <a href="../../docs/deployer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -555,25 +651,28 @@
   
 
 
-  <h1>MNIST Example</h1>
+  <h1>MNIST - Differential-Private</h1>
 
-<p>This is a trivial MNIST example with RedCoast (<code>pip install redco==0.4.22</code>). Runnable by 
-<div class="highlight"><pre><span></span><code>python main.py
+<p>This is a MNIST example with RedCoast (<code>pip install redco==0.4.22</code>), supporting differentially-private training 
+<div class="highlight"><pre><span></span><code>python main.py --noise_multiplier 1.
 </code></pre></div></p>
 <p>To simulate multiple devices in cpu-only envs,
-<div class="highlight"><pre><span></span><code>XLA_FLAGS=&quot;--xla_force_host_platform_device_count=8&quot; python main.py
+<div class="highlight"><pre><span></span><code>XLA_FLAGS=&quot;--xla_force_host_platform_device_count=8&quot; python main.py --noise_multiplier 1.
 </code></pre></div></p>
 <h3 id="source-code">Source Code<a class="headerlink" href="#source-code" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
 <span class="kn">import</span> <span class="nn">fire</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">jax</span>
+<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
+<span class="kn">from</span> <span class="nn">jax.example_libraries.optimizers</span> <span class="kn">import</span> <span class="n">l2_norm</span>
 <span class="kn">from</span> <span class="nn">flax</span> <span class="kn">import</span> <span class="n">linen</span> <span class="k">as</span> <span class="n">nn</span>
 <span class="kn">import</span> <span class="nn">optax</span>
 <span class="kn">from</span> <span class="nn">torchvision.datasets</span> <span class="kn">import</span> <span class="n">MNIST</span>
 <span class="kn">from</span> <span class="nn">redco</span> <span class="kn">import</span> <span class="n">Deployer</span><span class="p">,</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">Predictor</span>
 
 
-<span class="c1"># A simple CNN model </span>
+<span class="c1"># A simple CNN model</span>
 <span class="c1"># Copied from https://github.com/google/flax/blob/main/examples/mnist/train.py</span>
 <span class="k">class</span> <span class="nc">CNN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
     <span class="nd">@nn</span><span class="o">.</span><span class="n">compact</span>
@@ -591,7 +690,7 @@
         <span class="k">return</span> <span class="n">x</span>
 
 
-<span class="c1"># Collate function converting a batch of raw examples to model inputs (in numpy) </span>
+<span class="c1"># Collate function converting a batch of raw examples to model inputs (in numpy)</span>
 <span class="k">def</span> <span class="nf">collate_fn</span><span class="p">(</span><span class="n">examples</span><span class="p">):</span>
     <span class="n">images</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
         <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">example</span><span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">])[:,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">]</span> <span class="k">for</span> <span class="n">example</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">])</span>
@@ -609,18 +708,61 @@
 
 <span class="c1"># Predict function converting model inputs to the model outputs</span>
 <span class="k">def</span> <span class="nf">pred_fn</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
-    <span class="n">accs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">apply</span><span class="p">({</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;acc&#39;</span><span class="p">:</span> <span class="n">accs</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">apply</span><span class="p">({</span><span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">},</span> <span class="n">batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 
 
 <span class="c1"># (Optional) Evaluation function in trainer.fit. Here it computes accuracy.</span>
 <span class="k">def</span> <span class="nf">eval_metric_fn</span><span class="p">(</span><span class="n">examples</span><span class="p">,</span> <span class="n">preds</span><span class="p">):</span>
-    <span class="n">preds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">pred</span><span class="p">[</span><span class="s1">&#39;acc&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">preds</span><span class="p">])</span>
+    <span class="n">preds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">example</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">example</span> <span class="ow">in</span> <span class="n">examples</span><span class="p">])</span>
     <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;acc&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">preds</span> <span class="o">==</span> <span class="n">labels</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()}</span>
 
 
-<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">per_device_batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">jax_seed</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
+<span class="c1"># adapted from default_train_step(), added `loss_and_per_sample_grads`</span>
+<span class="c1"># https://github.com/tanyuqian/redco/blob/master/redco/trainers/utils.py</span>
+<span class="k">def</span> <span class="nf">dp_train_step</span><span class="p">(</span>
+        <span class="n">rng</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">lr_schedule_fn</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">compute_dtype</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">loss_and_grads</span><span class="p">(</span><span class="n">rng_</span><span class="p">,</span> <span class="n">batch_</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">:</span> <span class="n">loss_fn</span><span class="p">(</span>
+                <span class="n">rng</span><span class="o">=</span><span class="n">rng_</span><span class="p">,</span>
+                <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span>
+                <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+                <span class="n">batch</span><span class="o">=</span><span class="n">batch_</span><span class="p">,</span>
+                <span class="n">is_training</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="p">)(</span><span class="n">jax</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">compute_dtype</span><span class="p">),</span> <span class="n">state</span><span class="o">.</span><span class="n">params</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">loss_and_per_sample_grads</span><span class="p">(</span><span class="n">rng_</span><span class="p">,</span> <span class="n">batch_</span><span class="p">):</span>
+        <span class="n">batch_</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">batch_</span><span class="p">)</span>
+        <span class="n">loss</span><span class="p">,</span> <span class="n">grads</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">b</span><span class="p">:</span> <span class="n">loss_and_grads</span><span class="p">(</span><span class="n">rng_</span><span class="p">,</span> <span class="n">b</span><span class="p">))(</span><span class="n">batch_</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">loss</span><span class="o">.</span><span class="n">mean</span><span class="p">(),</span> <span class="n">grads</span>
+
+    <span class="k">if</span> <span class="n">mesh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">loss</span><span class="p">,</span> <span class="n">grads</span> <span class="o">=</span> <span class="n">loss_and_per_sample_grads</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+        <span class="n">grads</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">pmean</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="n">axis_name</span><span class="o">=</span><span class="s1">&#39;dp&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">loss</span><span class="p">,</span> <span class="n">grads</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">loss_and_per_sample_grads</span><span class="p">)(</span>
+            <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="s1">&#39;dp&#39;</span><span class="p">]),</span> <span class="n">batch</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+        <span class="n">grads</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">grads</span><span class="p">)</span>
+
+    <span class="n">new_state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">grad</span><span class="p">,</span> <span class="n">param</span><span class="p">:</span> <span class="n">grad</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">grads</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">params</span><span class="p">))</span>
+
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;loss&#39;</span><span class="p">:</span> <span class="n">loss</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">:</span> <span class="n">state</span><span class="o">.</span><span class="n">step</span><span class="p">,</span> <span class="s1">&#39;grad_norm&#39;</span><span class="p">:</span> <span class="n">l2_norm</span><span class="p">(</span><span class="n">grads</span><span class="p">)}</span>
+    <span class="k">if</span> <span class="n">lr_schedule_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;lr&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lr_schedule_fn</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">step</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mesh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">pmean</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">axis_name</span><span class="o">=</span><span class="s1">&#39;dp&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">new_state</span><span class="p">,</span> <span class="n">metrics</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">per_device_batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+         <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+         <span class="n">jax_seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+         <span class="n">noise_multiplier</span><span class="o">=</span><span class="mf">1.</span><span class="p">):</span>
     <span class="n">deployer</span> <span class="o">=</span> <span class="n">Deployer</span><span class="p">(</span><span class="n">jax_seed</span><span class="o">=</span><span class="n">jax_seed</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="s1">&#39;./workdir&#39;</span><span class="p">)</span>
 
     <span class="n">dataset</span> <span class="o">=</span> <span class="p">{</span>
@@ -634,13 +776,22 @@
     <span class="n">dummy_batch</span> <span class="o">=</span> <span class="n">collate_fn</span><span class="p">(</span><span class="n">examples</span><span class="o">=</span><span class="p">[</span><span class="n">dataset</span><span class="p">[</span><span class="s1">&#39;train&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]])</span>
     <span class="n">params</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">deployer</span><span class="o">.</span><span class="n">gen_rng</span><span class="p">(),</span> <span class="n">dummy_batch</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">])[</span><span class="s1">&#39;params&#39;</span><span class="p">]</span>
 
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span>
+        <span class="n">optax</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">differentially_private_aggregate</span><span class="p">(</span>
+            <span class="n">l2_norm_clip</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span>
+            <span class="n">noise_multiplier</span><span class="o">=</span><span class="n">noise_multiplier</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">jax_seed</span><span class="p">),</span>
+        <span class="n">optax</span><span class="o">.</span><span class="n">adamw</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+    <span class="p">)</span>
+
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">Trainer</span><span class="p">(</span>
         <span class="n">deployer</span><span class="o">=</span><span class="n">deployer</span><span class="p">,</span>
         <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate_fn</span><span class="p">,</span>
         <span class="n">apply_fn</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">apply</span><span class="p">,</span>
         <span class="n">loss_fn</span><span class="o">=</span><span class="n">loss_fn</span><span class="p">,</span>
         <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
-        <span class="n">optimizer</span><span class="o">=</span><span class="n">optax</span><span class="o">.</span><span class="n">adamw</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">))</span>
+        <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
+        <span class="n">train_step_fn</span><span class="o">=</span><span class="n">dp_train_step</span><span class="p">)</span>
 
     <span class="n">predictor</span> <span class="o">=</span> <span class="n">Predictor</span><span class="p">(</span>
         <span class="n">deployer</span><span class="o">=</span><span class="n">deployer</span><span class="p">,</span>
@@ -711,10 +862,10 @@
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.instant", "navigation.top", "navigation.tracking", "toc.follow", "content.code.copy"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.instant", "navigation.top", "navigation.tracking", "toc.follow", "content.code.copy"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.fe8b6f2b.min.js"></script>
+      <script src="../../assets/javascripts/bundle.fe8b6f2b.min.js"></script>
       
     
   </body>
