@@ -17,7 +17,6 @@ import jax
 from jax.experimental.pjit import pjit
 from jax.sharding import PartitionSpec as P
 from flax.core.frozen_dict import freeze
-from flax.training.common_utils import shard_prng_key
 from flax.jax_utils import replicate
 
 from .utils import (
