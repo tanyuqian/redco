@@ -5,7 +5,7 @@ To simulate multiple devices in cpu-only envs,
 XLA_FLAGS="--xla_force_host_platform_device_count=8" python main.py --n_model_shards 4
 ```
 
-### Source Code
+### Source Code (`main.py`)
 ```python
 from functools import partial
 import fire
@@ -80,8 +80,8 @@ def main(per_device_batch_size=64,
     dummy_batch = collate_fn(examples=[dataset['train'][0]])
     params = model.init(deployer.gen_rng(), dummy_batch['images'])['params']
 
-    # automatically generate sharding rules. can be adjusted before passing in 
-    # to Trainer/Predictor if you feel it's not potimal
+    # automatically generate sharding rules. can be adjusted before passing into
+    # Trainer/Predictor if you feel it's not potimal
     params_sharding_rules = deployer.get_sharding_rules(
         params_shape_or_params=params)
     if params_sharding_rules is not None:

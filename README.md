@@ -42,6 +42,7 @@ If you are using TPU/CPU/AMD/Apple, see [here](https://github.com/google/jax#ins
 Examples across a set of paradigms can be found in [examples/](examples/), including
 
 * [Classification/regression (GLUE & MNIST)](https://github.com/tanyuqian/redco/tree/master/examples/classification_regression)
+* [Differential-private_training](https://github.com/tanyuqian/redco/tree/master/examples/differential_private_training)
 * [Faderated learning (FedAvg)](https://github.com/tanyuqian/redco/tree/master/examples/faderated_learning)
 * [Image to text (Image captioning)](https://github.com/tanyuqian/redco/tree/master/examples/image_to_text)
 * [Language modeling (Instruction Tuning of LLMs)](https://github.com/tanyuqian/redco/tree/master/examples/language_modeling)

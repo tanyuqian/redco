@@ -9,7 +9,7 @@ To simulate multiple devices in cpu-only envs,
 XLA_FLAGS="--xla_force_host_platform_device_count=8" python main.py
 ```
 
-### Source Code
+### Source Code (`main.py`)
 ```python
 from functools import partial
 import fire

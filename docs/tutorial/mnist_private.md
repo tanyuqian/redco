@@ -1,4 +1,12 @@
-This is a MNIST example with RedCoast (`pip install redco==0.4.22`), supporting differentially-private training 
+This is a MNIST example with RedCoast (`pip install redco==0.4.22`), supporting differentially-private (DP) training.
+We provide utils for DP training, `dp_utils.py`, in the [DP training example](https://github.com/tanyuqian/redco/tree/master/examples/differential_private_training), which can be downloaded by
+```
+wget https://raw.githubusercontent.com/tanyuqian/redco/master/examples/differential_private_training/dp_utils.py
+```
+
+After downloading this, MNIST can be trained with data-privacy by 
+applying a DP optimizer and a customized `train_step_fn` in `redco.Trainer`.  
+
 ```
 python main.py --noise_multiplier 1.
 ```
@@ -8,19 +16,17 @@ To simulate multiple devices in cpu-only envs,
 XLA_FLAGS="--xla_force_host_platform_device_count=8" python main.py --noise_multiplier 1.
 ```
 
-### Source Code
+### Source Code (`main.py`)
 ```python
 from functools import partial
 import fire
 import numpy as np
-import jax
-import jax.numpy as jnp
-from jax.example_libraries.optimizers import l2_norm
 from flax import linen as nn
 import optax
 from torchvision.datasets import MNIST
 from redco import Deployer, Trainer, Predictor
 
+import dp_utils
 
 # A simple CNN model
 # Copied from https://github.com/google/flax/blob/main/examples/mnist/train.py
@@ -68,47 +74,6 @@ def eval_metric_fn(examples, preds):
     return {'acc': np.mean(preds == labels).item()}
 
 
-# adapted from default_train_step(), added `loss_and_per_sample_grads`
-# https://github.com/tanyuqian/redco/blob/master/redco/trainers/utils.py
-def dp_train_step(
-        rng, state, batch, loss_fn, lr_schedule_fn, mesh, compute_dtype):
-    def loss_and_grads(rng_, batch_):
-        return jax.value_and_grad(
-            lambda params: loss_fn(
-                rng=rng_,
-                state=state,
-                params=params,
-                batch=batch_,
-                is_training=True)
-        )(jax.tree.map(lambda x: x.astype(compute_dtype), state.params))
-
-    def loss_and_per_sample_grads(rng_, batch_):
-        batch_ = jax.tree.map(lambda x: x[:, None], batch_)
-        loss, grads = jax.vmap(lambda b: loss_and_grads(rng_, b))(batch_)
-
-        return loss.mean(), grads
-
-    if mesh is None:
-        loss, grads = loss_and_per_sample_grads(rng, batch)
-        grads = jax.lax.pmean(grads, axis_name='dp')
-    else:
-        loss, grads = jax.vmap(loss_and_per_sample_grads)(
-            jax.random.split(rng, num=mesh.shape['dp']), batch)
-        loss = jnp.mean(loss)
-        grads = jax.tree.map(lambda x: jnp.mean(x, axis=0), grads)
-
-    new_state = state.apply_gradients(grads=jax.tree.map(
-        lambda grad, param: grad.astype(param.dtype), grads, state.params))
-
-    metrics = {'loss': loss, 'step': state.step, 'grad_norm': l2_norm(grads)}
-    if lr_schedule_fn is not None:
-        metrics['lr'] = lr_schedule_fn(state.step)
-    if mesh is None:
-        metrics = jax.lax.pmean(metrics, axis_name='dp')
-
-    return new_state, metrics
-
-
 def main(per_device_batch_size=64,
          learning_rate=1e-3,
          jax_seed=42,
@@ -141,7 +106,7 @@ def main(per_device_batch_size=64,
         loss_fn=loss_fn,
         params=params,
         optimizer=optimizer,
-        train_step_fn=dp_train_step)
+        train_step_fn=dp_utils.dp_train_step)
 
     predictor = Predictor(
         deployer=deployer,
