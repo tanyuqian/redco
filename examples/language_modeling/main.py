@@ -119,7 +119,6 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
         eval_examples=dataset['validation'],
         n_epochs=n_epochs,
         per_device_batch_size=per_device_batch_size,
-        save_every_ckpt=False,
         save_last_ckpt=False,
         save_opt_states=False)
 

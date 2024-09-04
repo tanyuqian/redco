@@ -281,7 +281,7 @@ class Trainer:
             eval_predictor=None,
             eval_metric_fn=None,
             eval_sanity_check=True,
-            save_every_ckpt=False,
+            save_ckpt_every_k_epochs=None,
             save_last_ckpt=False,
             save_argmin_ckpt_by_metrics=None,
             save_argmax_ckpt_by_metrics=None,
@@ -304,7 +304,7 @@ class Trainer:
             eval_metric_fn (Callable): Metric function for prediction.
             eval_sanity_check (bool): if to run a sanity check for
                 evaluation & predict functions before training.
-            save_every_ckpt (bool): if to save a ckpt after every epoch.
+            save_ckpt_every_k_epochs (int): The frequency of saving checkpoints.
             save_last_ckpt (bool): Whether to save the last checkpoint.
             save_argmin_ckpt_by_metrics (list[str]): Metrics to save checkpoints
                 based on minimum values.
@@ -465,10 +465,11 @@ class Trainer:
                         self.save_ckpt(
                             ckpt_name=f'max_{key}', **save_ckpt_kwargs)
 
-            if save_every_ckpt:
+            if (save_ckpt_every_k_epochs is not None and
+                    (epoch_idx + 1) % save_ckpt_every_k_epochs == 0):
                 self.save_ckpt(
                     ckpt_name=f'epoch_{epoch_idx}', **save_ckpt_kwargs)
-            elif save_last_ckpt:
+            if save_last_ckpt:
                 self.save_ckpt(ckpt_name='last', **save_ckpt_kwargs)
 
     def save_ckpt(self, epoch_idx, ckpt_name, save_opt_state, float_dtype):
