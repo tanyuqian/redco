@@ -47,7 +47,7 @@ def pred_step(rng, params, batch, pred_fn, mesh):
 
 
 def process_batch_preds(batch_preds_with_idxes, mesh):
-    if mesh is None:
+    if mesh is None and jax.process_count() > 1:
         batch_preds_with_idxes = jax.tree.map(
             lambda t: t.reshape((-1,) + t.shape[2:]),
             process_allgather(batch_preds_with_idxes))
