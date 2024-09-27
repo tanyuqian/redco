@@ -5,9 +5,9 @@ site_url: https://tanyuqian.github.io/redco
 nav:
   - RedCoast: index.md
   - Tutorial:
-    - MNIST - Data Parallel Only: tutorial/mnist_dp.md
-    - MNIST - Model Parallel: tutorial/mnist_mp.md
-    - MNIST - Differential-Private: tutorial/mnist_private.md
+    - Data Parallel Only: tutorial/mnist_dp.md
+    - Model Parallel: tutorial/mnist_mp.md
+    - Differential-Private: tutorial/mnist_private.md
   - Documentation:
     - Trainer: docs/trainer.md
     - Predictor: docs/predictor.md
