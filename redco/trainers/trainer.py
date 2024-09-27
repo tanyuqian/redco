@@ -72,7 +72,7 @@ class Trainer:
             lr_schedule_fn (Callable): The learning rate schedule
                 function converting step to learning rate.
             accumulate_grad_batches (int): Gradient accumulation step.
-            params_sharding_rules (list): Sharding rules.
+            params_sharding_rules (PyTree): Rules for sharding parameters.
             train_step_fn (Callable): For fully customizing every training step,
                 e.g., per-sample gradient noising for data-private training.
         """
@@ -481,21 +481,9 @@ class Trainer:
             save_opt_state (bool): Whether to save the optimizer state.
             float_dtype (`jax.numpy.dtype`): Data type for saving float params.
         """
-        if self.mesh is None:
-            params = jax.tree.map(
-                fully_replicated_host_local_array_to_global_array,
-                self._state.params)
-        else:
-            params = self._state.params
-
-        opt_state = None
-        if save_opt_state:
-            if self.mesh is None:
-                opt_state = jax.tree.map(
-                    fully_replicated_host_local_array_to_global_array,
-                    self._state.opt_state)
-            else:
-                opt_state = self._state.opt_state
+        params = self.get_params_to_save(state_params=self._state.params)
+        opt_state = self.get_params_to_save(
+            state_params=self._state.opt_state) if save_opt_state else None
 
         ckpt_dir = f'{self.workdir}/ckpts/{ckpt_name}'
         self._deployer.save_ckpt(
@@ -509,6 +497,18 @@ class Trainer:
         if jax.process_index() == 0:
             open(f'{self.workdir}/ckpts/last_ckpt.txt', 'w').write(ckpt_name)
             self._deployer.log_info(f'last ckpt updated -- {ckpt_dir}')
+
+    def get_params_to_save(self, state_params=None):
+        """Formats params/opt_state for model saving."""
+        if state_params is None:
+            state_params = self._state.params
+
+        if self.mesh is None:
+            return jax.tree.map(
+                fully_replicated_host_local_array_to_global_array,
+                state_params)
+        else:
+            return state_params
 
     @property
     def step(self):

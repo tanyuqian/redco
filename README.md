@@ -50,6 +50,7 @@ Examples across a set of paradigms can be found in [examples/](examples/), inclu
 * [Reinforcement learning (PPO & DDPG)](https://github.com/tanyuqian/redco/tree/master/examples/reinforcement_learning)
 * [Text to image (StableDiffusion)](https://github.com/tanyuqian/redco/tree/master/examples/text_to_image)
 * [Text to text (Seq2seq)](https://github.com/tanyuqian/redco/tree/master/examples/text_to_text)
+* [LoRA Finetuning](https://github.com/tanyuqian/redco/tree/master/examples/lora)
 
 ### Exemplar large model settings
 

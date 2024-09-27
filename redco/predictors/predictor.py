@@ -50,7 +50,7 @@ class Predictor:
                 e.g., running beam search with a language model.
             output_fn (Callable): A function post-processing model outputs,
                 e.g., decoding generated ids to text.
-            params_sharding_rules (list[tuple]): Rules for sharding parameters.
+            params_sharding_rules (PyTree): Rules for sharding parameters.
         """
         self._deployer = deployer
         self._collate_fn = partial(collate_fn_wrapper, collate_fn=collate_fn)
