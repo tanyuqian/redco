@@ -432,10 +432,11 @@ class Trainer:
                 if self.workdir is not None:
                     result_filepath = \
                         f'{self.workdir}/eval_results_epoch{epoch_idx}.json'
-                    json.dump(
-                        eval_metrics, open(result_filepath, 'w'), indent=4)
-                    self._deployer.log_info(
-                        f'eval_results saved into {result_filepath}.')
+                    if jax.process_index() == 0:
+                        json.dump(
+                            eval_metrics, open(result_filepath, 'w'), indent=4)
+                        self._deployer.log_info(
+                            f'eval_results saved into {result_filepath}.')
 
                 for key in save_argmin_ckpt_by_metrics:
                     assert self.workdir is not None

@@ -97,7 +97,7 @@ def shard_params(params, params_spec, mesh):
 def get_opt_state_spec(params_shape_or_params, params_spec, optimizer):
     def match_params_structure(x):
         try:
-            jax.tree.map(lambda x, y: None,  params_spec, x)
+            jax.tree.map(lambda x, y: None, params_spec, x)
         except:
             return False
         return True
