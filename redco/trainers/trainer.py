@@ -46,6 +46,8 @@ class Trainer:
                  params,
                  optimizer,
                  opt_state=None,
+                 params_sharded=False,
+                 opt_state_sharded=False,
                  compute_dtype=jnp.float32,
                  last_ckpt_info=None,
                  lr_schedule_fn=None,
@@ -66,6 +68,8 @@ class Trainer:
             params (dict): Initial model parameters.
             optimizer (optax optimizer): The optimizer used for training.
             opt_state (dict): optimizer state.
+            params_sharded (bool): if `params` above is already sharded.
+            opt_state_sharded (bool): if `opt_state` above is already sharded.
             compute_dtype (dtype): Computation dtype, e.g., `jnp.bfloat16`,
                 independent of param dtypes. (for mixed-precision training)
             last_ckpt_info (dict): the beginning step and epoch.
@@ -104,12 +108,18 @@ class Trainer:
         self.set_train_state(
             apply_fn=self._apply_fn,
             params=params,
+            opt_state=opt_state,
             optimizer=self._optimizer,
-            step=self._init_step,
-            opt_state=opt_state)
+            step=self._init_step)
 
-    def set_train_state(
-            self, apply_fn, params, optimizer, step, opt_state=None):
+    def set_train_state(self,
+                        apply_fn,
+                        optimizer,
+                        step,
+                        params,
+                        opt_state=None,
+                        params_sharded=False,
+                        opt_state_sharded=False):
         """Sets/Resets the training state with given parameters and optimizer.
 
         Args:
@@ -118,6 +128,8 @@ class Trainer:
             optimizer (dict): The optimizer used for training.
             step (int): The training step.
             opt_state (dict): The state of the optimizer.
+            params_sharded (bool): if `params` above is already sharded.
+            opt_state_sharded (bool): if `opt_state` above is already sharded.
         """
         self._deployer.log_info('Setting train_state ...')
         params = freeze(params)
@@ -141,8 +153,9 @@ class Trainer:
             params_spec = self._deployer.get_params_spec(
                 params_shape_or_params=params,
                 params_sharding_rules=self._params_sharding_rules)
-            params = self._deployer.shard_params(
-                params=params, params_spec=params_spec)
+            if not params_sharded:
+                params = self._deployer.shard_params(
+                    params=params, params_spec=params_spec)
 
             if opt_state is None:
                 self._deployer.log_info('Initializing opt_state ...')
@@ -152,10 +165,11 @@ class Trainer:
                 params_shape_or_params=params,
                 params_spec=params_spec,
                 optimizer=optimizer)
-            opt_state = self._deployer.shard_params(
-                params=opt_state,
-                params_spec=opt_state_spec,
-                desc='opt_state')
+            if not opt_state_sharded:
+                opt_state = self._deployer.shard_params(
+                    params=opt_state,
+                    params_spec=opt_state_spec,
+                    desc='opt_state')
 
             self._state = train_state.TrainState(
                 apply_fn=apply_fn,

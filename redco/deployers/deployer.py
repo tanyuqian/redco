@@ -355,7 +355,7 @@ class Deployer:
 
         Args:
             ckpt_dir (str): Directory of the checkpoint.
-            params_sharding_rules (list[tuple]): Sharding rules for parameters.
+            params_sharding_rules (PyTree): Sharding rules for parameters.
             optimizer (optax optimizer): Optimizer for loading opt_state.
             float_dtype (`jax.numpy.dtype`): Dtype for floating point numbers.
             load_params (bool): Whether to load the parameters.
