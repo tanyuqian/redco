@@ -7,7 +7,7 @@ This example implements training causal language models, supporting causal langu
 
 ```shell
 # Install RedCoast
-pip install redco==0.4.22
+pip install redco==0.4.23
 # Install torchvision/torch (cpu version)
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
@@ -20,7 +20,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 In multi-host environments, HuggingFace's FlaxModel.init_weights() function cannot utilize the CPU backend to load the model into CPU memory before sharding it to GPU/TPUs. Therefore, it is necessary to prepare a JAX format checkpoint in advance for multi-host execution,
 e.g.,
 ```
-python save_init_ckpt.py --model_name_or_path huggyllama/llama-13b
+python make_init_ckpt.py --model_name_or_path huggyllama/llama-13b
 ```
 The prepared ckpt would be saved into `./llama-13b`.
 
