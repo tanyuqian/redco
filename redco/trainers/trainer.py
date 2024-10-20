@@ -110,7 +110,9 @@ class Trainer:
             params=params,
             opt_state=opt_state,
             optimizer=self._optimizer,
-            step=self._init_step)
+            step=self._init_step,
+            params_sharded=params_sharded,
+            opt_state_sharded=opt_state_sharded)
 
     def set_train_state(self,
                         apply_fn,
