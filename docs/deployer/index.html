@@ -1869,7 +1869,7 @@
 
 <span class="sd">        Args:</span>
 <span class="sd">            ckpt_dir (str): Directory of the checkpoint.</span>
-<span class="sd">            params_sharding_rules (list[tuple]): Sharding rules for parameters.</span>
+<span class="sd">            params_sharding_rules (PyTree): Sharding rules for parameters.</span>
 <span class="sd">            optimizer (optax optimizer): Optimizer for loading opt_state.</span>
 <span class="sd">            float_dtype (`jax.numpy.dtype`): Dtype for floating point numbers.</span>
 <span class="sd">            load_params (bool): Whether to load the parameters.</span>
@@ -3185,7 +3185,7 @@ update the random state.</p>
           <tr class="doc-section-item">
             <td><code>params_sharding_rules</code></td>
             <td>
-                  <code>list[tuple]</code>
+                  <code>PyTree</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3372,7 +3372,7 @@ dict, usually including <code>"steps"</code>, <code>"epoch_idx"</code>, and <cod
 
 <span class="sd">    Args:</span>
 <span class="sd">        ckpt_dir (str): Directory of the checkpoint.</span>
-<span class="sd">        params_sharding_rules (list[tuple]): Sharding rules for parameters.</span>
+<span class="sd">        params_sharding_rules (PyTree): Sharding rules for parameters.</span>
 <span class="sd">        optimizer (optax optimizer): Optimizer for loading opt_state.</span>
 <span class="sd">        float_dtype (`jax.numpy.dtype`): Dtype for floating point numbers.</span>
 <span class="sd">        load_params (bool): Whether to load the parameters.</span>

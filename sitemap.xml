@@ -2,30 +2,30 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://tanyuqian.github.io/redco/</loc>
-         <lastmod>2024-09-27</lastmod>
+         <lastmod>2024-10-20</lastmod>
     </url>
     <url>
          <loc>https://tanyuqian.github.io/redco/docs/deployer/</loc>
-         <lastmod>2024-09-27</lastmod>
+         <lastmod>2024-10-20</lastmod>
     </url>
     <url>
          <loc>https://tanyuqian.github.io/redco/docs/predictor/</loc>
-         <lastmod>2024-09-27</lastmod>
+         <lastmod>2024-10-20</lastmod>
     </url>
     <url>
          <loc>https://tanyuqian.github.io/redco/docs/trainer/</loc>
-         <lastmod>2024-09-27</lastmod>
+         <lastmod>2024-10-20</lastmod>
     </url>
     <url>
          <loc>https://tanyuqian.github.io/redco/tutorial/mnist_dp/</loc>
-         <lastmod>2024-09-27</lastmod>
+         <lastmod>2024-10-20</lastmod>
     </url>
     <url>
          <loc>https://tanyuqian.github.io/redco/tutorial/mnist_mp/</loc>
-         <lastmod>2024-09-27</lastmod>
+         <lastmod>2024-10-20</lastmod>
     </url>
     <url>
          <loc>https://tanyuqian.github.io/redco/tutorial/mnist_private/</loc>
-         <lastmod>2024-09-27</lastmod>
+         <lastmod>2024-10-20</lastmod>
     </url>
 </urlset>
