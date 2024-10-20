@@ -42,29 +42,38 @@ See `def main(...)` in [main.py](main.py) for all the tunable arguments.
 
 #### Multi-Node Running (SLURM)
 
-Here is an example sbatch script under SLURM, running this code on `N` nodes.
+Here is an example sbatch script under SLURM running [LLM360/K2-Chat (65B)](https://huggingface.co/LLM360/K2-Chat), running this code on 8 nodes, each with 8 H100s.
 ```
 #!/bin/bash
-#SBATCH --job-name=stable-diffusion
-#SBATCH --partition=xxx
-#SBATCH --nodes=N
+#SBATCH --nodes=8
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=100
 #SBATCH --gres=gpu:8
-#SBATCH --mem=1000G
 #SBATCH --output=slurm.out
 #SBATCH --error=slurm.err
-
-module load cuda/12.3 cuDNN/9.1 nvhpc/24.3
+#SBATCH --exclusive
 
 nodes_array=($(scontrol show hostnames "$SLURM_JOB_NODELIST"))
 head_node=${nodes_array[0]}
 master_addr=$(srun --nodes=1 --ntasks=1 -w "$head_node" hostname --ip-address)
 
-export XLA_PYTHON_CLIENT_MEM_FRACTION=.95
-# export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export XLA_PYTHON_CLIENT_MEM_FRACTION=.96
+export XLA_FLAGS="--xla_gpu_shard_autotuning=false"
 
-srun python main.py --host0_address ${master_addr} --n_local_devices 8 
+ulimit -n 4096
+
+# python make_init_ckpt.py --model_name_or_path LLM360/K2-Chat
+
+srun python main.py \
+    --host0_address ${master_addr} \
+    --n_local_devices 8 \
+    --model_name_or_path LLM360/K2-Chat \
+    --init_ckpt_dir ./K2-Chat \
+    --n_model_shards 32 \
+    --global_batch_size 32 \
+    --per_device_batch_size 2 \
+    --context_length 2048 \
+    --n_epochs 10
 ```
 
-The sharding can go cross multiple hosts, e.g., `--n_model_shards 16` if one has 2 (or more) nodes. 
+* The sharding can go cross multiple hosts, e.g., `--n_model_shards 32` here means the model is splitted into 32 shards (every data parallel takes 4 nodes).
+* For longer context length, the model should be splitted into more shards, e.g., `--context_length 8192` needs `--n_model_shards 64`.

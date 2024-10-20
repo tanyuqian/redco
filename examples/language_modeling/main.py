@@ -36,6 +36,7 @@ def loss_fn(rng, state, params, batch, is_training):
 def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
          model_name_or_path='huggyllama/llama-13b',
          init_ckpt_dir='./llama-13b',
+         context_length=2048,
          n_model_shards=8,
          n_epochs=1,
          global_batch_size=8,
@@ -69,7 +70,7 @@ def main(dataset_name='alexgshaw/llama-13b-tokenized-wikitext-2-v1',
     dataset = get_dataset(
         dataset_name=dataset_name,
         eos_token_id=model.config.eos_token_id,
-        context_length=model.config.max_sequence_length)
+        context_length=context_length)
 
     accumulate_grad_batches = deployer.get_accumulate_grad_batches(
         global_batch_size=global_batch_size,
