@@ -42,7 +42,10 @@ See `def main(...)` in [main.py](main.py) for all the tunable arguments.
 
 #### Multi-Node Running (SLURM)
 
-Here is an example sbatch script under SLURM running [LLM360/K2-Chat (65B)](https://huggingface.co/LLM360/K2-Chat), running this code on 8 nodes, each with 8 H100s.
+Here is an example sbatch script under SLURM training [LLM360/K2-Chat (65B)](https://huggingface.co/LLM360/K2-Chat) on 8 nodes, each with 8 H100s.
+* The sharding can go cross multiple hosts, e.g., `--n_model_shards 32` here means the model is splitted into 32 shards (every data parallel takes 4 nodes).
+* For longer context length, the model should be splitted into more shards, e.g., `--context_length 8192` needs `--n_model_shards 64`.
+
 ```
 #!/bin/bash
 #SBATCH --nodes=8
@@ -74,6 +77,3 @@ srun python main.py \
     --context_length 2048 \
     --n_epochs 10
 ```
-
-* The sharding can go cross multiple hosts, e.g., `--n_model_shards 32` here means the model is splitted into 32 shards (every data parallel takes 4 nodes).
-* For longer context length, the model should be splitted into more shards, e.g., `--context_length 8192` needs `--n_model_shards 64`.
