@@ -14,13 +14,19 @@
 
 import jax
 import jax.numpy as jnp
+from jax.experimental.shard_map import shard_map
+from jax.sharding import PartitionSpec as P
 from jax.example_libraries.optimizers import l2_norm
 
 
 def default_train_step(
         rng, state, batch, loss_fn, lr_schedule_fn, mesh, compute_dtype):
     def loss_and_grads(rng_, batch_):
-        return jax.value_and_grad(
+        if mesh is not None:
+            rng_ = jnp.squeeze(rng_, axis=0)
+            batch_ = jax.tree.map(lambda x: jnp.squeeze(x, axis=0), batch_)
+
+        loss, grads = jax.value_and_grad(
             lambda params: loss_fn(
                 rng=rng_,
                 state=state,
@@ -29,14 +35,29 @@ def default_train_step(
                 is_training=True)
         )(jax.tree.map(lambda x: x.astype(compute_dtype), state.params))
 
+        if mesh is not None:
+            loss = jax.lax.pmean(loss, axis_name='dp')
+            grads = jax.lax.pmean(grads, axis_name='dp')
+            loss, grads = loss[None], jax.tree.map(lambda x: x[None], grads)
+
+        return loss, grads
+
     if mesh is None:
         loss, grads = loss_and_grads(rng, batch)
         grads = jax.lax.pmean(grads, axis_name='dp')
     else:
-        loss, grads = jax.vmap(loss_and_grads)(
+        loss_and_grads_fn = shard_map(
+            loss_and_grads,
+            mesh=mesh,
+            in_specs=(P('dp'), P('dp')),
+            out_specs=(P('dp'), P('dp'))
+        )
+        loss, grads = loss_and_grads_fn(
             jax.random.split(rng, num=mesh.shape['dp']), batch)
-        loss = jnp.mean(loss)
-        grads = jax.tree.map(lambda x: jnp.mean(x, axis=0), grads)
+        dp_idx = (jax.process_index() * jax.local_device_count() //
+                  mesh.shape['mp'])
+        loss = loss[dp_idx]
+        grads = jax.tree.map(lambda x: x[dp_idx], grads)
 
     new_state = state.apply_gradients(grads=jax.tree.map(
         lambda grad, param: grad.astype(param.dtype), grads, state.params))
