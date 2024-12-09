@@ -36,8 +36,6 @@ def default_train_step(
         )(jax.tree.map(lambda x: x.astype(compute_dtype), state.params))
 
         if mesh is not None:
-            loss = jax.lax.pmean(loss, axis_name='dp')
-            grads = jax.lax.pmean(grads, axis_name='dp')
             loss, grads = loss[None], jax.tree.map(lambda x: x[None], grads)
 
         return loss, grads
@@ -54,10 +52,8 @@ def default_train_step(
         )
         loss, grads = loss_and_grads_fn(
             jax.random.split(rng, num=mesh.shape['dp']), batch)
-        dp_idx = (jax.process_index() * jax.local_device_count() //
-                  mesh.shape['mp'])
-        loss = loss[dp_idx]
-        grads = jax.tree.map(lambda x: x[dp_idx], grads)
+        loss = jnp.mean(loss, axis=0)
+        grads = jax.tree.map(lambda x: jnp.mean(x, axis=0), grads)
 
     new_state = state.apply_gradients(grads=jax.tree.map(
         lambda grad, param: grad.astype(param.dtype), grads, state.params))
